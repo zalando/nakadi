@@ -148,7 +148,7 @@ public class TimelineService {
 
             return nextTimeline;
         } catch (final TopicCreationException | TopicConfigException | ServiceTemporarilyUnavailableException |
-                       InternalNakadiException e) {
+                InternalNakadiException e) {
             throw new TimelineException("Internal service error", e);
         } catch (final NoSuchEventTypeException e) {
             throw new NotFoundException("EventType \"" + eventTypeName + "\" does not exist");
@@ -289,16 +289,14 @@ public class TimelineService {
     public EventConsumer createEventConsumer(@Nullable final String clientId, final List<NakadiCursor> positions)
             throws InvalidCursorException {
         final MultiTimelineEventConsumer result = new MultiTimelineEventConsumer(
-                clientId, this, timelineSync,
-                new NakadiCursorComparator(eventTypeCache), schemaService, localSchemaRegistry, nakadiRecordMapper);
+                clientId, this, timelineSync, new NakadiCursorComparator(eventTypeCache));
         result.reassign(positions);
         return result;
     }
 
     public EventConsumer.ReassignableEventConsumer createEventConsumer(@Nullable final String clientId) {
         return new MultiTimelineEventConsumer(
-                clientId, this, timelineSync,
-                new NakadiCursorComparator(eventTypeCache), schemaService, localSchemaRegistry, nakadiRecordMapper);
+                clientId, this, timelineSync, new NakadiCursorComparator(eventTypeCache));
     }
 
     private void switchTimelines(final Timeline activeTimeline, final Timeline nextTimeline)

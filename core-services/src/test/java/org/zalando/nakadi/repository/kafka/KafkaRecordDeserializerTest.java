@@ -52,15 +52,14 @@ public class KafkaRecordDeserializerTest {
                 return null;
             }
         };
-        deserializer = new KafkaRecordDeserializer(nakadiRecordMapper, singleSchemaProvider, localSchemaRegistry);
+        deserializer = new KafkaRecordDeserializer(nakadiRecordMapper, singleSchemaProvider);
     }
 
     @Test
     public void testDeserializeAvroNullEventInLogCompactedEventType() {
-        final KafkaRecordDeserializer deserializer = new KafkaRecordDeserializer(
-                nakadiRecordMapper, schemaService, localSchemaRegistry);
+        final KafkaRecordDeserializer deserializer = new KafkaRecordDeserializer(nakadiRecordMapper, schemaService);
 
-        Assert.assertNull(deserializer.deserializeToJsonBytes(null, null));
+        Assert.assertNull(deserializer.deserializeToJsonBytes(null));
     }
 
     @Test
@@ -85,7 +84,7 @@ public class KafkaRecordDeserializerTest {
                 .build();
 
         final ByteBuffer byteBuffer = Envelope.getEncoder().encode(envelope);
-        final byte[] jsonBytes = deserializer.deserializeToJsonBytes(null, byteBuffer.array());
+        final byte[] jsonBytes = deserializer.deserializeToJsonBytes(byteBuffer.array());
 
         final JSONObject event = new JSONObject(new String(jsonBytes));
         Assert.assertEquals("bar", event.get("foo"));
@@ -115,7 +114,7 @@ public class KafkaRecordDeserializerTest {
                 .build();
 
         final ByteBuffer byteBuffer = Envelope.getEncoder().encode(envelope);
-        final byte[] jsonBytes = deserializer.deserializeToJsonBytes(null, byteBuffer.array());
+        final byte[] jsonBytes = deserializer.deserializeToJsonBytes(byteBuffer.array());
 
         final JSONObject event = new JSONObject(new String(jsonBytes));
         Assert.assertEquals("bar", event.get("foo"));

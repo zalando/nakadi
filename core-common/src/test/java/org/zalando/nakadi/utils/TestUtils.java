@@ -252,8 +252,7 @@ public class TestUtils {
     }
 
     public static NakadiRecordMapper getNakadiRecordMapper() throws IOException {
-        final var eventTypeRes = new DefaultResourceLoader().getResource("avro-schema/");
-        return new NakadiRecordMapper(new LocalSchemaRegistry(eventTypeRes));
+        return new NakadiRecordMapper(getLocalSchemaRegistry());
     }
 
     public static LocalSchemaRegistry getLocalSchemaRegistry() throws IOException {

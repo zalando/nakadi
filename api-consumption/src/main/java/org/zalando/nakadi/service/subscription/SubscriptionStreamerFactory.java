@@ -16,7 +16,7 @@ import org.zalando.nakadi.service.CursorConverter;
 import org.zalando.nakadi.service.CursorOperationsService;
 import org.zalando.nakadi.service.CursorTokenService;
 import org.zalando.nakadi.service.EventStreamChecks;
-import org.zalando.nakadi.service.EventStreamWriter;
+import org.zalando.nakadi.service.EventStreamWriterFactory;
 import org.zalando.nakadi.service.EventTypeChangeListener;
 import org.zalando.nakadi.service.NakadiCursorComparator;
 import org.zalando.nakadi.service.subscription.model.Session;
@@ -38,7 +38,7 @@ public class SubscriptionStreamerFactory {
     private final CursorConverter cursorConverter;
     private final MetricRegistry metricRegistry;
     private final SubscriptionClientFactory zkClientFactory;
-    private final EventStreamWriter eventStreamWriter;
+    private final EventStreamWriterFactory eventStreamWriterFactory;
     private final AuthorizationValidator authorizationValidator;
     private final EventTypeChangeListener eventTypeChangeListener;
     private final EventTypeCache eventTypeCache;
@@ -55,7 +55,7 @@ public class SubscriptionStreamerFactory {
             final CursorConverter cursorConverter,
             @Qualifier("streamMetricsRegistry") final MetricRegistry metricRegistry,
             final SubscriptionClientFactory zkClientFactory,
-            final EventStreamWriter eventStreamWriter,
+            final EventStreamWriterFactory eventStreamWriterFactory,
             final AuthorizationValidator authorizationValidator,
             final EventTypeChangeListener eventTypeChangeListener,
             final EventTypeCache eventTypeCache,
@@ -69,7 +69,7 @@ public class SubscriptionStreamerFactory {
         this.cursorConverter = cursorConverter;
         this.metricRegistry = metricRegistry;
         this.zkClientFactory = zkClientFactory;
-        this.eventStreamWriter = eventStreamWriter;
+        this.eventStreamWriterFactory = eventStreamWriterFactory;
         this.authorizationValidator = authorizationValidator;
         this.eventTypeChangeListener = eventTypeChangeListener;
         this.eventTypeCache = eventTypeCache;
@@ -83,7 +83,8 @@ public class SubscriptionStreamerFactory {
             final Subscription subscription,
             final StreamParameters streamParameters,
             final Session session,
-            final SubscriptionOutput output)
+            final SubscriptionOutput output,
+            final StreamContentType streamContentType)
             throws InternalNakadiException, NoSuchEventTypeException {
         final ZkSubscriptionClient zkClient = zkClientFactory.createClient(
                 subscription,
@@ -106,7 +107,7 @@ public class SubscriptionStreamerFactory {
                 .setSubscription(subscription)
                 .setMetricRegistry(metricRegistry)
                 .setTimelineService(timelineService)
-                .setWriter(eventStreamWriter)
+                .setWriter(eventStreamWriterFactory.get(streamContentType))
                 .setAuthorizationValidator(authorizationValidator)
                 .setEventTypeChangeListener(eventTypeChangeListener)
                 .setCursorComparator(new NakadiCursorComparator(eventTypeCache))

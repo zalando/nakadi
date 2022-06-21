@@ -4,10 +4,9 @@
   "type": "record",
   "fields": [
     {
-      "name": "batchMetadata",
+      "name": "cursor",
       "type": {
-        "name": "ConsumptionBatchMetadata",
-        "namespace": "org.zalando.nakadi.generated.avro",
+        "name": "SubscriptionCursor",
         "type": "record",
         "fields": [
           {
@@ -25,17 +24,17 @@
           {
             "name": "cursor_token",
             "type": "string"
-          },
-          {
-            "name": "info",
-            "type": [
-              "null",
-              "string"
-            ],
-            "default": null
           }
         ]
       }
+    },
+    {
+      "name": "info",
+      "type": [
+        "null",
+        "string"
+      ],
+      "default": null
     },
     {
       "name": "events",
