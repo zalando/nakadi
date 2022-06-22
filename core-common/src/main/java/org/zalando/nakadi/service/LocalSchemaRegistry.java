@@ -15,6 +15,7 @@ import javax.annotation.Nullable;
 import java.io.IOException;
 import java.io.InputStream;
 import java.util.Collection;
+import java.util.Collections;
 import java.util.Comparator;
 import java.util.HashMap;
 import java.util.List;
@@ -32,37 +33,48 @@ public class LocalSchemaRegistry {
 
     private static final Comparator<String> SCHEMA_VERSION_COMPARATOR = Comparator.comparingInt(Integer::parseInt);
     // envelope must be first
-    private static final Collection<String> INTERNAL_EVENT_TYPE_NAMES = List.of(
+    private static final Collection<String> NAKADI_API_SCHEMA_NAMES = List.of(
             ENVELOPE_KEY,
             BATCH_PUBLISHING_KEY,
-            BATCH_CONSUMPTION_KEY,
+            BATCH_CONSUMPTION_KEY);
+
+    private static final Collection<String> INTERNAL_EVENT_TYPE_NAMES = List.of(
             KPIEventTypes.ACCESS_LOG,
             KPIEventTypes.BATCH_PUBLISHED,
             KPIEventTypes.DATA_STREAMED,
             KPIEventTypes.EVENT_TYPE_LOG,
             KPIEventTypes.SUBSCRIPTION_LOG);
 
-    private final Map<String, TreeMap<String, Schema>> eventTypeSchema;
+    private final Map<String, TreeMap<String, Schema>> schemaVersionsByName;
 
     @Autowired
     public LocalSchemaRegistry(
             @Value("${nakadi.avro.schema.root:classpath:avro-schema/}") final Resource eventTypeSchemaRes)
             throws IOException {
-        this.eventTypeSchema = new HashMap<>();
+        schemaVersionsByName = new HashMap<>();
 
-        for (final String eventTypeName : INTERNAL_EVENT_TYPE_NAMES) {
-            final Map<String, Schema> embeddedSchemas = eventTypeSchema.values().stream()
+        for (final String apiSchemaName : NAKADI_API_SCHEMA_NAMES) {
+            final Map<String, Schema> embeddedSchemas = schemaVersionsByName.values().stream()
                     .flatMap((map) -> map.entrySet().stream())
                     .collect(Collectors.toMap(
                             (entry) -> entry.getValue().getFullName(),
                             Map.Entry::getValue));
-
             final TreeMap<String, Schema> versionToSchema =
-                    loadEventTypeSchemaVersionsFromResource(eventTypeSchemaRes, eventTypeName, embeddedSchemas);
+                    loadEventTypeSchemaVersionsFromResource(eventTypeSchemaRes, apiSchemaName, embeddedSchemas);
+            if (versionToSchema.isEmpty()) {
+                throw new NoSuchSchemaException("No avro schema found for: " + apiSchemaName);
+            }
+            schemaVersionsByName.put(apiSchemaName, versionToSchema);
+        }
+
+        for (final String eventTypeName : INTERNAL_EVENT_TYPE_NAMES) {
+            final TreeMap<String, Schema> versionToSchema =
+                    loadEventTypeSchemaVersionsFromResource(
+                            eventTypeSchemaRes, eventTypeName, Collections.emptyMap());
             if (versionToSchema.isEmpty()) {
                 throw new NoSuchSchemaException("No avro schema found for: " + eventTypeName);
             }
-            eventTypeSchema.put(eventTypeName, versionToSchema);
+            schemaVersionsByName.put(eventTypeName, versionToSchema);
         }
     }
 
@@ -99,7 +111,7 @@ public class LocalSchemaRegistry {
     }
 
     public TreeMap<String, Schema> getEventTypeSchemaVersions(final String eventTypeName) {
-        final TreeMap<String, Schema> versionToSchema = eventTypeSchema.get(eventTypeName);
+        final TreeMap<String, Schema> versionToSchema = schemaVersionsByName.get(eventTypeName);
         if (versionToSchema == null) {
             throw new NoSuchEventTypeException("Avro event type not found: " + eventTypeName);
         }

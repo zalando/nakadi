@@ -1,6 +1,5 @@
 {
-  "name": "NakadiDataStreamed",
-  "namespace": "org.zalando.nakadi.avro.generated",
+  "name": "nakadi.data.streamed",
   "type": "record",
   "doc": "Stores KPI events of type nakadi.data.streamed",
   "fields": [

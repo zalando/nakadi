@@ -70,6 +70,7 @@ import static org.zalando.problem.Status.UNPROCESSABLE_ENTITY;
 public class SubscriptionStreamController {
     public static final String CONSUMERS_COUNT_METRIC_NAME = "consumers";
     private static final Logger LOG = LoggerFactory.getLogger(SubscriptionStreamController.class);
+    public static final MediaType BINARY_MEDIA_TYPE = new MediaType("application", "avro-binary");
 
     private final SubscriptionStreamerFactory subscriptionStreamerFactory;
     private final ObjectMapper jsonMapper;
@@ -208,15 +209,11 @@ public class SubscriptionStreamController {
 
     private StreamContentType mapToStreamContentType(final String acceptHeader) {
         final List<MediaType> mediaTypes = MediaType.parseMediaTypes(acceptHeader);
-        if (mediaTypes.size() > 1) {
-            throw new RuntimeException();
-        } else if (mediaTypes.size() == 0) {
-            return StreamContentType.JSON;
-        } else if (mediaTypes.get(0).includes(
-                new MediaType("application", "avro-binary"))) {
+        if (mediaTypes.size() == 1 &&
+                BINARY_MEDIA_TYPE.equalsTypeAndSubtype(mediaTypes.get(0))) {
             return StreamContentType.BINARY;
         } else {
-            throw new RuntimeException();
+            return StreamContentType.JSON;
         }
     }
 

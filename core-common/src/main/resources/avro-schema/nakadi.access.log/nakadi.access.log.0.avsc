@@ -1,6 +1,5 @@
 {
-  "name": "NakadiAccessLogV0",
-  "namespace": "org.zalando.nakadi.avro.generated",
+  "name": "nakadi.access.log",
   "type": "record",
   "doc": "Stores access log of Nakadi endpoints",
   "fields": [
