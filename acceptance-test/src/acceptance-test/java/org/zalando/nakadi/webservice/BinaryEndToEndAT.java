@@ -5,7 +5,6 @@ import org.apache.avro.generic.GenericDatumWriter;
 import org.apache.avro.generic.GenericRecordBuilder;
 import org.apache.avro.io.EncoderFactory;
 import org.junit.Assert;
-import org.junit.Ignore;
 import org.junit.Test;
 import org.springframework.core.io.DefaultResourceLoader;
 import org.zalando.nakadi.domain.CleanupPolicy;
@@ -152,6 +151,7 @@ public class BinaryEndToEndAT extends BaseAT {
                 .setEvents(List.of(Envelope.newBuilder()
                         .setMetadata(Metadata.newBuilder()
                                 .setEventType(etName)
+                                .setPartitionCompactionKey("CE8C9EBC-3F19-4B9D-A453-08AD2EDA6028")
                                 .setVersion("1.0.0")
                                 .setOccurredAt(Instant.now())
                                 .setEid("CE8C9EBC-3F19-4B9D-A453-08AD2EDA6028")
@@ -171,7 +171,6 @@ public class BinaryEndToEndAT extends BaseAT {
     }
 
     @Test
-    @Ignore
     public void testAvroDelete() throws IOException {
         final var etName = "test-et-for-successful-delete";
         final Schema schema = new Schema.Parser().parse(new DefaultResourceLoader()
@@ -192,6 +191,7 @@ public class BinaryEndToEndAT extends BaseAT {
                         .setMetadata(Metadata.newBuilder()
                                 .setEventType(etName)
                                 .setVersion("1.0.0")
+                                .setPartitionCompactionKey("CE8C9EBC-3F19-4B9D-A453-08AD2EDA6028")
                                 .setOccurredAt(Instant.now())
                                 .setEid("CE8C9EBC-3F19-4B9D-A453-08AD2EDA6028")
                                 .build())
