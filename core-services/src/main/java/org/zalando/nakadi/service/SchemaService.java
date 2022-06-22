@@ -181,9 +181,8 @@ public class SchemaService implements SchemaProviderService {
     public void validateSchema(final EventTypeBase eventType) throws SchemaValidationException {
         try {
             final String eventTypeSchema = eventType.getSchema().getSchema();
-
-
             final EventTypeSchemaBase.Type schemaType = eventType.getSchema().getType();
+
             if (schemaType.equals(EventTypeSchemaBase.Type.JSON_SCHEMA)) {
                 isStrictlyValidJson(eventTypeSchema);
                 validateJsonTypeSchema(eventType, eventTypeSchema);

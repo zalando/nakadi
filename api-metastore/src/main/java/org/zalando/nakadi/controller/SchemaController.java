@@ -2,8 +2,10 @@ package org.zalando.nakadi.controller;
 
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.validation.Errors;
+import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -25,7 +27,8 @@ import org.zalando.nakadi.exceptions.runtime.NoSuchSchemaException;
 import org.zalando.nakadi.exceptions.runtime.SchemaEvolutionException;
 import org.zalando.nakadi.exceptions.runtime.ValidationException;
 import org.zalando.nakadi.model.CompatibilityResponse;
-import org.zalando.nakadi.model.CompatibilitySchemaRequest;
+import org.zalando.nakadi.model.SchemaVersionResponse;
+import org.zalando.nakadi.model.SchemaWrapper;
 import org.zalando.nakadi.plugin.api.authz.AuthorizationService;
 import org.zalando.nakadi.service.AdminService;
 import org.zalando.nakadi.service.AuthorizationValidator;
@@ -33,6 +36,7 @@ import org.zalando.nakadi.service.EventTypeService;
 import org.zalando.nakadi.service.SchemaService;
 import org.zalando.nakadi.service.publishing.NakadiAuditLogPublisher;
 import org.zalando.nakadi.service.publishing.NakadiKpiPublisher;
+import org.zalando.nakadi.util.AvroUtils;
 
 import javax.validation.Valid;
 import java.util.Optional;
@@ -102,7 +106,7 @@ public class SchemaController {
     @RequestMapping(value = "/event-types/{name}/schemas/{version}/compatibility-check", method = RequestMethod.POST)
     public ResponseEntity<?> checkCompatibility(@PathVariable("name") final String name,
                                                 @PathVariable("version") final String version,
-                                                @Valid @RequestBody final CompatibilitySchemaRequest schema,
+                                                @Valid @RequestBody final SchemaWrapper schema,
                                                 final Errors errors) {
         if (errors.hasErrors()) {
             throw new ValidationException(errors);
@@ -160,5 +164,24 @@ public class SchemaController {
 
         final EventTypeSchema result = schemaService.getSchemaVersion(name, version);
         return ResponseEntity.status(HttpStatus.OK).body(result);
+    }
+
+    @GetMapping(
+            value = "/event-types/{name}/schemas",
+            consumes = MediaType.APPLICATION_JSON_VALUE)
+    public ResponseEntity<?> getVersionBySchema(@PathVariable("name") final String name,
+                                              @Valid @RequestBody final SchemaWrapper schemaWrapper)
+            throws NoSuchEventTypeException, InternalNakadiException,
+            NoSuchSchemaException, InvalidVersionNumberException {
+
+        final EventType eventType = eventTypeService.get(name);
+        if(eventType == null){
+            return ResponseEntity.status(HttpStatus.NOT_FOUND).build();
+        }
+
+        final String version = schemaService.
+                getAvroSchemaVersion(name, AvroUtils.getParsedSchema(schemaWrapper.getSchema()));
+
+        return ResponseEntity.status(HttpStatus.OK).body(new SchemaVersionResponse(version, schemaWrapper.getSchema()));
     }
 }

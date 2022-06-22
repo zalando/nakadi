@@ -1,5 +1,6 @@
 package org.zalando.nakadi.controller.advice;
 
+import org.apache.avro.AvroRuntimeException;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.ControllerAdvice;
 import org.springframework.web.bind.annotation.ExceptionHandler;
@@ -36,7 +37,7 @@ public class SchemaExceptionHandler implements AdviceTrait {
         return create(Problem.valueOf(UNPROCESSABLE_ENTITY, exception.getMessage()), request);
     }
 
-    @ExceptionHandler(SchemaValidationException.class)
+    @ExceptionHandler({SchemaValidationException.class, AvroRuntimeException.class})
     public ResponseEntity<Problem> handleSchemaValidationException(
             final SchemaValidationException exception,
             final NativeWebRequest request) {
