@@ -147,6 +147,11 @@ public class BinaryEndToEndAT extends BaseAT {
                 .build();
         NakadiTestUtils.createEventTypeInNakadi(et);
 
+        final ByteArrayOutputStream baos = new ByteArrayOutputStream();
+        new GenericDatumWriter(schema).write(
+                new GenericRecordBuilder(schema).set("foo", "bar").build(),
+                EncoderFactory.get().directBinaryEncoder(baos, null));
+
         final PublishingBatch batch = PublishingBatch.newBuilder()
                 .setEvents(List.of(Envelope.newBuilder()
                         .setMetadata(Metadata.newBuilder()
@@ -156,7 +161,7 @@ public class BinaryEndToEndAT extends BaseAT {
                                 .setOccurredAt(Instant.now())
                                 .setEid("CE8C9EBC-3F19-4B9D-A453-08AD2EDA6028")
                                 .build())
-                        .setPayload(ByteBuffer.wrap(new byte[0]))
+                        .setPayload(ByteBuffer.wrap(baos.toByteArray()))
                         .build()))
                 .build();
         final ByteBuffer body = PublishingBatch.getEncoder().encode(batch);
