@@ -174,10 +174,8 @@ public class SchemaController {
             throws NoSuchEventTypeException, InternalNakadiException,
             NoSuchSchemaException, InvalidVersionNumberException {
 
-        final EventType eventType = eventTypeService.get(name);
-        if(eventType == null){
-            return ResponseEntity.status(HttpStatus.NOT_FOUND).build();
-        }
+        //make sure event type exists, otherwise throws exception
+        eventTypeService.get(name);
 
         final String version = schemaService.
                 getAvroSchemaVersion(name, AvroUtils.getParsedSchema(schemaWrapper.getSchema()));
