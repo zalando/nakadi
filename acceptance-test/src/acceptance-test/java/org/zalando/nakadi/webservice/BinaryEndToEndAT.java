@@ -1,6 +1,5 @@
 package org.zalando.nakadi.webservice;
 
-import com.fasterxml.jackson.core.JsonProcessingException;
 import org.apache.avro.Schema;
 import org.apache.avro.generic.GenericDatumWriter;
 import org.apache.avro.generic.GenericRecordBuilder;
@@ -28,7 +27,6 @@ import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.time.Instant;
-import java.util.Base64;
 import java.util.List;
 import java.util.Map;
 
@@ -38,18 +36,6 @@ import static org.zalando.nakadi.webservice.utils.NakadiTestUtils.createSubscrip
 
 public class BinaryEndToEndAT extends BaseAT {
     private static final String TEST_ET_NAME = "nakadi.test-2022-05-06.et";
-
-    private static final String TEST_EVENT_WITHOUT_PAYLOAD = "BQAAAHDYldi7019IMzJmNWRhZTUtNGZjNC00Y2RhLWJlMDctYjMxM2" +
-            "I1ODQ5MGFiAgZoZWsC2JXYu9NfAjECFm5ha2FkaS10ZXN0QnRlc3QtZXQtZm9yLWRlbGV0ZS1jbGVhbnVwLXBvbGljeQICM" +
-            "AAAAAAAAAAAAA==";
-
-    private static final String TEST_COMPACTED_EVENT_WITH_PAYLOAD = "BQAAAGnYldi7019IMzJmNWRhZTUtNGZjNC00Y2RhLWJlMDct" +
-            "YjMxM2I1ODQ5MGFiAgZoZWsC2JXYu9NfAjECFm5ha2FkaS10ZXN0NHRlc3QtZXQtZm9yLWRlbGV0ZS1wYXlsb2FkAgIwAAAAAAAAAAAt" +
-            "CFBPU1QYL2V2ZW50LXR5cGVzAAxuYWthZGkUaGFzaGVkLWFwcJIDFAItBC0t";
-
-    private static final String TEST_COMPACTED_EVENT_WITHOUT_PAYLOAD = "BQAAAGzYldi7019IMzJmNWRhZTUtNGZjNC00Y2RhLWJlM" +
-            "DctYjMxM2I1ODQ5MGFiAgZoZWsC2JXYu9NfAjECFm5ha2FkaS10ZXN0OnRlc3QtZXQtZm9yLXN1Y2Nlc3NmdWwtZGVsZXRlAgIwAAAAA" +
-            "AAAAAAA";
 
     @Test
     public void testAvroPublishingAndJsonConsumption() throws IOException {
@@ -109,21 +95,37 @@ public class BinaryEndToEndAT extends BaseAT {
     }
 
     @Test
-    public void testAvroDeleteCannotWorkWhenCleanupPolicyIsDelete() throws JsonProcessingException {
+    public void testAvroDeleteCannotWorkWhenCleanupPolicyIsDelete() throws IOException {
         final var etName = "test-et-for-delete-cleanup-policy";
+        final Schema schema = new Schema.Parser().parse(new DefaultResourceLoader()
+                .getResource("nakadi.end2end.avsc").getInputStream());
         final var et = EventTypeTestBuilder.builder()
                 .name(etName)
                 .category(EventCategory.BUSINESS)
                 .cleanupPolicy(CleanupPolicy.DELETE)
                 .enrichmentStrategies(List.of(EnrichmentStrategyDescriptor.METADATA_ENRICHMENT))
+                .schema(new EventTypeSchema(new EventTypeSchemaBase(
+                        EventTypeSchemaBase.Type.AVRO_SCHEMA,
+                        schema.toString()), "1.0.0", TestUtils.randomDate()))
                 .build();
         NakadiTestUtils.createEventTypeInNakadi(et);
 
-        final byte[] body = Base64.getDecoder().decode(TEST_EVENT_WITHOUT_PAYLOAD);
+        final PublishingBatch batch = PublishingBatch.newBuilder()
+                .setEvents(List.of(Envelope.newBuilder()
+                        .setMetadata(Metadata.newBuilder()
+                                .setEventType(etName)
+                                .setVersion("1.0.0")
+                                .setOccurredAt(Instant.now())
+                                .setEid("CE8C9EBC-3F19-4B9D-A453-08AD2EDA6028")
+                                .build())
+                        .setPayload(ByteBuffer.wrap(new byte[0]))
+                        .build()))
+                .build();
 
+        final ByteBuffer body = PublishingBatch.getEncoder().encode(batch);
         final var response = given()
-                .contentType("application/avro-binary; charset=utf-8")
-                .body(body)
+                .contentType("application/avro-binary")
+                .body(body.array())
                 .post(String.format("/event-types/%s/deleted-events", etName));
         response.print();
         response.then()
@@ -131,21 +133,37 @@ public class BinaryEndToEndAT extends BaseAT {
     }
 
     @Test
-    public void testAvroDeleteCannotWorkWithPayload() throws JsonProcessingException {
+    public void testAvroDeleteCannotWorkWithPayload() throws IOException {
         final var etName = "test-et-for-delete-payload";
+        final Schema schema = new Schema.Parser().parse(new DefaultResourceLoader()
+                .getResource("nakadi.end2end.avsc").getInputStream());
         final var et = EventTypeTestBuilder.builder()
                 .name(etName)
                 .category(EventCategory.BUSINESS)
                 .cleanupPolicy(CleanupPolicy.COMPACT)
                 .enrichmentStrategies(List.of(EnrichmentStrategyDescriptor.METADATA_ENRICHMENT))
+                .schema(new EventTypeSchema(new EventTypeSchemaBase(
+                        EventTypeSchemaBase.Type.AVRO_SCHEMA,
+                        schema.toString()), "1.0.0", TestUtils.randomDate()))
                 .build();
         NakadiTestUtils.createEventTypeInNakadi(et);
 
-        final byte[] body = Base64.getDecoder().decode(TEST_COMPACTED_EVENT_WITH_PAYLOAD);
+        final PublishingBatch batch = PublishingBatch.newBuilder()
+                .setEvents(List.of(Envelope.newBuilder()
+                        .setMetadata(Metadata.newBuilder()
+                                .setEventType(etName)
+                                .setVersion("1.0.0")
+                                .setOccurredAt(Instant.now())
+                                .setEid("CE8C9EBC-3F19-4B9D-A453-08AD2EDA6028")
+                                .build())
+                        .setPayload(ByteBuffer.wrap(new byte[0]))
+                        .build()))
+                .build();
+        final ByteBuffer body = PublishingBatch.getEncoder().encode(batch);
 
         final var response = given()
-                .contentType("application/avro-binary; charset=utf-8")
-                .body(body)
+                .contentType("application/avro-binary")
+                .body(body.array())
                 .post(String.format("/event-types/%s/deleted-events", etName));
         response.print();
         response.then()
@@ -154,21 +172,37 @@ public class BinaryEndToEndAT extends BaseAT {
 
     @Test
     @Ignore
-    public void testAvroDelete() throws JsonProcessingException {
+    public void testAvroDelete() throws IOException {
         final var etName = "test-et-for-successful-delete";
+        final Schema schema = new Schema.Parser().parse(new DefaultResourceLoader()
+                .getResource("nakadi.end2end.avsc").getInputStream());
         final var et = EventTypeTestBuilder.builder()
                 .name(etName)
                 .category(EventCategory.BUSINESS)
                 .cleanupPolicy(CleanupPolicy.COMPACT)
                 .enrichmentStrategies(List.of(EnrichmentStrategyDescriptor.METADATA_ENRICHMENT))
+                .schema(new EventTypeSchema(new EventTypeSchemaBase(
+                        EventTypeSchemaBase.Type.AVRO_SCHEMA,
+                        schema.toString()), "1.0.0", TestUtils.randomDate()))
                 .build();
         NakadiTestUtils.createEventTypeInNakadi(et);
 
-        final byte[] body = Base64.getDecoder().decode(TEST_COMPACTED_EVENT_WITHOUT_PAYLOAD);
+        final PublishingBatch batch = PublishingBatch.newBuilder()
+                .setEvents(List.of(Envelope.newBuilder()
+                        .setMetadata(Metadata.newBuilder()
+                                .setEventType(etName)
+                                .setVersion("1.0.0")
+                                .setOccurredAt(Instant.now())
+                                .setEid("CE8C9EBC-3F19-4B9D-A453-08AD2EDA6028")
+                                .build())
+                        .setPayload(ByteBuffer.wrap(new byte[0]))
+                        .build()))
+                .build();
+        final ByteBuffer body = PublishingBatch.getEncoder().encode(batch);
 
         final var response = given()
-                .contentType("application/avro-binary; charset=utf-8")
-                .body(body)
+                .contentType("application/avro-binary")
+                .body(body.array())
                 .post(String.format("/event-types/%s/deleted-events", etName));
         response.print();
         response.then()
