@@ -9,7 +9,6 @@ import org.zalando.nakadi.cache.EventTypeCache;
 import org.zalando.nakadi.domain.EventType;
 import org.zalando.nakadi.domain.NakadiRecord;
 import org.zalando.nakadi.domain.NakadiRecordResult;
-import org.zalando.nakadi.service.publishing.check.Check;
 
 import java.util.List;
 
@@ -24,12 +23,9 @@ public class BinaryEventProcessor extends EventsProcessor<NakadiRecord> {
     private final BinaryEventPublisher binaryEventPublisher;
     private final EventTypeCache eventTypeCache;
 
-    private final List<Check> prePublishingChecks;
-
     public BinaryEventProcessor(
             final BinaryEventPublisher binaryEventPublisher,
             final EventTypeCache eventTypeCache,
-            @Qualifier("internal-publishing-checks") final List<Check> prePublishingChecks,
             @Value("${nakadi.kpi.config.batch-collection-timeout}") final long batchCollectionTimeout,
             @Value("${nakadi.kpi.config.batch-size}") final int maxBatchSize,
             @Value("${nakadi.kpi.config.workers}") final int workers,
@@ -38,12 +34,6 @@ public class BinaryEventProcessor extends EventsProcessor<NakadiRecord> {
         super(batchCollectionTimeout, maxBatchSize, workers, maxBatchQueue, eventsQueueSize);
         this.binaryEventPublisher = binaryEventPublisher;
         this.eventTypeCache = eventTypeCache;
-        this.prePublishingChecks = prePublishingChecks;
-
-        if (prePublishingChecks.isEmpty()) {
-            // Safeguard against silent failure one spring injecting empty list
-            throw new RuntimeException("Publishing checks should not be empty");
-        }
     }
 
     @Override
@@ -51,7 +41,7 @@ public class BinaryEventProcessor extends EventsProcessor<NakadiRecord> {
         try {
             final EventType eventType = eventTypeCache.getEventType(etName);
             final List<NakadiRecordResult> eventRecordMetadata =
-                    binaryEventPublisher.publishWithChecks(eventType, events, prePublishingChecks);
+                    binaryEventPublisher.publishInternal(eventType, events);
             eventRecordMetadata.stream()
                     .filter(nrr -> nrr.getStatus() != Status.SUCCEEDED)
                     .forEach(nrr ->

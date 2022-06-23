@@ -7,6 +7,7 @@ import org.apache.avro.io.EncoderFactory;
 import org.junit.Assert;
 import org.junit.Test;
 import org.springframework.core.io.DefaultResourceLoader;
+import org.zalando.nakadi.domain.CleanupPolicy;
 import org.zalando.nakadi.domain.EnrichmentStrategyDescriptor;
 import org.zalando.nakadi.domain.EventCategory;
 import org.zalando.nakadi.domain.EventTypeSchema;
@@ -33,14 +34,14 @@ import static org.zalando.nakadi.domain.SubscriptionBase.InitialPosition.BEGIN;
 import static org.zalando.nakadi.webservice.utils.NakadiTestUtils.createSubscription;
 
 public class BinaryEndToEndAT extends BaseAT {
-    private static final String TEST_ET_NAME = "nakadi.test-2022-05-06.et";
 
     @Test
     public void testAvroPublishingAndJsonConsumption() throws IOException {
+        final String testETName = TestUtils.randomValidEventTypeName();
         final Schema schema = new Schema.Parser().parse(new DefaultResourceLoader()
                 .getResource("nakadi.end2end.avsc").getInputStream());
         final var et = EventTypeTestBuilder.builder()
-                .name(TEST_ET_NAME)
+                .name(testETName)
                 .category(EventCategory.BUSINESS)
                 .enrichmentStrategies(List.of(EnrichmentStrategyDescriptor.METADATA_ENRICHMENT))
                 .schema(new EventTypeSchema(new EventTypeSchemaBase(
@@ -57,7 +58,7 @@ public class BinaryEndToEndAT extends BaseAT {
         final PublishingBatch batch = PublishingBatch.newBuilder()
                 .setEvents(List.of(Envelope.newBuilder()
                         .setMetadata(Metadata.newBuilder()
-                                .setEventType(TEST_ET_NAME)
+                                .setEventType(testETName)
                                 .setVersion("1.0.0")
                                 .setOccurredAt(Instant.now())
                                 .setEid("CE8C9EBC-3F19-4B9D-A453-08AD2EDA6028")
@@ -70,14 +71,14 @@ public class BinaryEndToEndAT extends BaseAT {
         final var response = given()
                 .contentType("application/avro-binary")
                 .body(body.array())
-                .post(String.format("/event-types/%s/events", TEST_ET_NAME));
+                .post(String.format("/event-types/%s/events", testETName));
         response.print();
         response.then().statusCode(200);
 
         // check event is consumed and format is correct
         final Subscription subscription = createSubscription(
                 RandomSubscriptionBuilder.builder()
-                        .withEventType(TEST_ET_NAME)
+                        .withEventType(testETName)
                         .withStartFrom(BEGIN)
                         .buildSubscriptionBase());
         final TestStreamingClient client = TestStreamingClient.create(subscription.getId()).start();
@@ -89,6 +90,127 @@ public class BinaryEndToEndAT extends BaseAT {
         final Map<String, Object> metadata = (Map<String, Object>) event.get("metadata");
         Assert.assertEquals("CE8C9EBC-3F19-4B9D-A453-08AD2EDA6028", metadata.get("eid"));
         Assert.assertEquals("1.0.0", metadata.get("version"));
-        Assert.assertEquals(TEST_ET_NAME, metadata.get("event_type"));
+        Assert.assertEquals(testETName, metadata.get("event_type"));
+    }
+
+    @Test
+    public void testAvroDeleteCannotWorkWhenCleanupPolicyIsDelete() throws IOException {
+        final String etName = TestUtils.randomValidEventTypeName();
+        final Schema schema = new Schema.Parser().parse(new DefaultResourceLoader()
+                .getResource("nakadi.end2end.avsc").getInputStream());
+        final var et = EventTypeTestBuilder.builder()
+                .name(etName)
+                .category(EventCategory.BUSINESS)
+                .cleanupPolicy(CleanupPolicy.DELETE)
+                .enrichmentStrategies(List.of(EnrichmentStrategyDescriptor.METADATA_ENRICHMENT))
+                .schema(new EventTypeSchema(new EventTypeSchemaBase(
+                        EventTypeSchemaBase.Type.AVRO_SCHEMA,
+                        schema.toString()), "1.0.0", TestUtils.randomDate()))
+                .build();
+        NakadiTestUtils.createEventTypeInNakadi(et);
+
+        final PublishingBatch batch = PublishingBatch.newBuilder()
+                .setEvents(List.of(Envelope.newBuilder()
+                        .setMetadata(Metadata.newBuilder()
+                                .setEventType(etName)
+                                .setVersion("1.0.0")
+                                .setOccurredAt(Instant.now())
+                                .setEid("CE8C9EBC-3F19-4B9D-A453-08AD2EDA6028")
+                                .build())
+                        .setPayload(ByteBuffer.wrap(new byte[0]))
+                        .build()))
+                .build();
+
+        final ByteBuffer body = PublishingBatch.getEncoder().encode(batch);
+        final var response = given()
+                .contentType("application/avro-binary")
+                .body(body.array())
+                .post(String.format("/event-types/%s/deleted-events", etName));
+        response.print();
+        response.then()
+                .statusCode(422);
+    }
+
+    @Test
+    public void testAvroDeleteCannotWorkWithPayload() throws IOException {
+        final String etName = TestUtils.randomValidEventTypeName();
+        final Schema schema = new Schema.Parser().parse(new DefaultResourceLoader()
+                .getResource("nakadi.end2end.avsc").getInputStream());
+        final var et = EventTypeTestBuilder.builder()
+                .name(etName)
+                .category(EventCategory.BUSINESS)
+                .cleanupPolicy(CleanupPolicy.COMPACT)
+                .enrichmentStrategies(List.of(EnrichmentStrategyDescriptor.METADATA_ENRICHMENT))
+                .schema(new EventTypeSchema(new EventTypeSchemaBase(
+                        EventTypeSchemaBase.Type.AVRO_SCHEMA,
+                        schema.toString()), "1.0.0", TestUtils.randomDate()))
+                .build();
+        NakadiTestUtils.createEventTypeInNakadi(et);
+
+        final ByteArrayOutputStream baos = new ByteArrayOutputStream();
+        new GenericDatumWriter(schema).write(
+                new GenericRecordBuilder(schema).set("foo", "bar").build(),
+                EncoderFactory.get().directBinaryEncoder(baos, null));
+
+        final PublishingBatch batch = PublishingBatch.newBuilder()
+                .setEvents(List.of(Envelope.newBuilder()
+                        .setMetadata(Metadata.newBuilder()
+                                .setEventType(etName)
+                                .setPartitionCompactionKey("CE8C9EBC-3F19-4B9D-A453-08AD2EDA6028")
+                                .setVersion("1.0.0")
+                                .setOccurredAt(Instant.now())
+                                .setEid("CE8C9EBC-3F19-4B9D-A453-08AD2EDA6028")
+                                .build())
+                        .setPayload(ByteBuffer.wrap(baos.toByteArray()))
+                        .build()))
+                .build();
+        final ByteBuffer body = PublishingBatch.getEncoder().encode(batch);
+
+        final var response = given()
+                .contentType("application/avro-binary")
+                .body(body.array())
+                .post(String.format("/event-types/%s/deleted-events", etName));
+        response.print();
+        response.then()
+                .statusCode(207);
+    }
+
+    @Test
+    public void testAvroDelete() throws IOException {
+        final String etName = TestUtils.randomValidEventTypeName();
+        final Schema schema = new Schema.Parser().parse(new DefaultResourceLoader()
+                .getResource("nakadi.end2end.avsc").getInputStream());
+        final var et = EventTypeTestBuilder.builder()
+                .name(etName)
+                .category(EventCategory.BUSINESS)
+                .cleanupPolicy(CleanupPolicy.COMPACT)
+                .enrichmentStrategies(List.of(EnrichmentStrategyDescriptor.METADATA_ENRICHMENT))
+                .schema(new EventTypeSchema(new EventTypeSchemaBase(
+                        EventTypeSchemaBase.Type.AVRO_SCHEMA,
+                        schema.toString()), "1.0.0", TestUtils.randomDate()))
+                .build();
+        NakadiTestUtils.createEventTypeInNakadi(et);
+
+        final PublishingBatch batch = PublishingBatch.newBuilder()
+                .setEvents(List.of(Envelope.newBuilder()
+                        .setMetadata(Metadata.newBuilder()
+                                .setEventType(etName)
+                                .setVersion("1.0.0")
+                                .setPartitionCompactionKey("CE8C9EBC-3F19-4B9D-A453-08AD2EDA6028")
+                                .setOccurredAt(Instant.now())
+                                .setEid("CE8C9EBC-3F19-4B9D-A453-08AD2EDA6028")
+                                .build())
+                        .setPayload(ByteBuffer.wrap(new byte[0]))
+                        .build()))
+                .build();
+        final ByteBuffer body = PublishingBatch.getEncoder().encode(batch);
+
+        final var response = given()
+                .contentType("application/avro-binary")
+                .body(body.array())
+                .post(String.format("/event-types/%s/deleted-events", etName));
+        response.print();
+        response.then()
+                .statusCode(200);
     }
 }
