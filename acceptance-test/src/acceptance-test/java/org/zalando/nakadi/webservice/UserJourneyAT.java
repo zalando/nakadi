@@ -340,8 +340,8 @@ public class UserJourneyAT extends RealEnvironmentAT {
         // create client and wait till we receive all events
         final TestStreamingClient client = new TestStreamingClient(
                 RestAssured.baseURI + ":" + RestAssured.port, subscription.getId(), "", oauthToken).start();
-        waitFor(() -> assertThat(client.getBatches(), Matchers.hasSize(4)));
-        final List<StreamBatch> batches = client.getBatches();
+        waitFor(() -> assertThat(client.getJsonBatches(), Matchers.hasSize(4)));
+        final List<StreamBatch> batches = client.getJsonBatches();
 
         // validate the content of events
         for (int i = 0; i < batches.size(); i++) {
@@ -442,8 +442,8 @@ public class UserJourneyAT extends RealEnvironmentAT {
         final TestStreamingClient client = new TestStreamingClient(
                 RestAssured.baseURI + ":" + RestAssured.port, subscription.getId(), "", oauthToken).start();
 
-        waitFor(() -> assertThat(client.getBatches(), Matchers.hasSize(4)));
-        final List<StreamBatch> batches = client.getBatches();
+        waitFor(() -> assertThat(client.getJsonBatches(), Matchers.hasSize(4)));
+        final List<StreamBatch> batches = client.getJsonBatches();
 
         // validate the events metadata
         for (final StreamBatch batch : batches) {

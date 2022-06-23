@@ -1,8 +1,11 @@
 package org.zalando.nakadi.webservice;
 
 import org.apache.avro.Schema;
+import org.apache.avro.generic.GenericDatumReader;
 import org.apache.avro.generic.GenericDatumWriter;
+import org.apache.avro.generic.GenericRecord;
 import org.apache.avro.generic.GenericRecordBuilder;
+import org.apache.avro.io.DecoderFactory;
 import org.apache.avro.io.EncoderFactory;
 import org.junit.Assert;
 import org.junit.Test;
@@ -33,7 +36,7 @@ import static org.zalando.nakadi.domain.SubscriptionBase.InitialPosition.BEGIN;
 import static org.zalando.nakadi.webservice.utils.NakadiTestUtils.createSubscription;
 
 public class BinaryEndToEndAT extends BaseAT {
-    private static final String TEST_ET_NAME = "nakadi.test-2022-05-06.et";
+    private static final String TEST_ET_NAME = TestUtils.randomValidEventTypeName();
 
     @Test
     public void testAvroPublishingAndJsonConsumption() throws IOException {
@@ -75,20 +78,38 @@ public class BinaryEndToEndAT extends BaseAT {
         response.then().statusCode(200);
 
         // check event is consumed and format is correct
-        final Subscription subscription = createSubscription(
+        final Subscription subscription1 = createSubscription(
                 RandomSubscriptionBuilder.builder()
                         .withEventType(TEST_ET_NAME)
                         .withStartFrom(BEGIN)
                         .buildSubscriptionBase());
-        final TestStreamingClient client = TestStreamingClient.create(subscription.getId()).start();
+        final TestStreamingClient client1 = TestStreamingClient.create(subscription1.getId()).start();
 
-        TestUtils.waitFor(() -> Assert.assertEquals(1, client.getBatches().size()));
-        final Map event = client.getBatches().get(0).getEvents().get(0);
-        Assert.assertEquals("bar", event.get("foo"));
+        TestUtils.waitFor(() -> Assert.assertEquals(1, client1.getJsonBatches().size()));
+        final Map jsonEvent = client1.getJsonBatches().get(0).getEvents().get(0);
+        Assert.assertEquals("bar", jsonEvent.get("foo"));
 
-        final Map<String, Object> metadata = (Map<String, Object>) event.get("metadata");
+        final Map<String, Object> metadata = (Map<String, Object>) jsonEvent.get("metadata");
         Assert.assertEquals("CE8C9EBC-3F19-4B9D-A453-08AD2EDA6028", metadata.get("eid"));
         Assert.assertEquals("1.0.0", metadata.get("version"));
         Assert.assertEquals(TEST_ET_NAME, metadata.get("event_type"));
+
+        // check event is consumed and format is correct
+        final Subscription subscription2 = createSubscription(
+                RandomSubscriptionBuilder.builder()
+                        .withEventType(TEST_ET_NAME)
+                        .withStartFrom(BEGIN)
+                        .buildSubscriptionBase());
+        final TestStreamingClient client2 = TestStreamingClient.create(subscription2.getId()).startBinary();
+
+        TestUtils.waitFor(() -> Assert.assertEquals(1, client2.getBinaryBatches().size()));
+        final Envelope binaryEvent = client2.getBinaryBatches().get(0).getEvents().get(0);
+        Assert.assertEquals("CE8C9EBC-3F19-4B9D-A453-08AD2EDA6028", binaryEvent.getMetadata().getEid());
+
+        final GenericRecord genericRecord = new GenericDatumReader<GenericRecord>(schema)
+                .read(null, DecoderFactory.get()
+                        .binaryDecoder(binaryEvent.getPayload().array(), null));
+
+        Assert.assertEquals("bar", genericRecord.get("foo").toString());
     }
 }
