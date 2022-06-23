@@ -19,7 +19,6 @@ import org.zalando.nakadi.exceptions.runtime.TopicDeletionException;
 import org.zalando.nakadi.exceptions.runtime.TopicRepositoryException;
 
 import java.util.Collection;
-import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -53,10 +52,7 @@ public interface TopicRepository {
     void syncPostBatch(String topicId, List<BatchItem> batch, String eventTypeName, boolean delete)
             throws EventPublishingException;
 
-
-    default List<NakadiRecordResult> sendEvents(String topic, List<NakadiRecord> nakadiRecords) {
-        return Collections.emptyList();
-    }
+    List<NakadiRecordResult> sendEvents(String topic, List<NakadiRecord> nakadiRecords);
 
     void repartition(String topic, int partitionsNumber) throws CannotAddPartitionToTopicException,
             TopicConfigException;

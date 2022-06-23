@@ -37,6 +37,7 @@ import org.zalando.nakadi.plugin.api.authz.Resource;
 import org.zalando.nakadi.repository.TopicRepository;
 import org.zalando.nakadi.service.AuthorizationValidator;
 import org.zalando.nakadi.service.LocalSchemaRegistry;
+import org.zalando.nakadi.service.publishing.check.Check;
 import org.zalando.nakadi.service.timeline.TimelineService;
 import org.zalando.nakadi.service.timeline.TimelineSync;
 import org.zalando.nakadi.util.FlowIdUtils;
@@ -594,8 +595,10 @@ public class EventPublisherTest {
         final org.springframework.core.io.Resource eventTypeRes =
                 new DefaultResourceLoader().getResource("avro-schema/");
         final LocalSchemaRegistry localSchemaRegistry = new LocalSchemaRegistry(eventTypeRes);
+        final var dummyCheck = Mockito.mock(Check.class);
         final BinaryEventPublisher eventPublisher = new BinaryEventPublisher(
-                timelineService, timelineSync, nakadiSettings);
+                timelineService, timelineSync, nakadiSettings,
+                List.of(dummyCheck), List.of(dummyCheck), List.of(dummyCheck));
         final EventType eventType = buildDefaultEventType();
         final String topic = UUID.randomUUID().toString();
         final String eventTypeName = eventType.getName();
