@@ -21,8 +21,8 @@ import org.zalando.nakadi.domain.kpi.BatchPublishedEvent;
 import org.zalando.nakadi.exceptions.runtime.AccessDeniedException;
 import org.zalando.nakadi.exceptions.runtime.BlockedException;
 import org.zalando.nakadi.exceptions.runtime.EventTypeTimeoutException;
-import org.zalando.nakadi.exceptions.runtime.EventValidationException;
 import org.zalando.nakadi.exceptions.runtime.InternalNakadiException;
+import org.zalando.nakadi.exceptions.runtime.InvalidEventTypeException;
 import org.zalando.nakadi.exceptions.runtime.NoSuchEventTypeException;
 import org.zalando.nakadi.exceptions.runtime.ServiceTemporarilyUnavailableException;
 import org.zalando.nakadi.mapper.NakadiRecordMapper;
@@ -148,7 +148,7 @@ public class EventPublishingController {
         final EventType eventType = eventTypeCache.getEventType(eventTypeName);
 
         if (delete && eventType.getCleanupPolicy() == CleanupPolicy.DELETE) {
-            throw new EventValidationException("It is not allowed to delete events from non compacted event type");
+            throw new InvalidEventTypeException("It is not allowed to delete events from non compacted event type");
         }
 
         authValidator.authorizeEventTypeWrite(eventType);
