@@ -12,14 +12,14 @@ import java.io.OutputStream;
 public class EventStreamFactory {
 
     private final CursorConverter cursorConverter;
-    private final EventStreamWriter eventStreamWriter;
+    private final EventStreamJsonWriter eventStreamWriter;
     private final EventStreamChecks eventStreamChecks;
     private final ConsumptionKpiCollectorFactory kpiCollectorFactory;
 
     @Autowired
     public EventStreamFactory(
             final CursorConverter cursorConverter,
-            final EventStreamWriter eventStreamWriter,
+            final EventStreamJsonWriter eventStreamWriter,
             final EventStreamChecks eventStreamChecks,
             final ConsumptionKpiCollectorFactory kpiCollectorFactory) {
         this.cursorConverter = cursorConverter;

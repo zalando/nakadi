@@ -17,7 +17,6 @@ import org.zalando.nakadi.exceptions.runtime.TopicConfigException;
 import org.zalando.nakadi.exceptions.runtime.TopicCreationException;
 import org.zalando.nakadi.exceptions.runtime.TopicDeletionException;
 import org.zalando.nakadi.exceptions.runtime.TopicRepositoryException;
-import org.zalando.nakadi.repository.kafka.RecordDeserializer;
 
 import java.util.Collection;
 import java.util.List;
@@ -89,8 +88,7 @@ public interface TopicRepository {
 
     EventConsumer.LowLevelConsumer createEventConsumer(
             String clientId,
-            List<NakadiCursor> positions,
-            RecordDeserializer recordDeserializer) throws InvalidCursorException;
+            List<NakadiCursor> positions) throws InvalidCursorException;
 
     void validateReadCursors(List<NakadiCursor> cursors) throws InvalidCursorException,
             ServiceTemporarilyUnavailableException;

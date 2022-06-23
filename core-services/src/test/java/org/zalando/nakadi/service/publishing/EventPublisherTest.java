@@ -610,8 +610,6 @@ public class EventPublisherTest {
 
         final Instant now = Instant.now();
 
-        final var latestMeta =
-                localSchemaRegistry.getLatestEventTypeSchemaVersion(LocalSchemaRegistry.METADATA_KEY);
         final var latestSchema =
                 localSchemaRegistry.getLatestEventTypeSchemaVersion("nakadi.access.log");
 

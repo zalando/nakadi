@@ -7,20 +7,18 @@ import org.apache.avro.message.BinaryMessageDecoder;
 import org.apache.avro.message.RawMessageDecoder;
 import org.apache.avro.specific.SpecificData;
 import org.json.JSONObject;
-import org.zalando.nakadi.domain.EnvelopeHolder;
+import org.springframework.stereotype.Component;
 import org.zalando.nakadi.generated.avro.Envelope;
 import org.zalando.nakadi.generated.avro.Metadata;
 import org.zalando.nakadi.mapper.NakadiRecordMapper;
-import org.zalando.nakadi.service.LocalSchemaRegistry;
 import org.zalando.nakadi.service.SchemaProviderService;
 
-import java.io.ByteArrayInputStream;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
-import java.util.Arrays;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 
+@Component
 public class KafkaRecordDeserializer implements RecordDeserializer {
 
     // https://avro.apache.org/docs/current/spec.html#single_object_encoding_spec
@@ -29,45 +27,27 @@ public class KafkaRecordDeserializer implements RecordDeserializer {
     private static final Map<Schema, RawMessageDecoder<GenericRecord>> RAW_DECODERS = new ConcurrentHashMap<>();
     private static final Map<Schema, BinaryMessageDecoder<GenericRecord>> BINARY_DECODERS = new ConcurrentHashMap<>();
 
-    private final AvroDeserializerWithSequenceDecoder decoder;
     private final SchemaProviderService schemaService;
     private final NakadiRecordMapper nakadiRecordMapper;
 
     public KafkaRecordDeserializer(final NakadiRecordMapper nakadiRecordMapper,
-                                   final SchemaProviderService schemaService,
-                                   final LocalSchemaRegistry localSchemaRegistry) {
+                                   final SchemaProviderService schemaService) {
         this.nakadiRecordMapper = nakadiRecordMapper;
         this.schemaService = schemaService;
-        this.decoder = new AvroDeserializerWithSequenceDecoder(schemaService, localSchemaRegistry);
     }
 
-    public byte[] deserializeToJsonBytes(final byte[] eventFormat, final byte[] data) {
+    public byte[] deserializeToJsonBytes(final byte[] data) {
         if (data == null) {
             return null;
         }
 
-        if (eventFormat == null) {
-            if (data[0] == AVRO_V1_HEADER[0] && data[1] == AVRO_V1_HEADER[1]) {
-                final Envelope envelope = nakadiRecordMapper.fromBytesEnvelope(new ByteArrayInputStream(data));
-                return deserializeToJsonBytes(envelope);
-            }
-
+        if (data[0] == AVRO_V1_HEADER[0] && data[1] == AVRO_V1_HEADER[1]) {
+            final Envelope envelope = nakadiRecordMapper.fromBytesEnvelope(data);
+            return deserializeToJsonBytes(envelope);
+        } else {
             // then it should be JSON
             return data;
         }
-
-        if (eventFormat.length == 1 &&
-                eventFormat[0] == NakadiRecordMapper.AVRO_FORMAT[0]) {
-            try {
-                return decoder.deserializeAvroToJsonBytes(EnvelopeHolder.fromBytes(data));
-            } catch (IOException e) {
-                throw new RuntimeException("failed to deserialize avro event", e);
-            }
-        }
-
-        throw new RuntimeException(String.format(
-                "event format is not defined, provided format: `%s`",
-                Arrays.toString(eventFormat)));
     }
 
     private byte[] deserializeToJsonBytes(final Envelope envelope) {

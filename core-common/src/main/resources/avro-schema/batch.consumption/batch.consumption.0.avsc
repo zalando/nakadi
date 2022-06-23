@@ -1,0 +1,49 @@
+{
+  "name": "ConsumptionBatchV0",
+  "namespace": "org.zalando.nakadi.generated.avro",
+  "type": "record",
+  "fields": [
+    {
+      "name": "cursor",
+      "type": {
+        "name": "SubscriptionCursor",
+        "type": "record",
+        "fields": [
+          {
+            "name": "partition",
+            "type": "string"
+          },
+          {
+            "name": "offset",
+            "type": "string"
+          },
+          {
+            "name": "event_type",
+            "type": "string"
+          },
+          {
+            "name": "cursor_token",
+            "type": "string"
+          }
+        ]
+      }
+    },
+    {
+      "name": "info",
+      "type": [
+        "null",
+        "string"
+      ],
+      "default": null
+    },
+    {
+      "name": "events",
+      "type": {
+        "type": "array",
+        "items": {
+          "type": "EnvelopeV0"
+        }
+      }
+    }
+  ]
+}

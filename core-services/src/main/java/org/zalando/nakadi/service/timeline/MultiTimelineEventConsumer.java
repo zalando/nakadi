@@ -11,13 +11,9 @@ import org.zalando.nakadi.domain.TopicPartition;
 import org.zalando.nakadi.exceptions.runtime.InvalidCursorException;
 import org.zalando.nakadi.exceptions.runtime.NakadiRuntimeException;
 import org.zalando.nakadi.exceptions.runtime.ServiceTemporarilyUnavailableException;
-import org.zalando.nakadi.mapper.NakadiRecordMapper;
 import org.zalando.nakadi.repository.EventConsumer;
 import org.zalando.nakadi.repository.TopicRepository;
 import org.zalando.nakadi.repository.kafka.KafkaFactory;
-import org.zalando.nakadi.repository.kafka.KafkaRecordDeserializer;
-import org.zalando.nakadi.service.LocalSchemaRegistry;
-import org.zalando.nakadi.service.SchemaProviderService;
 import org.zalando.nakadi.util.NakadiCollectionUtils;
 
 import java.io.IOException;
@@ -67,25 +63,16 @@ public class MultiTimelineEventConsumer implements EventConsumer.ReassignableEve
     private final TimelineSync timelineSync;
     private final AtomicBoolean timelinesChanged = new AtomicBoolean(false);
     private final Comparator<NakadiCursor> comparator;
-    private final SchemaProviderService schemaService;
-    private final LocalSchemaRegistry localSchemaRegistry;
-    private final NakadiRecordMapper nakadiRecordMapper;
 
     public MultiTimelineEventConsumer(
             final String clientId,
             final TimelineService timelineService,
             final TimelineSync timelineSync,
-            final Comparator<NakadiCursor> comparator,
-            final SchemaProviderService schemaService,
-            final LocalSchemaRegistry localSchemaRegistry,
-            final NakadiRecordMapper nakadiRecordMapper) {
+            final Comparator<NakadiCursor> comparator) {
         this.clientId = clientId;
         this.timelineService = timelineService;
         this.timelineSync = timelineSync;
         this.comparator = comparator;
-        this.schemaService = schemaService;
-        this.localSchemaRegistry = localSchemaRegistry;
-        this.nakadiRecordMapper = nakadiRecordMapper;
     }
 
     @Override
@@ -261,9 +248,7 @@ public class MultiTimelineEventConsumer implements EventConsumer.ReassignableEve
                 LOG.info("Creating underlying consumer for client id {} and cursors {}",
                         clientId, Arrays.deepToString(entry.getValue().toArray()));
 
-                final EventConsumer.LowLevelConsumer consumer = repo.createEventConsumer(
-                        clientId, entry.getValue(), new KafkaRecordDeserializer(
-                                nakadiRecordMapper, schemaService, localSchemaRegistry));
+                final EventConsumer.LowLevelConsumer consumer = repo.createEventConsumer(clientId, entry.getValue());
                 eventConsumers.put(repo, consumer);
             }
         }

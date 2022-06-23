@@ -1,7 +1,9 @@
 package org.zalando.nakadi.service;
 
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 import org.zalando.nakadi.domain.ConsumedEvent;
+import org.zalando.nakadi.repository.kafka.KafkaRecordDeserializer;
 import org.zalando.nakadi.view.Cursor;
 import org.zalando.nakadi.view.SubscriptionCursor;
 
@@ -13,7 +15,7 @@ import java.util.Optional;
 import static java.nio.charset.StandardCharsets.UTF_8;
 
 @Component
-class EventStreamWriterBinary implements EventStreamWriter {
+public class EventStreamJsonWriter implements EventStreamWriter {
     private static final byte[] B_BATCH_SEPARATOR = BATCH_SEPARATOR.getBytes(UTF_8);
 
     private static final byte[] B_CURSOR_PARTITION_BEGIN = "{\"cursor\":{\"partition\":\"".getBytes(UTF_8);
@@ -48,8 +50,15 @@ class EventStreamWriterBinary implements EventStreamWriter {
             + B_CLOSE_CURLY_BRACKET.length
             + 1; //B_BATCH_SEPARATOR
 
+    private final KafkaRecordDeserializer kafkaRecordDeserializer;
+
+    @Autowired
+    public EventStreamJsonWriter(final KafkaRecordDeserializer kafkaRecordDeserializer) {
+        this.kafkaRecordDeserializer = kafkaRecordDeserializer;
+    }
+
     @Override
-    public int writeBatch(final OutputStream os, final Cursor cursor, final List<byte[]> events) throws IOException {
+    public long writeBatch(final OutputStream os, final Cursor cursor, final List<byte[]> events) throws IOException {
         int byteCount = B_FIXED_BYTE_COUNT;
 
         os.write(B_CURSOR_PARTITION_BEGIN);
@@ -66,7 +75,7 @@ class EventStreamWriterBinary implements EventStreamWriter {
             os.write(B_EVENTS_ARRAY_BEGIN);
             for (int i = 0; i < events.size(); i++) {
                 final byte[] event = events.get(i);
-                os.write(event);
+                os.write(kafkaRecordDeserializer.deserializeToJsonBytes(event));
                 byteCount += event.length;
                 if (i < (events.size() - 1)) {
                     os.write(B_COMMA_DELIM);
@@ -84,9 +93,9 @@ class EventStreamWriterBinary implements EventStreamWriter {
     }
 
     @Override
-    public int writeSubscriptionBatch(final OutputStream os, final SubscriptionCursor cursor,
-                                      final List<ConsumedEvent> events,
-                                      final Optional<String> metadata) throws IOException {
+    public long writeSubscriptionBatch(final OutputStream os, final SubscriptionCursor cursor,
+                                       final List<ConsumedEvent> events,
+                                       final Optional<String> metadata) throws IOException {
         int byteCount = B_FIXED_BYTE_COUNT_SUBSCRIPTION;
 
         os.write(B_CURSOR_PARTITION_BEGIN);
@@ -113,7 +122,7 @@ class EventStreamWriterBinary implements EventStreamWriter {
             os.write(B_EVENTS_ARRAY_BEGIN);
             for (int i = 0; i < events.size(); i++) {
                 final byte[] event = events.get(i).getEvent();
-                os.write(event);
+                os.write(kafkaRecordDeserializer.deserializeToJsonBytes(event));
                 byteCount += event.length;
                 if (i < (events.size() - 1)) {
                     os.write(B_COMMA_DELIM);

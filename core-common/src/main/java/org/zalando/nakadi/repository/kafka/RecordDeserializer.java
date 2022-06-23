@@ -1,5 +1,5 @@
 package org.zalando.nakadi.repository.kafka;
 
 public interface RecordDeserializer {
-    byte[] deserializeToJsonBytes(byte[] eventFormat, byte[] data);
+    byte[] deserializeToJsonBytes(byte[] data);
 }
