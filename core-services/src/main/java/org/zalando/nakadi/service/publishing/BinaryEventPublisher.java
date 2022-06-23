@@ -5,6 +5,7 @@ import io.opentracing.tag.Tags;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.stereotype.Service;
 import org.zalando.nakadi.config.NakadiSettings;
 import org.zalando.nakadi.domain.EventType;
@@ -38,20 +39,40 @@ public class BinaryEventPublisher {
     private final TimelineSync timelineSync;
     private final NakadiSettings nakadiSettings;
 
+    private final List<Check> prePublishingChecks;
+    private final List<Check> preDeletingChecks;
+    private final List<Check> internalPublishingChecks;
+
     @Autowired
     public BinaryEventPublisher(
             final TimelineService timelineService,
             final TimelineSync timelineSync,
-            final NakadiSettings nakadiSettings) {
+            final NakadiSettings nakadiSettings,
+            @Qualifier("pre-publishing-checks") final List<Check> prePublishingChecks,
+            @Qualifier("pre-deleting-checks") final List<Check> preDeletingChecks,
+            @Qualifier("internal-publishing-checks") final List<Check> internalPublishingChecks) {
         this.timelineService = timelineService;
         this.timelineSync = timelineSync;
         this.nakadiSettings = nakadiSettings;
+        this.prePublishingChecks = prePublishingChecks;
+        if (prePublishingChecks.isEmpty()) {
+            // Safeguard against silent failure if spring inject an empty list
+            throw new RuntimeException("prePublishingChecks should not be empty");
+        }
+        this.preDeletingChecks = preDeletingChecks;
+        if (preDeletingChecks.isEmpty()) {
+            // Safeguard against silent failure if spring inject an empty list
+            throw new RuntimeException("preDeletingChecks should not be empty");
+        }
+        this.internalPublishingChecks = internalPublishingChecks;
+        if (internalPublishingChecks.isEmpty()) {
+            // Safeguard against silent failure if spring inject an empty list
+            throw new RuntimeException("internalPublishingChecks should not be empty");
+        }
     }
 
-    public List<NakadiRecordResult> publishWithChecks(final EventType eventType,
-                                                      final List<NakadiRecord> records,
-                                                      final List<Check> checks) {
-        return processInternal(eventType, records, checks);
+    public List<NakadiRecordResult> publish(final EventType eventType, final List<NakadiRecord> records) {
+        return processInternal(eventType, records, prePublishingChecks);
     }
 
     private List<NakadiRecordResult> processInternal(final EventType eventType,
@@ -105,9 +126,7 @@ public class BinaryEventPublisher {
         }
     }
 
-    public List<NakadiRecordResult> delete(final List<NakadiRecord> events,
-                                           final EventType eventType,
-                                           final List<Check> preDeletingChecks)
+    public List<NakadiRecordResult> delete(final List<NakadiRecord> events, final EventType eventType)
             throws NoSuchEventTypeException,
             InternalNakadiException,
             EnrichmentException,
@@ -119,5 +138,9 @@ public class BinaryEventPublisher {
         LOG.debug("Deleting {} binary events from {}, with {} checks",
                 events.size(), eventType.getName(), preDeletingChecks.size());
         return processInternal(eventType, events, preDeletingChecks);
+    }
+
+    public List<NakadiRecordResult> publishInternal(final EventType eventType, final List<NakadiRecord> events) {
+        return processInternal(eventType, events, internalPublishingChecks);
     }
 }

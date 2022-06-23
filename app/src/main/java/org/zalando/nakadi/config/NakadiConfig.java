@@ -15,7 +15,6 @@ import org.zalando.nakadi.service.AuthorizationValidator;
 import org.zalando.nakadi.service.publishing.EventOwnerExtractorFactory;
 import org.zalando.nakadi.service.publishing.check.Check;
 import org.zalando.nakadi.service.publishing.check.EnrichmentCheck;
-import org.zalando.nakadi.service.publishing.check.EventDeletionCleanupPolicyCheck;
 import org.zalando.nakadi.service.publishing.check.EventDeletionEmptyPayloadCheck;
 import org.zalando.nakadi.service.publishing.check.EventKeyCheck;
 import org.zalando.nakadi.service.publishing.check.EventOwnerSelectorCheck;
@@ -86,7 +85,6 @@ public class NakadiConfig {
         return Lists.newArrayList(
                 new EventTypeCheck(),
                 new EventOwnerSelectorCheck(eventOwnerExtractorFactory, authValidator),
-                new EventDeletionCleanupPolicyCheck(),
                 new EventDeletionEmptyPayloadCheck(),
                 partitioningCheck,
                 new EventKeyCheck()

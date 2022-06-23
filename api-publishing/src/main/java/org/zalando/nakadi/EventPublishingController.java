@@ -4,7 +4,6 @@ import com.google.common.base.Charsets;
 import com.google.common.io.CountingInputStream;
 import io.opentracing.tag.Tags;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -12,6 +11,7 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 import org.zalando.nakadi.cache.EventTypeCache;
+import org.zalando.nakadi.domain.CleanupPolicy;
 import org.zalando.nakadi.domain.EventPublishResult;
 import org.zalando.nakadi.domain.EventPublishingStatus;
 import org.zalando.nakadi.domain.EventType;
@@ -21,6 +21,7 @@ import org.zalando.nakadi.domain.kpi.BatchPublishedEvent;
 import org.zalando.nakadi.exceptions.runtime.AccessDeniedException;
 import org.zalando.nakadi.exceptions.runtime.BlockedException;
 import org.zalando.nakadi.exceptions.runtime.EventTypeTimeoutException;
+import org.zalando.nakadi.exceptions.runtime.EventValidationException;
 import org.zalando.nakadi.exceptions.runtime.InternalNakadiException;
 import org.zalando.nakadi.exceptions.runtime.NoSuchEventTypeException;
 import org.zalando.nakadi.exceptions.runtime.ServiceTemporarilyUnavailableException;
@@ -34,7 +35,6 @@ import org.zalando.nakadi.service.TracingService;
 import org.zalando.nakadi.service.publishing.BinaryEventPublisher;
 import org.zalando.nakadi.service.publishing.EventPublisher;
 import org.zalando.nakadi.service.publishing.NakadiKpiPublisher;
-import org.zalando.nakadi.service.publishing.check.Check;
 
 import javax.servlet.http.HttpServletRequest;
 import java.io.IOException;
@@ -60,8 +60,6 @@ public class EventPublishingController {
     private final PublishingResultConverter publishingResultConverter;
     private final EventTypeCache eventTypeCache;
     private final AuthorizationValidator authValidator;
-    private final List<Check> prePublishingChecks;
-    private final List<Check> preDeletingChecks;
 
     @Autowired
     public EventPublishingController(final EventPublisher publisher,
@@ -72,9 +70,7 @@ public class EventPublishingController {
                                      final NakadiRecordMapper nakadiRecordMapper,
                                      final PublishingResultConverter publishingResultConverter,
                                      final EventTypeCache eventTypeCache,
-                                     final AuthorizationValidator authValidator,
-                                     @Qualifier("pre-publishing-checks") final List<Check> prePublishingChecks,
-                                     @Qualifier("pre-deleting-checks") final List<Check> preDeletingChecks) {
+                                     final AuthorizationValidator authValidator) {
         this.publisher = publisher;
         this.binaryPublisher = binaryPublisher;
         this.eventTypeMetricRegistry = eventTypeMetricRegistry;
@@ -84,16 +80,6 @@ public class EventPublishingController {
         this.publishingResultConverter = publishingResultConverter;
         this.eventTypeCache = eventTypeCache;
         this.authValidator = authValidator;
-        this.prePublishingChecks = prePublishingChecks;
-        if (prePublishingChecks.isEmpty()) {
-            // Safeguard against silent failure if spring inject an empty list
-            throw new RuntimeException("prePublishingChecks should not be empty");
-        }
-        this.preDeletingChecks = preDeletingChecks;
-        if (preDeletingChecks.isEmpty()) {
-            // Safeguard against silent failure if spring inject an empty list
-            throw new RuntimeException("preDeletingChecks should not be empty");
-        }
     }
 
     @RequestMapping(value = "/event-types/{eventTypeName}/events", method = POST)
@@ -161,6 +147,10 @@ public class EventPublishingController {
 
         final EventType eventType = eventTypeCache.getEventType(eventTypeName);
 
+        if (delete && eventType.getCleanupPolicy() == CleanupPolicy.DELETE) {
+            throw new EventValidationException("It is not allowed to delete events from non compacted event type");
+        }
+
         authValidator.authorizeEventTypeWrite(eventType);
 
         final EventTypeMetrics eventTypeMetrics = eventTypeMetricRegistry.metricsFor(eventTypeName);
@@ -171,9 +161,9 @@ public class EventPublishingController {
                 final List<NakadiRecord> nakadiRecords = nakadiRecordMapper.fromBytesBatch(countingInputStream);
                 final List<NakadiRecordResult> recordResults;
                 if (delete) {
-                    recordResults = binaryPublisher.delete(nakadiRecords, eventType, preDeletingChecks);
+                    recordResults = binaryPublisher.delete(nakadiRecords, eventType);
                 } else {
-                    recordResults = binaryPublisher.publishWithChecks(eventType, nakadiRecords, prePublishingChecks);
+                    recordResults = binaryPublisher.publish(eventType, nakadiRecords);
                 }
                 if (recordResults.isEmpty()) {
                     throw new InternalNakadiException("unexpected empty record result list, " +

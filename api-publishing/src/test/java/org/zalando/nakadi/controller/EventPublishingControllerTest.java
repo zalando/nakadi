@@ -28,6 +28,7 @@ import org.zalando.nakadi.domain.kpi.KPIEvent;
 import org.zalando.nakadi.exceptions.runtime.EventTypeTimeoutException;
 import org.zalando.nakadi.exceptions.runtime.InternalNakadiException;
 import org.zalando.nakadi.exceptions.runtime.NoSuchEventTypeException;
+import org.zalando.nakadi.mapper.NakadiRecordMapper;
 import org.zalando.nakadi.metrics.EventTypeMetricRegistry;
 import org.zalando.nakadi.metrics.EventTypeMetrics;
 import org.zalando.nakadi.plugin.api.authz.AuthorizationService;
@@ -37,8 +38,6 @@ import org.zalando.nakadi.service.BlacklistService;
 import org.zalando.nakadi.service.publishing.BinaryEventPublisher;
 import org.zalando.nakadi.service.publishing.EventPublisher;
 import org.zalando.nakadi.service.publishing.NakadiKpiPublisher;
-import org.zalando.nakadi.mapper.NakadiRecordMapper;
-import org.zalando.nakadi.service.publishing.check.Check;
 import org.zalando.nakadi.utils.TestUtils;
 
 import java.util.ArrayList;
@@ -93,7 +92,6 @@ public class EventPublishingControllerTest {
         authorizationService = Mockito.mock(AuthorizationService.class);
         Mockito.when(authorizationService.getSubject()).thenReturn(Optional.of(() -> "adminClientId"));
         Mockito.when(settings.getAuthMode()).thenReturn(OFF);
-        final var dummyCheck = Mockito.mock(Check.class);
 
         blacklistService = Mockito.mock(BlacklistService.class);
         Mockito.when(blacklistService.isProductionBlocked(any(), any())).thenReturn(false);
@@ -102,8 +100,7 @@ public class EventPublishingControllerTest {
                 new EventPublishingController(publisher, Mockito.mock(BinaryEventPublisher.class),
                         eventTypeMetricRegistry, blacklistService, kpiPublisher,
                         Mockito.mock(NakadiRecordMapper.class), Mockito.mock(PublishingResultConverter.class),
-                        Mockito.mock(EventTypeCache.class), Mockito.mock(AuthorizationValidator.class),
-                        List.of(dummyCheck), List.of(dummyCheck));
+                        Mockito.mock(EventTypeCache.class), Mockito.mock(AuthorizationValidator.class));
 
         mockMvc = standaloneSetup(controller)
                 .setMessageConverters(new StringHttpMessageConverter(), TestUtils.JACKSON_2_HTTP_MESSAGE_CONVERTER)
