@@ -29,9 +29,6 @@ public class NakadiRecordMapper {
         localSchemaRegistry.getEventTypeSchemaVersions(LocalSchemaRegistry.BATCH_PUBLISHING_KEY)
                 .entrySet().forEach(entry -> PublishingBatch.getDecoder().addSchema(entry.getValue()));
 
-//        localSchemaRegistry.getEventTypeSchemaVersions(LocalSchemaRegistry.BATCH_CONSUMPTION_KEY)
-//                .entrySet().forEach(entry -> ConsumptionBatch.getDecoder().addSchema(entry.getValue()));
-
         localSchemaRegistry.getEventTypeSchemaVersions(LocalSchemaRegistry.ENVELOPE_KEY)
                 .entrySet().forEach(entry -> Envelope.getDecoder().addSchema(entry.getValue()));
     }

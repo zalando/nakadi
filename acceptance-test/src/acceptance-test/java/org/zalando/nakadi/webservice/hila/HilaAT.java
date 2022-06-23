@@ -261,7 +261,8 @@ public class HilaAT extends BaseAT {
 
         // to check that stream_timeout works we need to commit everything we consumed, in other case
         // Nakadi will first wait till commit_timeout exceeds
-        final SubscriptionCursor lastBatchCursor = client.getJsonBatches().get(client.getJsonBatches().size() - 1).getCursor();
+        final SubscriptionCursor lastBatchCursor = client.getJsonBatches()
+                .get(client.getJsonBatches().size() - 1).getCursor();
         commitCursors(subscription.getId(), ImmutableList.of(lastBatchCursor), client.getSessionId());
 
         waitFor(() -> assertThat(client.isRunning(), is(false)), 5000);

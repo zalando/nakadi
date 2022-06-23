@@ -129,7 +129,8 @@ public class HilaRepartitionAT extends BaseAT {
         NakadiTestUtils.publishBusinessEventWithUserDefinedPartition(
                 eventType.getName(), 1, x -> "{\"foo\":\"bar" + x + "\"}", p -> "1");
 
-        TestUtils.waitFor(() -> MatcherAssert.assertThat(clientAfterRepartitioning.getJsonBatches(), Matchers.hasSize(1)));
+        TestUtils.waitFor(() -> MatcherAssert.assertThat(
+                clientAfterRepartitioning.getJsonBatches(), Matchers.hasSize(1)));
         Assert.assertEquals("1", clientAfterRepartitioning.getJsonBatches().get(0).getCursor().getPartition());
     }
 
@@ -166,7 +167,8 @@ public class HilaRepartitionAT extends BaseAT {
         NakadiTestUtils.publishBusinessEventWithUserDefinedPartition(
                 eventType.getName(), 1, x -> "{\"foo\":\"bar" + x + "\"}", p -> "1");
 
-        TestUtils.waitFor(() -> MatcherAssert.assertThat(clientAfterRepartitioning.getJsonBatches(), Matchers.hasSize(1)));
+        TestUtils.waitFor(() -> MatcherAssert.assertThat(
+                clientAfterRepartitioning.getJsonBatches(), Matchers.hasSize(1)));
         Assert.assertEquals("1", clientAfterRepartitioning.getJsonBatches().get(0).getCursor().getPartition());
     }
 }

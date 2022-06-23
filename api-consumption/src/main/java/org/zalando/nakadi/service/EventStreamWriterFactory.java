@@ -1,6 +1,7 @@
 package org.zalando.nakadi.service;
 
 import org.springframework.stereotype.Component;
+import org.zalando.nakadi.exceptions.runtime.InternalNakadiException;
 import org.zalando.nakadi.service.subscription.StreamContentType;
 
 @Component
@@ -23,7 +24,8 @@ public class EventStreamWriterFactory {
             case BINARY:
                 return eventStreamBinaryWriter;
             default:
-                throw new RuntimeException();
+                throw new InternalNakadiException(String.format(
+                        "failed to find stream content type %s", streamContentType));
         }
     }
 }

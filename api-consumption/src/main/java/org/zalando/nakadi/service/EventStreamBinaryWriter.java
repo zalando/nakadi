@@ -26,12 +26,12 @@ public class EventStreamBinaryWriter implements EventStreamWriter {
     }
 
     @Override
-    public int writeBatch(final OutputStream os, final Cursor cursor, final List<byte[]> events) throws IOException {
+    public long writeBatch(final OutputStream os, final Cursor cursor, final List<byte[]> events) throws IOException {
         throw new RuntimeException();
     }
 
     @Override
-    public int writeSubscriptionBatch(final OutputStream os,
+    public long writeSubscriptionBatch(final OutputStream os,
                                       final SubscriptionCursor cursor,
                                       final List<ConsumedEvent> events,
                                       final Optional<String> metadata) throws IOException {
@@ -53,6 +53,6 @@ public class EventStreamBinaryWriter implements EventStreamWriter {
         final CountingOutputStream countingOutputStream = new CountingOutputStream(os);
         ConsumptionBatch.getEncoder().encode(batch, countingOutputStream);
 
-        return (int) countingOutputStream.getCount();
+        return countingOutputStream.getCount();
     }
 }

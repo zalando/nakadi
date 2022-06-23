@@ -58,7 +58,7 @@ public class EventStreamJsonWriter implements EventStreamWriter {
     }
 
     @Override
-    public int writeBatch(final OutputStream os, final Cursor cursor, final List<byte[]> events) throws IOException {
+    public long writeBatch(final OutputStream os, final Cursor cursor, final List<byte[]> events) throws IOException {
         int byteCount = B_FIXED_BYTE_COUNT;
 
         os.write(B_CURSOR_PARTITION_BEGIN);
@@ -93,9 +93,9 @@ public class EventStreamJsonWriter implements EventStreamWriter {
     }
 
     @Override
-    public int writeSubscriptionBatch(final OutputStream os, final SubscriptionCursor cursor,
-                                      final List<ConsumedEvent> events,
-                                      final Optional<String> metadata) throws IOException {
+    public long writeSubscriptionBatch(final OutputStream os, final SubscriptionCursor cursor,
+                                       final List<ConsumedEvent> events,
+                                       final Optional<String> metadata) throws IOException {
         int byteCount = B_FIXED_BYTE_COUNT_SUBSCRIPTION;
 
         os.write(B_CURSOR_PARTITION_BEGIN);

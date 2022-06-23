@@ -91,6 +91,7 @@ public class TestStreamingClient {
         if (!running) {
             running = true;
             jsonBatches.clear();
+            binaryBatches.clear();
             headers.clear();
             final Thread thread = new Thread(action);
             thread.start();
