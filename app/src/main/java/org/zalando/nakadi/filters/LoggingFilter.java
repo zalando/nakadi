@@ -216,7 +216,7 @@ public class LoggingFilter extends OncePerRequestFilter {
     // ====================================================================================================
     private static class RequestWrapper extends HttpServletRequestWrapper {
 
-        private ServletInputStreamWrapper inputStreamWrapper;
+        private CountingInputStreamWrapper inputStreamWrapper;
 
         RequestWrapper(final HttpServletRequest request) {
             super(request);
@@ -229,18 +229,18 @@ public class LoggingFilter extends OncePerRequestFilter {
         @Override
         public ServletInputStream getInputStream() throws IOException {
             if (inputStreamWrapper == null) {
-                inputStreamWrapper = new ServletInputStreamWrapper(super.getInputStream());
+                inputStreamWrapper = new CountingInputStreamWrapper(super.getInputStream());
             }
             return inputStreamWrapper;
         }
     }
 
-    private static class ServletInputStreamWrapper extends ServletInputStream {
+    private static class CountingInputStreamWrapper extends ServletInputStream {
 
         private final ServletInputStream wrappedInputStream;
         private final CountingInputStream countingInputStream;
 
-        ServletInputStreamWrapper(final ServletInputStream wrappedInputStream) {
+        CountingInputStreamWrapper(final ServletInputStream wrappedInputStream) {
             this.wrappedInputStream = wrappedInputStream;
             this.countingInputStream = new CountingInputStream(wrappedInputStream);
         }
@@ -288,7 +288,7 @@ public class LoggingFilter extends OncePerRequestFilter {
     // ====================================================================================================
     private static class ResponseWrapper extends HttpServletResponseWrapper {
 
-        private ServletOutputStreamWrapper outputStreamWrapper;
+        private CountingOutputStreamWrapper outputStreamWrapper;
 
         ResponseWrapper(final HttpServletResponse response) {
             super(response);
@@ -301,18 +301,18 @@ public class LoggingFilter extends OncePerRequestFilter {
         @Override
         public ServletOutputStream getOutputStream() throws IOException {
             if (outputStreamWrapper == null) {
-                outputStreamWrapper = new ServletOutputStreamWrapper(super.getOutputStream());
+                outputStreamWrapper = new CountingOutputStreamWrapper(super.getOutputStream());
             }
             return outputStreamWrapper;
         }
     }
 
-    private static class ServletOutputStreamWrapper extends ServletOutputStream {
+    private static class CountingOutputStreamWrapper extends ServletOutputStream {
 
         private final ServletOutputStream wrappedOutputStream;
         private final CountingOutputStream countingOutputStream;
 
-        ServletOutputStreamWrapper(final ServletOutputStream wrappedOutputStream) {
+        CountingOutputStreamWrapper(final ServletOutputStream wrappedOutputStream) {
             this.wrappedOutputStream = wrappedOutputStream;
             this.countingOutputStream = new CountingOutputStream(wrappedOutputStream);
         }
