@@ -22,12 +22,14 @@ public class PartitioningCheck extends Check {
 
     @Override
     public List<NakadiRecordResult> execute(final EventType eventType, final List<NakadiRecord> records) {
+
+        final List<String> sortedPartitions = partitionResolver.getSortedPartitions(eventType);
+
         for (final NakadiRecord record : records) {
             final NakadiMetadata metadata = record.getMetadata();
             try {
-                final String partition = partitionResolver
-                        .resolvePartition(eventType, metadata);
-                record.getMetadata().setPartition(partition);
+                final String partition = partitionResolver.resolvePartition(eventType, metadata, sortedPartitions);
+                metadata.setPartition(partition);
             } catch (PartitioningException pe) {
                 return processError(records, record, pe);
             }

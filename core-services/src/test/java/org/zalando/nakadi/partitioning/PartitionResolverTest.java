@@ -1,6 +1,5 @@
 package org.zalando.nakadi.partitioning;
 
-import com.google.common.collect.ImmutableList;
 import org.json.JSONObject;
 import org.junit.Before;
 import org.junit.Test;
@@ -12,6 +11,8 @@ import org.zalando.nakadi.exceptions.runtime.NoSuchPartitionStrategyException;
 import org.zalando.nakadi.exceptions.runtime.PartitioningException;
 import org.zalando.nakadi.repository.TopicRepository;
 import org.zalando.nakadi.service.timeline.TimelineService;
+
+import java.util.List;
 
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.notNullValue;
@@ -29,11 +30,12 @@ public class PartitionResolverTest {
 
     private PartitionResolver partitionResolver;
     private TimelineService timelineService;
+    private List<String> partitions = List.of("0");
 
     @Before
     public void before() {
         final TopicRepository topicRepository = Mockito.mock(TopicRepository.class);
-        when(topicRepository.listPartitionNames(any(String.class))).thenReturn(ImmutableList.of("0"));
+        when(topicRepository.listPartitionNames(any(String.class))).thenReturn(partitions);
         timelineService = Mockito.mock(TimelineService.class);
         when(timelineService.getTopicRepository((Timeline) any())).thenReturn(topicRepository);
         when(timelineService.getTopicRepository((EventType) any())).thenReturn(topicRepository);
@@ -53,7 +55,7 @@ public class PartitionResolverTest {
         final JSONObject event = new JSONObject();
         event.put("abc", "blah");
 
-        final String partition = partitionResolver.resolvePartition(eventType, event);
+        final String partition = partitionResolver.resolvePartition(eventType, event, partitions);
         assertThat(partition, notNullValue());
     }
 
@@ -62,7 +64,7 @@ public class PartitionResolverTest {
         final EventType eventType = new EventType();
         eventType.setPartitionStrategy("blah_strategy");
 
-        partitionResolver.resolvePartition(eventType, new JSONObject());
+        partitionResolver.resolvePartition(eventType, new JSONObject(), partitions);
     }
 
     @Test(expected = NoSuchPartitionStrategyException.class)
