@@ -28,12 +28,7 @@ import javax.servlet.http.HttpServletRequestWrapper;
 import javax.servlet.http.HttpServletResponse;
 import javax.servlet.http.HttpServletResponseWrapper;
 
-import java.io.BufferedReader;
-import java.io.InputStream;
-import java.io.InputStreamReader;
 import java.io.IOException;
-import java.io.PrintWriter;
-import java.io.OutputStream;
 import java.util.Optional;
 
 public class LoggingFilter extends OncePerRequestFilter {
@@ -221,139 +216,144 @@ public class LoggingFilter extends OncePerRequestFilter {
     // ====================================================================================================
     private static class RequestWrapper extends HttpServletRequestWrapper {
 
-        private ServletInputStreamWrapper inputStream;
-        private BufferedReader reader;
+        private ServletInputStreamWrapper inputStreamWrapper;
 
         RequestWrapper(final HttpServletRequest request) {
             super(request);
         }
 
         long getInputStreamBytesCount() {
-            return inputStream != null ? inputStream.getCount() : 0;
+            return inputStreamWrapper != null ? inputStreamWrapper.getCount() : 0;
         }
 
         @Override
         public ServletInputStream getInputStream() throws IOException {
-            if (inputStream == null) {
-                inputStream = new ServletInputStreamWrapper(super.getInputStream());
+            if (inputStreamWrapper == null) {
+                inputStreamWrapper = new ServletInputStreamWrapper(super.getInputStream());
             }
-            return inputStream;
-        }
-
-        @Override
-        public BufferedReader getReader() throws IOException {
-            if (reader == null) {
-                reader = new BufferedReader(new InputStreamReader(getInputStream()));
-            }
-            return reader;
+            return inputStreamWrapper;
         }
     }
 
     private static class ServletInputStreamWrapper extends ServletInputStream {
 
-        private final CountingInputStream inputStream;
+        private final ServletInputStream wrappedInputStream;
+        private final CountingInputStream countingInputStream;
 
-        ServletInputStreamWrapper(final InputStream inputStream) {
-            this.inputStream = new CountingInputStream(inputStream);
+        ServletInputStreamWrapper(final ServletInputStream wrappedInputStream) {
+            this.wrappedInputStream = wrappedInputStream;
+            this.countingInputStream = new CountingInputStream(wrappedInputStream);
         }
 
         long getCount() {
-            return inputStream.getCount();
+            return countingInputStream.getCount();
         }
 
         @Override
         public int read() throws IOException {
-            return inputStream.read();
+            return countingInputStream.read();
+        }
+
+        @Override
+        public int read(final byte[] b) throws IOException {
+            return countingInputStream.read(b);
+        }
+
+        @Override
+        public int read(final byte[] b, final int off, final int len) throws IOException {
+            return countingInputStream.read(b, off, len);
         }
 
         @Override
         public void close() throws IOException {
-            inputStream.close();
+            countingInputStream.close();
         }
 
         @Override
         public boolean isFinished() {
-            try {
-                return inputStream.available() == 0;
-            } catch (final IOException e) {
-                // TODO
-                //LOG.error("Error occurred when reading request input stream", e);
-                return false;
-            }
+            return wrappedInputStream.isFinished();
         }
 
         @Override
         public boolean isReady() {
-            return true;
+            return wrappedInputStream.isReady();
         }
 
         @Override
         public void setReadListener(final ReadListener listener) {
-            throw new UnsupportedOperationException("Not supported");
+            wrappedInputStream.setReadListener(listener);
         }
     }
 
     // ====================================================================================================
     private static class ResponseWrapper extends HttpServletResponseWrapper {
 
-        private ServletOutputStreamWrapper outputStream;
-        private PrintWriter writer;
+        private ServletOutputStreamWrapper outputStreamWrapper;
 
         ResponseWrapper(final HttpServletResponse response) {
             super(response);
         }
 
         long getOutputStreamBytesCount() {
-            return outputStream != null ? outputStream.getCount() : 0;
+            return outputStreamWrapper != null ? outputStreamWrapper.getCount() : 0;
         }
 
         @Override
         public ServletOutputStream getOutputStream() throws IOException {
-            if (outputStream == null) {
-                outputStream = new ServletOutputStreamWrapper(super.getOutputStream());
+            if (outputStreamWrapper == null) {
+                outputStreamWrapper = new ServletOutputStreamWrapper(super.getOutputStream());
             }
-            return outputStream;
-        }
-
-        @Override
-        public PrintWriter getWriter() throws IOException {
-            if (writer == null) {
-                writer = new PrintWriter(getOutputStream());
-            }
-            return writer;
+            return outputStreamWrapper;
         }
     }
 
     private static class ServletOutputStreamWrapper extends ServletOutputStream {
 
-        private final CountingOutputStream outputStream;
+        private final ServletOutputStream wrappedOutputStream;
+        private final CountingOutputStream countingOutputStream;
 
-        ServletOutputStreamWrapper(final OutputStream outputStream) {
-            this.outputStream = new CountingOutputStream(outputStream);
+        ServletOutputStreamWrapper(final ServletOutputStream wrappedOutputStream) {
+            this.wrappedOutputStream = wrappedOutputStream;
+            this.countingOutputStream = new CountingOutputStream(wrappedOutputStream);
         }
 
         long getCount() {
-            return outputStream.getCount();
+            return countingOutputStream.getCount();
         }
 
         @Override
         public void write(final int b) throws IOException {
-            outputStream.write(b);
+            countingOutputStream.write(b);
+        }
+
+        @Override
+        public void write(final byte[] b) throws IOException {
+            countingOutputStream.write(b);
+        }
+
+        @Override
+        public void write(final byte[] b, final int off, final int len) throws IOException {
+            countingOutputStream.write(b, off, len);
+        }
+
+        @Override
+        public void flush() throws IOException {
+            countingOutputStream.flush();
         }
 
         @Override
         public void close() throws IOException {
-            outputStream.close();
+            countingOutputStream.close();
         }
 
         @Override
         public boolean isReady() {
-            return true;
+            return wrappedOutputStream.isReady();
         }
 
         @Override
         public void setWriteListener(final WriteListener listener) {
-            throw new UnsupportedOperationException("Not supported");
+            wrappedOutputStream.setWriteListener(listener);
         }
     }
 }
