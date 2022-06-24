@@ -172,7 +172,8 @@ public class SubscriptionStreamController {
     public StreamingResponseBody streamEvents(
             @PathVariable("subscription_id") final String subscriptionId,
             @Valid @RequestBody final UserStreamParameters userParameters,
-            @RequestHeader("Accept") final String acceptHeader,
+            @RequestHeader(name = "Accept", required = false,
+                    defaultValue = "application/x-json-stream") final String acceptHeader,
             final HttpServletResponse response,
             final Client client) {
 
@@ -194,7 +195,8 @@ public class SubscriptionStreamController {
             @Nullable @RequestParam(value = "stream_keep_alive_limit", required = false) final Integer
                     streamKeepAliveLimit,
             @Nullable @RequestParam(value = "commit_timeout", required = false) final Long commitTimeout,
-            @RequestHeader("Accept") final String acceptHeader,
+            @RequestHeader(name = "Accept", required = false,
+                    defaultValue = "application/x-json-stream") final String acceptHeader,
             final HttpServletResponse response, final Client client) {
 
         final UserStreamParameters userParameters = new UserStreamParameters(batchLimit, streamLimit, batchTimespan,
