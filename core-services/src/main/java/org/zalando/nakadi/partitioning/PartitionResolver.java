@@ -60,19 +60,6 @@ public class PartitionResolver {
         }
     }
 
-    /**
-     * Returns a sorted, unmodifiable list with fast access by index.
-     */
-    public List<String> getSortedPartitions(final EventType eventType) {
-        final List<String> sortedPartitions = timelineService.getTopicRepository(eventType)
-                .listPartitionNames(timelineService.getActiveTimeline(eventType).getTopic())
-                .stream()
-                .sorted()
-                .collect(Collectors.toCollection(ArrayList::new));
-
-        return Collections.unmodifiableList(sortedPartitions);
-    }
-
     public String resolvePartition(final EventType eventType, final JSONObject eventAsJson,
             final List<String> sortedPartitions)
             throws PartitioningException {
@@ -85,6 +72,19 @@ public class PartitionResolver {
             throws PartitioningException {
 
         return getPartitionStrategy(eventType).calculatePartition(nakadiRecordMetadata, sortedPartitions);
+    }
+
+    /**
+     * Returns a sorted, unmodifiable list with fast access by index.
+     */
+    public List<String> getSortedPartitions(final EventType eventType) {
+        final List<String> sortedPartitions = timelineService.getTopicRepository(eventType)
+                .listPartitionNames(timelineService.getActiveTimeline(eventType).getTopic())
+                .stream()
+                .sorted()
+                .collect(Collectors.toCollection(ArrayList::new));
+
+        return Collections.unmodifiableList(sortedPartitions);
     }
 
     private PartitionStrategy getPartitionStrategy(final EventType eventType) {
