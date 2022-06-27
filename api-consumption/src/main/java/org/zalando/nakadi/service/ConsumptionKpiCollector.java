@@ -40,7 +40,7 @@ public abstract class ConsumptionKpiCollector {
         }
     }
 
-    public void recordBatchSent(final String eventType, final int bytesCount, final int eventsCount) {
+    public void recordBatchSent(final String eventType, final long bytesCount, final int eventsCount) {
         final StreamKpiData kpiData = kpiDataPerEventType.computeIfAbsent(eventType, (x) -> new StreamKpiData());
         kpiData.bytesSent += bytesCount;
         kpiData.numberOfEventsSent += eventsCount;

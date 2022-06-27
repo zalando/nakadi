@@ -328,8 +328,8 @@ public class SubscriptionAT extends BaseAT {
         final TestStreamingClient client = TestStreamingClient
                 .create(URL, subscription.getId(), "max_uncommitted_events=100")
                 .start();
-        waitFor(() -> assertThat(client.getBatches(), hasSize(19))); // we should read 19 events in total
-        final List<StreamBatch> batches = client.getBatches();
+        waitFor(() -> assertThat(client.getJsonBatches(), hasSize(19))); // we should read 19 events in total
+        final List<StreamBatch> batches = client.getJsonBatches();
 
         // check that first events of each partition have correct offsets
         assertThat(getFirstBatchOffsetFor(batches, new EventTypePartition(et1.getName(), "0")),
@@ -518,7 +518,7 @@ public class SubscriptionAT extends BaseAT {
         final TestStreamingClient client = TestStreamingClient
                 .create(URL, s.getId(), "max_uncommitted_events=20")
                 .start();
-        waitFor(() -> assertThat(client.getBatches(), hasSize(15)));
+        waitFor(() -> assertThat(client.getJsonBatches(), hasSize(15)));
 
         final Response response = when()
                 .get("/subscriptions?show_status=true&owning_application=" + owningApplication)

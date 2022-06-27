@@ -148,7 +148,9 @@ jar {
 import com.github.davidmc24.gradle.plugin.avro.GenerateAvroJavaTask
 
 def generateAvro = tasks.register("generateAvro", GenerateAvroJavaTask) {
-    source("src/main/resources/avro-schema/batch.publishing")
+    source("src/main/resources/avro-schema/batch.publishing",
+            "src/main/resources/avro-schema/batch.consumption",
+            "src/main/resources/avro-schema/envelope")
     outputDir = file("build/generated/sources")
 }
 

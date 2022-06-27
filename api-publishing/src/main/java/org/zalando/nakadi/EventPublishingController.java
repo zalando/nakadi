@@ -4,7 +4,6 @@ import com.google.common.base.Charsets;
 import com.google.common.io.CountingInputStream;
 import io.opentracing.tag.Tags;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -12,6 +11,7 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 import org.zalando.nakadi.cache.EventTypeCache;
+import org.zalando.nakadi.domain.CleanupPolicy;
 import org.zalando.nakadi.domain.EventPublishResult;
 import org.zalando.nakadi.domain.EventPublishingStatus;
 import org.zalando.nakadi.domain.EventType;
@@ -22,6 +22,7 @@ import org.zalando.nakadi.exceptions.runtime.AccessDeniedException;
 import org.zalando.nakadi.exceptions.runtime.BlockedException;
 import org.zalando.nakadi.exceptions.runtime.EventTypeTimeoutException;
 import org.zalando.nakadi.exceptions.runtime.InternalNakadiException;
+import org.zalando.nakadi.exceptions.runtime.InvalidEventTypeException;
 import org.zalando.nakadi.exceptions.runtime.NoSuchEventTypeException;
 import org.zalando.nakadi.exceptions.runtime.ServiceTemporarilyUnavailableException;
 import org.zalando.nakadi.mapper.NakadiRecordMapper;
@@ -34,7 +35,6 @@ import org.zalando.nakadi.service.TracingService;
 import org.zalando.nakadi.service.publishing.BinaryEventPublisher;
 import org.zalando.nakadi.service.publishing.EventPublisher;
 import org.zalando.nakadi.service.publishing.NakadiKpiPublisher;
-import org.zalando.nakadi.service.publishing.check.Check;
 
 import javax.servlet.http.HttpServletRequest;
 import java.io.IOException;
@@ -60,7 +60,6 @@ public class EventPublishingController {
     private final PublishingResultConverter publishingResultConverter;
     private final EventTypeCache eventTypeCache;
     private final AuthorizationValidator authValidator;
-    private final List<Check> prePublishingChecks;
 
     @Autowired
     public EventPublishingController(final EventPublisher publisher,
@@ -71,8 +70,7 @@ public class EventPublishingController {
                                      final NakadiRecordMapper nakadiRecordMapper,
                                      final PublishingResultConverter publishingResultConverter,
                                      final EventTypeCache eventTypeCache,
-                                     final AuthorizationValidator authValidator,
-                                     @Qualifier("pre-publishing-checks") final List<Check> prePublishingChecks) {
+                                     final AuthorizationValidator authValidator) {
         this.publisher = publisher;
         this.binaryPublisher = binaryPublisher;
         this.eventTypeMetricRegistry = eventTypeMetricRegistry;
@@ -82,11 +80,6 @@ public class EventPublishingController {
         this.publishingResultConverter = publishingResultConverter;
         this.eventTypeCache = eventTypeCache;
         this.authValidator = authValidator;
-        this.prePublishingChecks = prePublishingChecks;
-        if (prePublishingChecks.isEmpty()) {
-            // Safeguard against silent failure one spring injecting empty list
-            throw new RuntimeException("Checks should not be empty");
-        }
     }
 
     @RequestMapping(value = "/event-types/{eventTypeName}/events", method = POST)
@@ -120,10 +113,29 @@ public class EventPublishingController {
         }
     }
 
+    @RequestMapping(
+            value = "/event-types/{eventTypeName}/deleted-events",
+            method = POST,
+            consumes = "application/avro-binary; charset=utf-8",
+            produces = "application/json; charset=utf-8"
+    )
+    public ResponseEntity deleteBinaryEvents(@PathVariable final String eventTypeName,
+                                             final HttpServletRequest request,
+                                             final Client client)
+            throws AccessDeniedException, BlockedException, ServiceTemporarilyUnavailableException,
+            InternalNakadiException, EventTypeTimeoutException, NoSuchEventTypeException {
+        try {
+            return postBinaryEvents(eventTypeName, request.getInputStream(), client, true);
+        } catch (IOException e) {
+            throw new InternalNakadiException("failed to parse batch", e);
+        }
+    }
+
+
     private ResponseEntity postBinaryEvents(final String eventTypeName,
                                             final InputStream batch,
                                             final Client client,
-                                            final boolean delete) throws IOException {
+                                            final boolean delete) {
         TracingService.setOperationName("publish_events")
                 .setTag("event_type", eventTypeName)
                 .setTag("сontent-type", "application/avro-binary")
@@ -135,28 +147,29 @@ public class EventPublishingController {
 
         final EventType eventType = eventTypeCache.getEventType(eventTypeName);
 
+        if (delete && eventType.getCleanupPolicy() == CleanupPolicy.DELETE) {
+            throw new InvalidEventTypeException("It is not allowed to delete events from non compacted event type");
+        }
+
         authValidator.authorizeEventTypeWrite(eventType);
 
         final EventTypeMetrics eventTypeMetrics = eventTypeMetricRegistry.metricsFor(eventTypeName);
         try {
             final long startingNanos = System.nanoTime();
             try {
-                // todo implement delete
-//                if (delete) {
-//                    result = publisher.delete(eventsAsString, eventTypeName);
-//                }
-
                 final CountingInputStream countingInputStream = new CountingInputStream(batch);
-                final EventPublishResult result;
                 final List<NakadiRecord> nakadiRecords = nakadiRecordMapper.fromBytesBatch(countingInputStream);
-                final List<NakadiRecordResult> recordResults = binaryPublisher
-                        .publishWithChecks(eventType, nakadiRecords, prePublishingChecks);
+                final List<NakadiRecordResult> recordResults;
+                if (delete) {
+                    recordResults = binaryPublisher.delete(nakadiRecords, eventType);
+                } else {
+                    recordResults = binaryPublisher.publish(eventType, nakadiRecords);
+                }
                 if (recordResults.isEmpty()) {
                     throw new InternalNakadiException("unexpected empty record result list, " +
                             "publishing record result can not be empty");
                 }
-                result = publishingResultConverter.mapPublishingResultToView(recordResults);
-
+                final EventPublishResult result = publishingResultConverter.mapPublishingResultToView(recordResults);
                 final int eventCount = result.getResponses().size();
 
                 final long totalSizeBytes = countingInputStream.getCount();

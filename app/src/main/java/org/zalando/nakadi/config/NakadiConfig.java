@@ -15,8 +15,10 @@ import org.zalando.nakadi.service.AuthorizationValidator;
 import org.zalando.nakadi.service.publishing.EventOwnerExtractorFactory;
 import org.zalando.nakadi.service.publishing.check.Check;
 import org.zalando.nakadi.service.publishing.check.EnrichmentCheck;
+import org.zalando.nakadi.service.publishing.check.EventDeletionEmptyPayloadCheck;
 import org.zalando.nakadi.service.publishing.check.EventKeyCheck;
 import org.zalando.nakadi.service.publishing.check.EventOwnerSelectorCheck;
+import org.zalando.nakadi.service.publishing.check.EventSizeCheck;
 import org.zalando.nakadi.service.publishing.check.EventTypeCheck;
 import org.zalando.nakadi.service.publishing.check.PartitioningCheck;
 
@@ -69,8 +71,25 @@ public class NakadiConfig {
         return Lists.newArrayList(
                 eventTypeCheck,
                 new EventOwnerSelectorCheck(eventOwnerExtractorFactory, authValidator),
+                new EventSizeCheck(),
                 partitioningCheck,
                 enrichmentCheck,
+                new EventKeyCheck()
+        );
+    }
+
+    @Bean
+    @Qualifier("pre-deleting-checks")
+    public List<Check> preDeletingChecks(final EventTypeCheck eventTypeCheck,
+                                         final EventOwnerExtractorFactory eventOwnerExtractorFactory,
+                                         final AuthorizationValidator authValidator,
+                                         final PartitioningCheck partitioningCheck) {
+        // TODO: potentially we could skip the event type check for deletion
+        return Lists.newArrayList(
+                eventTypeCheck,
+                new EventOwnerSelectorCheck(eventOwnerExtractorFactory, authValidator),
+                new EventDeletionEmptyPayloadCheck(),
+                partitioningCheck,
                 new EventKeyCheck()
         );
     }

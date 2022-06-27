@@ -320,7 +320,7 @@ class StreamingState extends State {
                     sentOffset,
                     getContext().getCursorTokenService().generateToken());
 
-            final int batchSizeBytes = getContext().getWriter().writeSubscriptionBatch(
+            final long batchSizeBytes = getContext().getWriter().writeSubscriptionBatch(
                     getOut().getOutputStream(),
                     cursor,
                     data,

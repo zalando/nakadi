@@ -2,7 +2,6 @@ package org.zalando.nakadi.service.publishing.check;
 
 import org.springframework.stereotype.Component;
 import org.zalando.nakadi.domain.EventType;
-import org.zalando.nakadi.domain.EventTypeSchema;
 import org.zalando.nakadi.domain.NakadiMetadata;
 import org.zalando.nakadi.domain.NakadiRecord;
 import org.zalando.nakadi.domain.NakadiRecordResult;
@@ -22,8 +21,7 @@ public class EventTypeCheck extends Check {
     }
 
     @Override
-    public List<NakadiRecordResult> execute(final EventType eventType,
-                                            final List<NakadiRecord> records) {
+    public List<NakadiRecordResult> execute(final EventType eventType, final List<NakadiRecord> records) {
 
         for (final NakadiRecord record : records) {
             final NakadiMetadata metadata = record.getMetadata();
@@ -35,11 +33,8 @@ public class EventTypeCheck extends Check {
             }
 
             try {
-                final EventTypeSchema schema =
-                        schemaService.getSchemaVersion(recordEventType, metadata.getSchemaVersion());
-                if (schema.getType() == EventTypeSchema.Type.JSON_SCHEMA) {
-                    throw new Exception("Json schema is not supported for binary publishing");
-                }
+                // fixme: potential for DoS by sending non-existing version constantly
+                schemaService.getSchemaVersion(recordEventType, metadata.getSchemaVersion());
             } catch (final Exception ex) {
                 return processError(records, record, ex);
             }

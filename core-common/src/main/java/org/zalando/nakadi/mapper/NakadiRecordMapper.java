@@ -25,17 +25,12 @@ import java.util.List;
 @Service
 public class NakadiRecordMapper {
 
-    public static final byte[] AVRO_FORMAT = new byte[]{(byte) 0x0};
-    public static final String HEADER_FORMAT = new String(AVRO_FORMAT);
-
     public NakadiRecordMapper(final LocalSchemaRegistry localSchemaRegistry) {
         localSchemaRegistry.getEventTypeSchemaVersions(LocalSchemaRegistry.BATCH_PUBLISHING_KEY)
-                .entrySet().forEach(entry -> {
-                    PublishingBatch.getDecoder().addSchema(entry.getValue());
-                    Envelope.getDecoder().addSchema(entry.getValue()
-                            .getField("events").schema().getElementType());
-                }
-        );
+                .entrySet().forEach(entry -> PublishingBatch.getDecoder().addSchema(entry.getValue()));
+
+        localSchemaRegistry.getEventTypeSchemaVersions(LocalSchemaRegistry.ENVELOPE_KEY)
+                .entrySet().forEach(entry -> Envelope.getDecoder().addSchema(entry.getValue()));
     }
 
     public List<NakadiRecord> fromBytesBatch(final InputStream batch) {
@@ -59,7 +54,7 @@ public class NakadiRecordMapper {
         return records;
     }
 
-    public Envelope fromBytesEnvelope(final InputStream data) {
+    public Envelope fromBytesEnvelope(final byte[] data) {
         try {
             return Envelope.getDecoder().decode(data, new Envelope());
         } catch (AvroRuntimeException are) {
