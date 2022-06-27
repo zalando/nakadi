@@ -2165,7 +2165,7 @@ paths:
           schema:
             $ref: '#/definitions/Problem'
 
-  /nakadi/avro-schemas/{name}:
+  /nakadi/avro-schemas/{name}/{version}:
     get:
       tags:
         - schema-registry-api
@@ -2177,8 +2177,8 @@ paths:
           type: string
           required: true
         - name: version
-          in: query
-          description: version of the Avro schema to fetch.
+          in: path
+          description: Version of the Avro schema to fetch.
           type: string
           required: false
       responses:
