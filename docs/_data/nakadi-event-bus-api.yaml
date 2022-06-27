@@ -2165,6 +2165,37 @@ paths:
           schema:
             $ref: '#/definitions/Problem'
 
+  /nakadi/avro-schemas/{name}/{version}:
+    get:
+      tags:
+        - schema-registry-api
+      description: The API to return Avro schemas to work with Nakadi.
+      parameters:
+        - name: name
+          in: path
+          description: Name of the Avro schema to fetch. Example, batch.publishing, batch.consumption.
+          type: string
+          required: true
+        - name: version
+          in: path
+          description: Version of the Avro schema to fetch.
+          type: string
+          required: false
+      responses:
+        '200':
+          description: The list of the available Avro schemas.
+          schema:
+            type: object
+            description: The wrapper containing the list of the available Avro schemas.
+            properties:
+              items:
+                description: list of schemas
+                type: array
+                items:
+                  $ref: '#/definitions/AvroSchema'
+            required:
+              - items
+
 # ################################### #
 #                                     #
 #             Definitions             #
@@ -2172,6 +2203,17 @@ paths:
 # ################################### #
 
 definitions:
+  AvroSchema:
+    type: object
+    description: The Avro schema with the version.
+    properties:
+      version:
+        type: string
+        description: The schema version.
+      avro_schema:
+        type: object
+        additionalProperties: true
+        description: Avro schema as it is.
   Storage:
     type: object
     description: |
