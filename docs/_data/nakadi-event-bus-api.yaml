@@ -566,6 +566,12 @@ paths:
         description: EventType name
         type: string
         required: true
+      - name: dry-run
+        type: string
+        in: query
+        description: |
+          When set to true, the supplied schema is tried to match with existing schemas and if match is found, the matched
+          event type schema is returned.
       - name: event-type-schema
         in: body
         description: |
@@ -574,6 +580,12 @@ paths:
           $ref: '#/definitions/EventTypeSchema'
         required: true
       responses:
+        '200':
+          description: |
+            Matching event type schema is returned (when dry-run is set to true)
+        '204':
+          description: |
+            No matching event type schema is returned (when dry-run is set to true)
         '201':
           description: |
             New schema registered with success.
