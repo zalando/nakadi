@@ -12,9 +12,9 @@ public interface PartitionStrategy {
     String USER_DEFINED_STRATEGY = "user_defined";
     String RANDOM_STRATEGY = "random";
 
-    String calculatePartition(EventType eventType, JSONObject jsonEvent, List<String> sortedPartitions)
+    String calculatePartition(EventType eventType, JSONObject jsonEvent, List<String> orderedPartitions)
             throws PartitioningException;
 
-    String calculatePartition(NakadiMetadata nakadiRecordMetadata, List<String> sortedPartitions)
+    String calculatePartition(NakadiMetadata nakadiRecordMetadata, List<String> orderedPartitions)
             throws PartitioningException;
 }

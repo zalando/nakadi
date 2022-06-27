@@ -12,8 +12,11 @@ import org.mockito.MockitoAnnotations;
 import org.zalando.nakadi.domain.EventType;
 import org.zalando.nakadi.domain.EventTypeSchema;
 import org.zalando.nakadi.domain.EventTypeSchemaBase;
+import org.zalando.nakadi.domain.storage.Storage;
 import org.zalando.nakadi.domain.Timeline;
 import org.zalando.nakadi.exceptions.runtime.NoSuchEventTypeException;
+import org.zalando.nakadi.repository.TopicRepository;
+import org.zalando.nakadi.repository.TopicRepositoryHolder;
 import org.zalando.nakadi.repository.db.EventTypeRepository;
 import org.zalando.nakadi.repository.db.TimelineDbRepository;
 import org.zalando.nakadi.service.SchemaService;
@@ -45,6 +48,8 @@ public class EventTypeCacheTest {
     @Mock
     private TimelineDbRepository timelineDbRepository;
     @Mock
+    private TopicRepositoryHolder topicRepositoryHolder;
+    @Mock
     private TimelineSync timelineSync;
     @Mock
     private EventValidatorBuilder eventValidatorBuilder;
@@ -61,8 +66,8 @@ public class EventTypeCacheTest {
         MockitoAnnotations.initMocks(this);
 
         eventTypeCache = new EventTypeCache(
-                changesRegistry, eventTypeRepository, timelineDbRepository, timelineSync, eventValidatorBuilder,
-                schemaService,
+                changesRegistry, eventTypeRepository, timelineDbRepository, topicRepositoryHolder, timelineSync,
+                eventValidatorBuilder, schemaService,
                 1, 3); // Update every second, so tests should be fast enough
     }
 
@@ -155,11 +160,23 @@ public class EventTypeCacheTest {
 
         final EventType et1 = mock(EventType.class);
         final JsonSchemaValidator validator1 = mock(JsonSchemaValidator.class);
-        final List<Timeline> expectedTimelines1 = mock(List.class);
+
+        final Storage storage1 = mock(Storage.class);
+        final Timeline timeline1 = Timeline.createTimeline("et1", 0, storage1, "topic1", new Date());
+        timeline1.setSwitchedAt(new Date());
+
+        final Storage storage2 = mock(Storage.class);
+        final Timeline timeline2 = Timeline.createTimeline("et1", 1, storage2, "topic2", new Date());
+        timeline2.setSwitchedAt(new Date());
+
+        final List<Timeline> expectedTimelines1 = List.of(timeline1);
+        final List<Timeline> expectedTimelines2 = List.of(timeline1, timeline2);
+
+        final TopicRepository topicRepository1 = mock(TopicRepository.class);
+        final TopicRepository topicRepository2 = mock(TopicRepository.class);
 
         final EventType et2 = mock(EventType.class);
         final JsonSchemaValidator validator2 = mock(JsonSchemaValidator.class);
-        final List<Timeline> expectedTimelines2 = mock(List.class);
 
         final EventTypeSchema etSchema = new EventTypeSchema(new EventTypeSchemaBase(
                 EventTypeSchemaBase.Type.JSON_SCHEMA, "{}"),
@@ -173,10 +190,15 @@ public class EventTypeCacheTest {
         when(eventValidatorBuilder.build(eq(et2))).thenReturn(validator2);
         when(timelineDbRepository.listTimelinesOrdered(eq(eventTypeName)))
                 .thenReturn(expectedTimelines1, expectedTimelines2);
+        when(topicRepositoryHolder.getTopicRepository(storage1)).thenReturn(topicRepository1);
+        when(topicRepositoryHolder.getTopicRepository(storage2)).thenReturn(topicRepository2);
+        when(topicRepository1.listPartitionNames("topic1")).thenReturn(List.of("1", "0"));
+        when(topicRepository2.listPartitionNames("topic2")).thenReturn(List.of("1", "0", "2"));
 
         for (int i = 0; i < 10; ++i) { // Verify that cache is still returning the same value without reload
             Assert.assertEquals(et1, eventTypeCache.getEventType(eventTypeName));
             Assert.assertEquals(expectedTimelines1, eventTypeCache.getTimelinesOrdered(eventTypeName));
+            Assert.assertEquals(List.of("0", "1"), eventTypeCache.getOrderedPartitions(eventTypeName));
             Assert.assertEquals(validator1, eventTypeCache.getValidator(eventTypeName));
         }
 
@@ -196,6 +218,7 @@ public class EventTypeCacheTest {
             for (int i = 0; i < 10; ++i) {
                 Assert.assertEquals(et2, eventTypeCache.getEventType(eventTypeName));
                 Assert.assertEquals(expectedTimelines2, eventTypeCache.getTimelinesOrdered(eventTypeName));
+                Assert.assertEquals(List.of("0", "1", "2"), eventTypeCache.getOrderedPartitions(eventTypeName));
                 Assert.assertEquals(validator2, eventTypeCache.getValidator(eventTypeName));
             }
         }, 500);

@@ -13,12 +13,9 @@ import org.zalando.nakadi.exceptions.runtime.NoSuchPartitionStrategyException;
 import org.zalando.nakadi.exceptions.runtime.PartitioningException;
 import org.zalando.nakadi.service.timeline.TimelineService;
 
-import java.util.ArrayList;
-import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 import java.util.Random;
-import java.util.stream.Collectors;
 
 import static org.zalando.nakadi.domain.EventCategory.UNDEFINED;
 import static org.zalando.nakadi.partitioning.PartitionStrategy.HASH_STRATEGY;
@@ -61,30 +58,17 @@ public class PartitionResolver {
     }
 
     public String resolvePartition(final EventType eventType, final JSONObject eventAsJson,
-            final List<String> sortedPartitions)
+            final List<String> orderedPartitions)
             throws PartitioningException {
 
-        return getPartitionStrategy(eventType).calculatePartition(eventType, eventAsJson, sortedPartitions);
+        return getPartitionStrategy(eventType).calculatePartition(eventType, eventAsJson, orderedPartitions);
     }
 
     public String resolvePartition(final EventType eventType, final NakadiMetadata nakadiRecordMetadata,
-            final List<String> sortedPartitions)
+            final List<String> orderedPartitions)
             throws PartitioningException {
 
-        return getPartitionStrategy(eventType).calculatePartition(nakadiRecordMetadata, sortedPartitions);
-    }
-
-    /**
-     * Returns a sorted, unmodifiable list with fast access by index.
-     */
-    public List<String> getSortedPartitions(final EventType eventType) {
-        final List<String> sortedPartitions = timelineService.getTopicRepository(eventType)
-                .listPartitionNames(timelineService.getActiveTimeline(eventType).getTopic())
-                .stream()
-                .sorted()
-                .collect(Collectors.toCollection(ArrayList::new));
-
-        return Collections.unmodifiableList(sortedPartitions);
+        return getPartitionStrategy(eventType).calculatePartition(nakadiRecordMetadata, orderedPartitions);
     }
 
     private PartitionStrategy getPartitionStrategy(final EventType eventType) {
