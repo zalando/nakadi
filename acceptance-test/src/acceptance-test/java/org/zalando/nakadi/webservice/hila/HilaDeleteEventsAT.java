@@ -94,12 +94,12 @@ public class HilaDeleteEventsAT extends BaseAT {
 
         // when stream_timeout is reached we should get 7 batches:
         // 6 batches with events, 7-th with debug message
-        waitFor(() -> assertThat(client.getBatches(), hasSize(7)));
-        assertThat(client.getBatches().get(0).getEvents().get(0).get("part_field"), equalTo("1"));
-        assertThat(client.getBatches().get(1).getEvents().get(0).get("part_field"), equalTo("2"));
-        assertThat(client.getBatches().get(2).getEvents().get(0).get("part_field"), equalTo("3"));
-        assertThat(client.getBatches().get(3).getEvents().get(0).get("part_field"), equalTo("4"));
-        assertThat(client.getBatches().get(4).getEvents().get(0).get("part_field"), equalTo("5"));
-        assertThat(client.getBatches().get(5).getEvents().get(0).get("part_field"), equalTo("7"));
+        waitFor(() -> assertThat(client.getJsonBatches(), hasSize(7)));
+        assertThat(client.getJsonBatches().get(0).getEvents().get(0).get("part_field"), equalTo("1"));
+        assertThat(client.getJsonBatches().get(1).getEvents().get(0).get("part_field"), equalTo("2"));
+        assertThat(client.getJsonBatches().get(2).getEvents().get(0).get("part_field"), equalTo("3"));
+        assertThat(client.getJsonBatches().get(3).getEvents().get(0).get("part_field"), equalTo("4"));
+        assertThat(client.getJsonBatches().get(4).getEvents().get(0).get("part_field"), equalTo("5"));
+        assertThat(client.getJsonBatches().get(5).getEvents().get(0).get("part_field"), equalTo("7"));
     }
 }

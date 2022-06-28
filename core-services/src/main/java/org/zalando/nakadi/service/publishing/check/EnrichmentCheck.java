@@ -24,8 +24,7 @@ public class EnrichmentCheck extends Check {
     }
 
     @Override
-    public List<NakadiRecordResult> execute(final EventType eventType,
-                                            final List<NakadiRecord> records) {
+    public List<NakadiRecordResult> execute(final EventType eventType, final List<NakadiRecord> records) {
 
         for (final NakadiRecord record : records) {
             try {

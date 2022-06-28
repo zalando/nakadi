@@ -81,7 +81,6 @@ public class KafkaTopicRepositoryTest {
     private final KafkaLocationManager kafkaLocationManager = mock(KafkaLocationManager.class);
     private NakadiRecordMapper nakadiRecordMapper;
     private static final String KAFKA_CLIENT_ID = "application_name-topic_name";
-    private final RecordDeserializer recordDeserializer = (f, e) -> e;
     @Captor
     private ArgumentCaptor<ProducerRecord<byte[], byte[]>> producerRecordArgumentCaptor;
 
@@ -188,27 +187,23 @@ public class KafkaTopicRepositoryTest {
         for (final Cursor cursor : MY_TOPIC_VALID_CURSORS) {
             kafkaTopicRepository.createEventConsumer(
                     KAFKA_CLIENT_ID,
-                    asTopicPosition(MY_TOPIC, asList(cursor)),
-                    recordDeserializer);
+                    asTopicPosition(MY_TOPIC, asList(cursor)));
         }
         // validate all valid cursors
         kafkaTopicRepository.createEventConsumer(
                 KAFKA_CLIENT_ID,
-                asTopicPosition(MY_TOPIC, MY_TOPIC_VALID_CURSORS),
-                recordDeserializer);
+                asTopicPosition(MY_TOPIC, MY_TOPIC_VALID_CURSORS));
 
         // validate each individual valid cursor
         for (final Cursor cursor : ANOTHER_TOPIC_VALID_CURSORS) {
             kafkaTopicRepository.createEventConsumer(
                     KAFKA_CLIENT_ID,
-                    asTopicPosition(ANOTHER_TOPIC, asList(cursor)),
-                    recordDeserializer);
+                    asTopicPosition(ANOTHER_TOPIC, asList(cursor)));
         }
         // validate all valid cursors
         kafkaTopicRepository.createEventConsumer(
                 KAFKA_CLIENT_ID,
-                asTopicPosition(ANOTHER_TOPIC, ANOTHER_TOPIC_VALID_CURSORS),
-                recordDeserializer);
+                asTopicPosition(ANOTHER_TOPIC, ANOTHER_TOPIC_VALID_CURSORS));
     }
 
     @Test
@@ -218,8 +213,7 @@ public class KafkaTopicRepositoryTest {
         try {
             kafkaTopicRepository.createEventConsumer(
                     KAFKA_CLIENT_ID,
-                    asTopicPosition(MY_TOPIC, asList(outOfBoundOffset)),
-                    recordDeserializer);
+                    asTopicPosition(MY_TOPIC, asList(outOfBoundOffset)));
         } catch (final InvalidCursorException e) {
             assertThat(e.getError(), equalTo(CursorError.UNAVAILABLE));
         }
@@ -228,8 +222,7 @@ public class KafkaTopicRepositoryTest {
         try {
             kafkaTopicRepository.createEventConsumer(
                     KAFKA_CLIENT_ID,
-                    asTopicPosition(MY_TOPIC, asList(nonExistingPartition)),
-                    recordDeserializer);
+                    asTopicPosition(MY_TOPIC, asList(nonExistingPartition)));
         } catch (final InvalidCursorException e) {
             assertThat(e.getError(), equalTo(CursorError.PARTITION_NOT_FOUND));
         }
@@ -238,8 +231,7 @@ public class KafkaTopicRepositoryTest {
         try {
             kafkaTopicRepository.createEventConsumer(
                     KAFKA_CLIENT_ID,
-                    asTopicPosition(MY_TOPIC, asList(wrongOffset)),
-                    recordDeserializer);
+                    asTopicPosition(MY_TOPIC, asList(wrongOffset)));
         } catch (final InvalidCursorException e) {
             assertThat(e.getError(), equalTo(CursorError.INVALID_FORMAT));
         }

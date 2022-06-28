@@ -7,6 +7,7 @@ import com.google.common.collect.Lists;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.zalando.nakadi.config.JsonConfig;
+import org.zalando.nakadi.generated.avro.ConsumptionBatch;
 import org.zalando.nakadi.util.ThreadUtils;
 import org.zalando.nakadi.view.SubscriptionCursor;
 import org.zalando.nakadi.webservice.BaseAT;
@@ -32,7 +33,7 @@ import java.util.function.Consumer;
 
 import static java.text.MessageFormat.format;
 
-public class TestStreamingClient implements Runnable {
+public class TestStreamingClient {
 
     public static final String SESSION_ID_UNKNOWN = "UNKNOWN";
     private static final Logger LOG = LoggerFactory.getLogger(TestStreamingClient.class);
@@ -40,7 +41,8 @@ public class TestStreamingClient implements Runnable {
     private final String baseUrl;
     private final String subscriptionId;
     private final String params;
-    private final List<StreamBatch> batches;
+    private final List<StreamBatch> jsonBatches;
+    private final List<ConsumptionBatch> binaryBatches;
     private final Map<String, List<String>> headers;
     private volatile boolean running;
     private HttpURLConnection connection;
@@ -56,7 +58,8 @@ public class TestStreamingClient implements Runnable {
         this.baseUrl = baseUrl;
         this.subscriptionId = subscriptionId;
         this.params = params;
-        this.batches = Lists.newArrayList();
+        this.jsonBatches = Lists.newArrayList();
+        this.binaryBatches = Lists.newArrayList();
         this.running = false;
         this.sessionId = SESSION_ID_UNKNOWN;
         this.token = Optional.empty();
@@ -82,68 +85,15 @@ public class TestStreamingClient implements Runnable {
         return new TestStreamingClient(BaseAT.URL, subscriptionId, "");
     }
 
-    @Override
-    public void run() {
-        LOG.info("Started streaming client thread");
-        try {
-            final String url = format("{0}/subscriptions/{1}/events?{2}", baseUrl, subscriptionId, params);
-            connection = (HttpURLConnection) new URL(url).openConnection();
-            token.ifPresent(token -> connection.setRequestProperty("Authorization", "Bearer " + token));
-
-            if (bodyParams.isPresent()) {
-                connection.setRequestMethod("POST");
-                connection.setDoOutput(true);
-                connection.setRequestProperty("Content-Type", "application/json");
-                try (DataOutputStream wr = new DataOutputStream(connection.getOutputStream())) {
-                    wr.write(bodyParams.get().getBytes(Charsets.UTF_8));
-                    wr.flush();
-                }
-            }
-
-            responseCode = connection.getResponseCode();
-            connection.getHeaderFields().entrySet().stream()
-                    .filter(entry -> entry.getKey() != null)
-                    .forEach(entry -> headers.put(entry.getKey(), entry.getValue()));
-            connection.setReadTimeout(10);
-            if (responseCode != HttpURLConnection.HTTP_OK) {
-                throw new IOException("Response code is " + responseCode);
-            }
-            started.countDown();
-            sessionId = connection.getHeaderField("X-Nakadi-StreamId");
-            try (InputStream inputStream = connection.getInputStream()) {
-                final BufferedReader reader = new BufferedReader(new InputStreamReader(inputStream, Charsets.UTF_8));
-
-                while (running) {
-                    try {
-                        final String line = reader.readLine();
-                        if (line == null) {
-                            return;
-                        }
-                        final StreamBatch streamBatch = MAPPER.readValue(line, StreamBatch.class);
-                        synchronized (batches) {
-                            batches.add(streamBatch);
-                        }
-                    } catch (final SocketTimeoutException ste) {
-                        LOG.info("No data in 10 ms, retrying read data");
-                    }
-                }
-            }
-        } catch (IOException e) {
-            LOG.error(e.getMessage(), e);
-        } finally {
-            if (null != batchesListener) {
-                batchesListener.accept(batches);
-            }
-            close();
-        }
-    }
-
-    private TestStreamingClient startInternal(final boolean wait) throws InterruptedException {
+    private TestStreamingClient startInternal(final boolean wait,
+                                              final Runnable action)
+            throws InterruptedException {
         if (!running) {
             running = true;
-            batches.clear();
+            jsonBatches.clear();
+            binaryBatches.clear();
             headers.clear();
-            final Thread thread = new Thread(this);
+            final Thread thread = new Thread(action);
             thread.start();
             if (wait) {
                 started.await();
@@ -156,7 +106,15 @@ public class TestStreamingClient implements Runnable {
 
     public TestStreamingClient start() {
         try {
-            return startInternal(false);
+            return startInternal(false, new JsonConsumer());
+        } catch (final InterruptedException ignore) {
+            throw new RuntimeException(ignore);
+        }
+    }
+
+    public TestStreamingClient startBinary() {
+        try {
+            return startInternal(false, new BinaryConsumer());
         } catch (final InterruptedException ignore) {
             throw new RuntimeException(ignore);
         }
@@ -165,12 +123,12 @@ public class TestStreamingClient implements Runnable {
     public TestStreamingClient startWithAutocommit(final Consumer<List<StreamBatch>> batchesListener)
             throws InterruptedException {
         this.batchesListener = batchesListener;
-        final TestStreamingClient client = startInternal(true);
+        final TestStreamingClient client = startInternal(true, new JsonConsumer());
         final Thread autocommitThread = new Thread(() -> {
             int oldIdx = 0;
             while (client.isRunning()) {
-                while (oldIdx < client.getBatches().size()) {
-                    final StreamBatch batch = client.getBatches().get(oldIdx);
+                while (oldIdx < client.getJsonBatches().size()) {
+                    final StreamBatch batch = client.getJsonBatches().get(oldIdx);
                     if (batch.getEvents() != null && !batch.getEvents().isEmpty()) {
                         try {
                             final SubscriptionCursor cursor = batch.getCursor();
@@ -207,9 +165,15 @@ public class TestStreamingClient implements Runnable {
         }
     }
 
-    public List<StreamBatch> getBatches() {
-        synchronized (batches) {
-            return new ArrayList<>(batches);
+    public List<StreamBatch> getJsonBatches() {
+        synchronized (jsonBatches) {
+            return new ArrayList<>(jsonBatches);
+        }
+    }
+
+    public List<ConsumptionBatch> getBinaryBatches() {
+        synchronized (binaryBatches) {
+            return new ArrayList<>(binaryBatches);
         }
     }
 
@@ -236,5 +200,111 @@ public class TestStreamingClient implements Runnable {
             return null;
         }
         return values.get(0);
+    }
+
+    private abstract class ConsumerThread implements Runnable {
+
+        abstract void addHeaders();
+
+        abstract void readBatches(InputStream inputStream) throws IOException;
+
+        abstract void callListener();
+
+        @Override
+        public void run() {
+            try {
+                final String url = format("{0}/subscriptions/{1}/events?{2}", baseUrl, subscriptionId, params);
+                connection = (HttpURLConnection) new URL(url).openConnection();
+                addHeaders();
+                token.ifPresent(token -> connection.setRequestProperty("Authorization", "Bearer " + token));
+
+                if (bodyParams.isPresent()) {
+                    connection.setRequestMethod("POST");
+                    connection.setDoOutput(true);
+                    connection.setRequestProperty("Content-Type", "application/json");
+                    try (DataOutputStream wr = new DataOutputStream(connection.getOutputStream())) {
+                        wr.write(bodyParams.get().getBytes(Charsets.UTF_8));
+                        wr.flush();
+                    }
+                }
+
+                responseCode = connection.getResponseCode();
+                connection.getHeaderFields().entrySet().stream()
+                        .filter(entry -> entry.getKey() != null)
+                        .forEach(entry -> headers.put(entry.getKey(), entry.getValue()));
+                connection.setReadTimeout(10);
+                if (responseCode != HttpURLConnection.HTTP_OK) {
+                    throw new IOException("Response code is " + responseCode);
+                }
+                started.countDown();
+                sessionId = connection.getHeaderField("X-Nakadi-StreamId");
+                try (InputStream inputStream = connection.getInputStream()) {
+                    readBatches(inputStream);
+                }
+            } catch (IOException e) {
+                LOG.error(e.getMessage(), e);
+            } finally {
+                callListener();
+                close();
+            }
+        }
+    }
+
+    private class JsonConsumer extends ConsumerThread {
+
+        @Override
+        void addHeaders() {
+        }
+
+        @Override
+        void readBatches(final InputStream inputStream) throws IOException {
+            LOG.info("Started streaming JSON batches");
+            final BufferedReader reader = new BufferedReader(new InputStreamReader(inputStream, Charsets.UTF_8));
+            while (running) {
+                try {
+                    final String line = reader.readLine();
+                    if (line == null) {
+                        return;
+                    }
+                    final StreamBatch streamBatch = MAPPER.readValue(line, StreamBatch.class);
+                    synchronized (jsonBatches) {
+                        jsonBatches.add(streamBatch);
+                    }
+                } catch (final SocketTimeoutException ste) {
+                    LOG.info("No data in 10 ms, retrying read data");
+                }
+            }
+        }
+
+        @Override
+        void callListener() {
+            if (null != batchesListener) {
+                batchesListener.accept(jsonBatches);
+            }
+        }
+    }
+
+    private class BinaryConsumer extends ConsumerThread {
+
+        @Override
+        void addHeaders() {
+            connection.setRequestProperty("Accept", "application/avro-binary");
+        }
+
+        @Override
+        void readBatches(final InputStream inputStream) throws IOException {
+            LOG.info("Started streaming binary batches");
+            while (running) {
+                final ConsumptionBatch consumptionBatch =
+                        ConsumptionBatch.getDecoder().decode(inputStream);
+                synchronized (binaryBatches) {
+                    binaryBatches.add(consumptionBatch);
+                }
+            }
+        }
+
+        @Override
+        void callListener() {
+        }
     }
 }
