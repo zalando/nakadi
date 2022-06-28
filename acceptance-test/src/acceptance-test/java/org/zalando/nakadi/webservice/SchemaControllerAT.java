@@ -97,8 +97,10 @@ public class SchemaControllerAT extends BaseAT {
                 .then()
                 .statusCode(HttpStatus.SC_OK)
                 .and()
-                .body("schema", Matchers.is(expectedSchema.getSchema()))
-                .body("type", Matchers.is(expectedSchema.getType()))
+                .body("schema", Matchers
+                        .is(expectedSchema.getSchema()))
+                .body("type", Matchers.is(expectedSchema.getType().
+                        toString().toLowerCase()))
                 .body("version", Matchers.notNullValue())
                 .body("created_at", Matchers.notNullValue());
     }
