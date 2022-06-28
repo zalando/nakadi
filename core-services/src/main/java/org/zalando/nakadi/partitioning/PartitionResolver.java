@@ -11,7 +11,6 @@ import org.zalando.nakadi.domain.NakadiMetadata;
 import org.zalando.nakadi.exceptions.runtime.InvalidEventTypeException;
 import org.zalando.nakadi.exceptions.runtime.NoSuchPartitionStrategyException;
 import org.zalando.nakadi.exceptions.runtime.PartitioningException;
-import org.zalando.nakadi.service.timeline.TimelineService;
 
 import java.util.List;
 import java.util.Map;
@@ -29,12 +28,9 @@ public class PartitionResolver {
             HASH_STRATEGY, USER_DEFINED_STRATEGY, RANDOM_STRATEGY);
 
     private final Map<String, PartitionStrategy> partitionStrategies;
-    private final TimelineService timelineService;
 
     @Autowired
-    public PartitionResolver(final TimelineService timelineService, final HashPartitionStrategy hashPartitionStrategy) {
-        this.timelineService = timelineService;
-
+    public PartitionResolver(final HashPartitionStrategy hashPartitionStrategy) {
         partitionStrategies = ImmutableMap.of(
                 HASH_STRATEGY, hashPartitionStrategy,
                 USER_DEFINED_STRATEGY, new UserDefinedPartitionStrategy(),
