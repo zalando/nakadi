@@ -42,7 +42,7 @@ public class NakadiAvroSchemaService {
                 .collect(Collectors.toList());
     }
 
-    public Schema getNakadiAvroSchemas(final String schemaName, final String version) {
+    public Schema getNakadiAvroSchema(final String schemaName, final String version) {
         return localSchemaRegistry.getEventTypeSchema(schemaName, version);
     }
 }
