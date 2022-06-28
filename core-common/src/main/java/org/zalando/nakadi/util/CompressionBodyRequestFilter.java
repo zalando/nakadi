@@ -91,7 +91,7 @@ public class CompressionBodyRequestFilter implements Filter {
         private final StreamConverter streamConverter;
 
         interface StreamConverter {
-            InputStream to(InputStream is) throws IOException;
+            InputStream convert(InputStream is) throws IOException;
         }
 
         FilterServletRequestWrapper(
@@ -103,7 +103,9 @@ public class CompressionBodyRequestFilter implements Filter {
 
         @Override
         public ServletInputStream getInputStream() throws IOException {
-            return new ServletInputStreamWrapper(streamConverter.to(super.getInputStream()));
+            final ServletInputStream wrappedServletInputStream = super.getInputStream();
+            return new ServletInputStreamWrapper(wrappedServletInputStream,
+                    streamConverter.convert(wrappedServletInputStream));
         }
 
         @Override
@@ -112,42 +114,51 @@ public class CompressionBodyRequestFilter implements Filter {
         }
     }
 
-    static class ServletInputStreamWrapper extends ServletInputStream {
+    private static class ServletInputStreamWrapper extends ServletInputStream {
 
-        private final InputStream inputStream;
+        private final ServletInputStream wrappedServletInputStream;
+        private final InputStream compressedInputStream;
 
-        ServletInputStreamWrapper(final InputStream inputStream) {
-            this.inputStream = inputStream;
+        private ServletInputStreamWrapper(
+                final ServletInputStream wrappedServletInputStream,
+                final InputStream compressedInputStream) {
+            this.wrappedServletInputStream = wrappedServletInputStream;
+            this.compressedInputStream = compressedInputStream;
         }
 
         @Override
         public int read() throws IOException {
-            return inputStream.read();
+            return compressedInputStream.read();
+        }
+
+        @Override
+        public int read(final byte[] b) throws IOException {
+            return compressedInputStream.read(b);
+        }
+
+        @Override
+        public int read(final byte[] b, final int off, final int len) throws IOException {
+            return compressedInputStream.read(b, off, len);
         }
 
         @Override
         public void close() throws IOException {
-            inputStream.close();
+            compressedInputStream.close();
         }
 
         @Override
         public boolean isFinished() {
-            try {
-                return inputStream.available() == 0;
-            } catch (final IOException e) {
-                LOG.error("Error occurred when reading request input stream", e);
-                return false;
-            }
+            return wrappedServletInputStream.isFinished();
         }
 
         @Override
         public boolean isReady() {
-            return true;
+            return wrappedServletInputStream.isReady();
         }
 
         @Override
         public void setReadListener(final ReadListener listener) {
-            throw new UnsupportedOperationException("Not supported");
+            wrappedServletInputStream.setReadListener(listener);
         }
     }
 
