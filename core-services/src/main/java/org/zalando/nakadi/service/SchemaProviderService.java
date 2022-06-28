@@ -9,5 +9,5 @@ public interface SchemaProviderService {
 
     String getAvroSchemaVersion(String etName, Schema schema);
 
-    String getSchemaVersion(final String name, final String schema, final EventTypeSchemaBase.Type type);
+    String getSchemaVersion(String name, String schema, EventTypeSchemaBase.Type type);
 }

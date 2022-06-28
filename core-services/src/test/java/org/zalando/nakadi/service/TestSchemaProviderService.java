@@ -22,7 +22,8 @@ public class TestSchemaProviderService implements SchemaProviderService {
     }
 
     @Override
-    public String getSchemaVersion(String name, String schema, EventTypeSchemaBase.Type type) {
+    public String getSchemaVersion(final String name, final String schema,
+                                   final EventTypeSchemaBase.Type type) {
         return null;
     }
 }
