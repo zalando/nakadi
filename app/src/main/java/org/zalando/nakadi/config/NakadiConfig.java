@@ -63,12 +63,13 @@ public class NakadiConfig {
 
     @Bean
     @Qualifier("pre-publishing-checks")
-    public List<Check> prePublishingChecks(final EventOwnerExtractorFactory eventOwnerExtractorFactory,
+    public List<Check> prePublishingChecks(final EventTypeCheck eventTypeCheck,
+                                           final EventOwnerExtractorFactory eventOwnerExtractorFactory,
                                            final AuthorizationValidator authValidator,
                                            final EnrichmentCheck enrichmentCheck,
                                            final PartitioningCheck partitioningCheck) {
         return Lists.newArrayList(
-                new EventTypeCheck(),
+                eventTypeCheck,
                 new EventOwnerSelectorCheck(eventOwnerExtractorFactory, authValidator),
                 new EventSizeCheck(),
                 partitioningCheck,
@@ -79,11 +80,13 @@ public class NakadiConfig {
 
     @Bean
     @Qualifier("pre-deleting-checks")
-    public List<Check> preDeletingChecks(final EventOwnerExtractorFactory eventOwnerExtractorFactory,
+    public List<Check> preDeletingChecks(final EventTypeCheck eventTypeCheck,
+                                         final EventOwnerExtractorFactory eventOwnerExtractorFactory,
                                          final AuthorizationValidator authValidator,
                                          final PartitioningCheck partitioningCheck) {
+        // TODO: potentially we could skip the event type check for deletion
         return Lists.newArrayList(
-                new EventTypeCheck(),
+                eventTypeCheck,
                 new EventOwnerSelectorCheck(eventOwnerExtractorFactory, authValidator),
                 new EventDeletionEmptyPayloadCheck(),
                 partitioningCheck,
