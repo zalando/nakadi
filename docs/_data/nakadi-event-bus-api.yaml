@@ -593,7 +593,7 @@ paths:
           schema:
             $ref: '#/definitions/Problem'
         '404':
-          description: If no matching is schema is found.
+          description: If no matching schema is found.
           schema:
             $ref: '#/definitions/Problem'
         '422':

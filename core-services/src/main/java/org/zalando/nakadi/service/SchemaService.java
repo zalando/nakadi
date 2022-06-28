@@ -33,6 +33,7 @@ import org.zalando.nakadi.exceptions.runtime.InvalidVersionNumberException;
 import org.zalando.nakadi.exceptions.runtime.NoSuchSchemaException;
 import org.zalando.nakadi.exceptions.runtime.SchemaValidationException;
 import org.zalando.nakadi.exceptions.runtime.ServiceTemporarilyUnavailableException;
+import org.zalando.nakadi.exceptions.runtime.UnsupportedSchemaTypeException;
 import org.zalando.nakadi.repository.db.EventTypeRepository;
 import org.zalando.nakadi.repository.db.SchemaRepository;
 import org.zalando.nakadi.service.timeline.TimelineSync;
@@ -313,7 +314,28 @@ public class SchemaService implements SchemaProviderService {
         );
     }
 
-    private class SchemaId {
+    @Override
+    public String getSchemaVersion(final String name, final String schema,
+                                   final EventTypeSchemaBase.Type type)
+            throws NoSuchSchemaException {
+        switch (type) {
+            case AVRO_SCHEMA:
+                return getAvroSchemaVersion(name,  new Parser().parse(schema));
+            case JSON_SCHEMA:
+                final JSONObject jsonSchema = new JSONObject(schema);
+                return schemaRepository.getSchemas(name, 0, 100).stream()
+                        .filter(ets -> ets.getType() == EventTypeSchemaBase.Type.JSON_SCHEMA)
+                        .filter(ets -> new JSONObject(ets.getSchema()).similar(jsonSchema))
+                        .map(EventTypeSchema::getVersion)
+                        .findFirst()
+                        .orElseThrow(() -> new NoSuchSchemaException(
+                                String.format("schema is not found for %s", name)));
+            default:
+                throw new UnsupportedSchemaTypeException("Unsupported schema type: " + type);
+        }
+    }
+
+    private static class SchemaId {
         private final String name;
         private final String version;
 
@@ -335,7 +357,7 @@ public class SchemaService implements SchemaProviderService {
         }
     }
 
-    private class NameSchema {
+    private static class NameSchema {
         private final String name;
         private final org.apache.avro.Schema schema;
 

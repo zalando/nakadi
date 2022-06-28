@@ -196,7 +196,7 @@ public class SchemaControllerTest {
         final var errors = new BeanPropertyBindingResult(etSchemaBase, "etSchemaBase");
         validator.validate(etSchemaBase, errors);
 
-        schemaController.create("test", etSchemaBase, errors);
+        schemaController.create("test", etSchemaBase, false, errors);
     }
 
     @Test(expected = ValidationException.class)
@@ -205,6 +205,19 @@ public class SchemaControllerTest {
         final var errors = new BeanPropertyBindingResult(etSchemaBase, "etSchemaBase");
         validator.validate(etSchemaBase, errors);
 
-        schemaController.create("test", etSchemaBase, errors);
+        schemaController.create("test", etSchemaBase, false, errors);
     }
+
+    @Test
+    public void testValidCreateSchemaWithFetchThen200() {
+        final EventType eventType = buildDefaultEventType();
+        Mockito.when(eventTypeService.get(eventType.getName())).thenReturn(eventType);
+
+        final ResponseEntity<?> result = schemaController
+                .getSchemaVersion(eventType.getName(), "latest", nativeWebRequest);
+
+        Assert.assertEquals(HttpStatus.OK, result.getStatusCode());
+        Assert.assertEquals(eventType.getSchema().toString(), result.getBody().toString());
+    }
+
 }

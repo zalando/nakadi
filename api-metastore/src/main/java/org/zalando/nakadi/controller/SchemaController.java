@@ -2,10 +2,8 @@ package org.zalando.nakadi.controller;
 
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
-import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.validation.Errors;
-import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -27,7 +25,6 @@ import org.zalando.nakadi.exceptions.runtime.NoSuchSchemaException;
 import org.zalando.nakadi.exceptions.runtime.SchemaEvolutionException;
 import org.zalando.nakadi.exceptions.runtime.ValidationException;
 import org.zalando.nakadi.model.CompatibilityResponse;
-import org.zalando.nakadi.model.SchemaVersionResponse;
 import org.zalando.nakadi.model.SchemaWrapper;
 import org.zalando.nakadi.plugin.api.authz.AuthorizationService;
 import org.zalando.nakadi.service.AdminService;
@@ -36,7 +33,6 @@ import org.zalando.nakadi.service.EventTypeService;
 import org.zalando.nakadi.service.SchemaService;
 import org.zalando.nakadi.service.publishing.NakadiAuditLogPublisher;
 import org.zalando.nakadi.service.publishing.NakadiKpiPublisher;
-import org.zalando.nakadi.util.AvroUtils;
 
 import javax.validation.Valid;
 import java.util.Optional;
@@ -71,12 +67,21 @@ public class SchemaController {
     @RequestMapping(value = "/event-types/{name}/schemas", method = RequestMethod.POST)
     public ResponseEntity<?> create(@PathVariable("name") final String name,
                                     @Valid @RequestBody final EventTypeSchemaBase schema,
+                                    @RequestParam(value = "fetch", defaultValue = "false")
+                                        final Boolean fetch,
                                     final Errors errors) {
         if (errors.hasErrors()) {
             throw new ValidationException(errors);
         }
 
         final var originalEventType = eventTypeService.fetchFromRepository(name);
+
+        if(fetch){
+            final String version;
+                version = schemaService.
+                        getSchemaVersion(name, schema.getSchema(), schema.getType());
+            return ResponseEntity.status(HttpStatus.OK).body(schemaService.getSchemaVersion(name, version));
+        }
 
         if (!adminService.isAdmin(AuthorizationService.Operation.WRITE)) {
             authorizationValidator.authorizeEventTypeAdmin(originalEventType);
@@ -164,22 +169,5 @@ public class SchemaController {
 
         final EventTypeSchema result = schemaService.getSchemaVersion(name, version);
         return ResponseEntity.status(HttpStatus.OK).body(result);
-    }
-
-    @GetMapping(
-            value = "/event-types/{name}/schemas",
-            consumes = MediaType.APPLICATION_JSON_VALUE)
-    public ResponseEntity<?> getVersionBySchema(@PathVariable("name") final String name,
-                                              @Valid @RequestBody final SchemaWrapper schemaWrapper)
-            throws NoSuchEventTypeException, InternalNakadiException,
-            NoSuchSchemaException, InvalidVersionNumberException {
-
-        //make sure event type exists, otherwise throws exception
-        eventTypeService.get(name);
-
-        final String version = schemaService.
-                getAvroSchemaVersion(name, AvroUtils.getParsedSchema(schemaWrapper.getSchema()));
-
-        return ResponseEntity.status(HttpStatus.OK).body(new SchemaVersionResponse(version, schemaWrapper.getSchema()));
     }
 }
