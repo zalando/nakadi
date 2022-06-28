@@ -560,12 +560,21 @@ paths:
         [event types](https://zalando.github.io/nakadi/manual.html#using_event-types) section of the documentation.
 
         For API backward compatibility, adding a new schema can also be done by updating the entire event type via PUT.
+
+        In case fetch parameter is set to true, returns existing schema that matches supplied schema.
       parameters:
       - name: name
         in: path
         description: EventType name
         type: string
         required: true
+      - name: fetch
+        in: query
+        description: |
+        If fetch is set to true, then supplied schema is matched with existing schemas and an existing schema is
+        returned if matched.
+        type: boolean
+        default: false
       - name: event-type-schema
         in: body
         description: |
@@ -582,6 +591,10 @@ paths:
             New schema registered with success.
         '401':
           description: Not authenticated
+          schema:
+            $ref: '#/definitions/Problem'
+        '404':
+          description: If no matching is schema is found.
           schema:
             $ref: '#/definitions/Problem'
         '422':
