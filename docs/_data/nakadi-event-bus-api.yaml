@@ -571,8 +571,7 @@ paths:
       - name: fetch
         in: query
         description: |
-        If fetch is set to true, then supplied schema is matched with existing schemas and an existing schema is
-        returned if matched.
+        If fetch parameter is set to true, returns existing schema that matches supplied schema.
         type: boolean
         default: false
       - name: event-type-schema
