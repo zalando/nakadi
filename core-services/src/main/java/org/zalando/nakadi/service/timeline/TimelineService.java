@@ -266,7 +266,7 @@ public class TimelineService {
         while (rIterator.hasPrevious()) {
             final Timeline toCheck = rIterator.previous();
             if (toCheck.getSwitchedAt() != null) {
-                return Optional.ofNullable(toCheck);
+                return Optional.of(toCheck);
             }
         }
         return Optional.empty();
