@@ -55,9 +55,9 @@ public class CompressionBodyRequestFilter implements Filter {
         } else if (contentEncodingOpt.isPresent()) {
             final String contentEncoding = contentEncodingOpt.get();
             if (contentEncoding.contains("gzip")) {
-                request = new FilterServletRequestWrapper(request, GZIPInputStream::new);
+                request = new FilterServletRequestWrapper(request, new GZIPInputStream(request.getInputStream()));
             } else if (contentEncoding.contains("zstd")) {
-                request = new FilterServletRequestWrapper(request, ZstdInputStream::new);
+                request = new FilterServletRequestWrapper(request, new ZstdInputStream(request.getInputStream()));
             }
         }
 
@@ -88,77 +88,76 @@ public class CompressionBodyRequestFilter implements Filter {
 
     static class FilterServletRequestWrapper extends HttpServletRequestWrapper {
 
-        private final StreamConverter streamConverter;
-
-        interface StreamConverter {
-            InputStream convert(InputStream is) throws IOException;
-        }
+        private final ServletInputStreamWrapper inputStreamWrapper;
+        private BufferedReader reader;
 
         FilterServletRequestWrapper(
                 final HttpServletRequest request,
-                final StreamConverter streamConverter) {
+                final InputStream decompressedStream) throws IOException {
             super(request);
-            this.streamConverter = streamConverter;
+            this.inputStreamWrapper = new ServletInputStreamWrapper(request.getInputStream(), decompressedStream);
+            this.reader = null;
         }
 
         @Override
         public ServletInputStream getInputStream() throws IOException {
-            final ServletInputStream wrappedServletInputStream = super.getInputStream();
-            return new ServletInputStreamWrapper(wrappedServletInputStream,
-                    streamConverter.convert(wrappedServletInputStream));
+            return inputStreamWrapper;
         }
 
         @Override
         public BufferedReader getReader() throws IOException {
-            return new BufferedReader(new InputStreamReader(this.getInputStream()));
+            if (null == reader) {
+                reader = new BufferedReader(new InputStreamReader(inputStreamWrapper));
+            }
+            return reader;
         }
     }
 
     private static class ServletInputStreamWrapper extends ServletInputStream {
 
-        private final ServletInputStream wrappedServletInputStream;
-        private final InputStream compressedInputStream;
+        private final ServletInputStream originalServletInputStream;
+        private final InputStream convertedInputStream;
 
         private ServletInputStreamWrapper(
-                final ServletInputStream wrappedServletInputStream,
-                final InputStream compressedInputStream) {
-            this.wrappedServletInputStream = wrappedServletInputStream;
-            this.compressedInputStream = compressedInputStream;
+                final ServletInputStream originalServletInputStream,
+                final InputStream convertedInputStream) {
+            this.originalServletInputStream = originalServletInputStream;
+            this.convertedInputStream = convertedInputStream;
         }
 
         @Override
         public int read() throws IOException {
-            return compressedInputStream.read();
+            return convertedInputStream.read();
         }
 
         @Override
         public int read(final byte[] b) throws IOException {
-            return compressedInputStream.read(b);
+            return convertedInputStream.read(b);
         }
 
         @Override
         public int read(final byte[] b, final int off, final int len) throws IOException {
-            return compressedInputStream.read(b, off, len);
+            return convertedInputStream.read(b, off, len);
         }
 
         @Override
         public void close() throws IOException {
-            compressedInputStream.close();
+            convertedInputStream.close();
         }
 
         @Override
         public boolean isFinished() {
-            return wrappedServletInputStream.isFinished();
+            return originalServletInputStream.isFinished();
         }
 
         @Override
         public boolean isReady() {
-            return wrappedServletInputStream.isReady();
+            return originalServletInputStream.isReady();
         }
 
         @Override
         public void setReadListener(final ReadListener listener) {
-            wrappedServletInputStream.setReadListener(listener);
+            originalServletInputStream.setReadListener(listener);
         }
     }
 
