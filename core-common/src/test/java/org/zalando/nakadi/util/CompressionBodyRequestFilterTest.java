@@ -14,7 +14,7 @@ public class CompressionBodyRequestFilterTest {
         final CompressionBodyRequestFilter.FilterServletRequestWrapper wrapper =
                 new CompressionBodyRequestFilter.FilterServletRequestWrapper(
                         Mockito.mock(Request.class),
-                        (is) -> new ZstdInputStream(
+                        new ZstdInputStream(
                                 CompressionBodyRequestFilterTest.class.getResourceAsStream("event.zstd"))
                 );
 
