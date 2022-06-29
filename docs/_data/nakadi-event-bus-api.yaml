@@ -584,7 +584,7 @@ paths:
       responses:
         '200':
           description: |
-            Returns existing event type schema
+            Existing event type schema, with version.
           schema:
             $ref: '#/definitions/EventTypeSchema'
         '201':
