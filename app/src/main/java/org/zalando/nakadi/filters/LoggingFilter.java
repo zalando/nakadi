@@ -237,12 +237,12 @@ public class LoggingFilter extends OncePerRequestFilter {
 
     private static class CountingInputStreamWrapper extends ServletInputStream {
 
-        private final ServletInputStream wrappedInputStream;
+        private final ServletInputStream originalInputStream;
         private final CountingInputStream countingInputStream;
 
-        CountingInputStreamWrapper(final ServletInputStream wrappedInputStream) {
-            this.wrappedInputStream = wrappedInputStream;
-            this.countingInputStream = new CountingInputStream(wrappedInputStream);
+        CountingInputStreamWrapper(final ServletInputStream originalInputStream) {
+            this.originalInputStream = originalInputStream;
+            this.countingInputStream = new CountingInputStream(originalInputStream);
         }
 
         long getCount() {
@@ -271,17 +271,17 @@ public class LoggingFilter extends OncePerRequestFilter {
 
         @Override
         public boolean isFinished() {
-            return wrappedInputStream.isFinished();
+            return originalInputStream.isFinished();
         }
 
         @Override
         public boolean isReady() {
-            return wrappedInputStream.isReady();
+            return originalInputStream.isReady();
         }
 
         @Override
         public void setReadListener(final ReadListener listener) {
-            wrappedInputStream.setReadListener(listener);
+            originalInputStream.setReadListener(listener);
         }
     }
 
@@ -309,12 +309,12 @@ public class LoggingFilter extends OncePerRequestFilter {
 
     private static class CountingOutputStreamWrapper extends ServletOutputStream {
 
-        private final ServletOutputStream wrappedOutputStream;
+        private final ServletOutputStream originalOutputStream;
         private final CountingOutputStream countingOutputStream;
 
-        CountingOutputStreamWrapper(final ServletOutputStream wrappedOutputStream) {
-            this.wrappedOutputStream = wrappedOutputStream;
-            this.countingOutputStream = new CountingOutputStream(wrappedOutputStream);
+        CountingOutputStreamWrapper(final ServletOutputStream originalOutputStream) {
+            this.originalOutputStream = originalOutputStream;
+            this.countingOutputStream = new CountingOutputStream(originalOutputStream);
         }
 
         long getCount() {
@@ -348,12 +348,12 @@ public class LoggingFilter extends OncePerRequestFilter {
 
         @Override
         public boolean isReady() {
-            return wrappedOutputStream.isReady();
+            return originalOutputStream.isReady();
         }
 
         @Override
         public void setWriteListener(final WriteListener listener) {
-            wrappedOutputStream.setWriteListener(listener);
+            originalOutputStream.setWriteListener(listener);
         }
     }
 }
