@@ -571,7 +571,7 @@ paths:
       - name: fetch
         in: query
         description: |
-        If fetch parameter is set to true, returns existing schema that matches supplied schema.
+          If fetch parameter is set to true, returns existing schema that matches supplied schema.
         type: boolean
         default: false
       - name: event-type-schema
@@ -585,6 +585,8 @@ paths:
         '200':
           description: |
             Returns existing event type schema
+          schema:
+            $ref: '#/definitions/EventTypeSchema'
         '201':
           description: |
             New schema registered with success.

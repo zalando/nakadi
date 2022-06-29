@@ -303,8 +303,7 @@ public class SchemaService implements SchemaProviderService {
             throws NoSuchSchemaException {
         final NameSchema key = new NameSchema(name, schema);
         return schemaVersionCache.computeIfAbsent(key, (nameSchema) ->
-                // assuming there will be no more than 100 schemas for the event type
-                schemaRepository.getSchemas(name, 0, 100).stream()
+                schemaRepository.getAllSchemas(name).stream()
                         .filter(ets -> ets.getType() == EventTypeSchemaBase.Type.AVRO_SCHEMA)
                         .filter(ets -> new Parser().parse(ets.getSchema()).equals(schema))
                         .map(EventTypeSchema::getVersion)
@@ -317,13 +316,13 @@ public class SchemaService implements SchemaProviderService {
     @Override
     public String getSchemaVersion(final String name, final String schema,
                                    final EventTypeSchemaBase.Type type)
-            throws NoSuchSchemaException {
+            throws NoSuchSchemaException, UnsupportedSchemaTypeException {
         switch (type) {
             case AVRO_SCHEMA:
                 return getAvroSchemaVersion(name,  new Parser().parse(schema));
             case JSON_SCHEMA:
                 final JSONObject jsonSchema = new JSONObject(schema);
-                return schemaRepository.getSchemas(name, 0, 100).stream()
+                return schemaRepository.getAllSchemas(name).stream()
                         .filter(ets -> ets.getType() == EventTypeSchemaBase.Type.JSON_SCHEMA)
                         .filter(ets -> new JSONObject(ets.getSchema()).similar(jsonSchema))
                         .map(EventTypeSchema::getVersion)
