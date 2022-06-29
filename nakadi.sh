@@ -29,10 +29,6 @@ function startStorages() {
   docker-compose up -d postgres zookeeper kafka
 }
 
-function stopStorages() {
-  docker-compose down
-}
-
 function acceptanceTests() {
   export SPRING_PROFILES_ACTIVE=acceptanceTest
   docker-compose up -d --build

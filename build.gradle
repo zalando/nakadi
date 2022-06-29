@@ -81,10 +81,6 @@ task startStorages(type: Exec) {
     commandLine "bash", "-c", "./nakadi.sh start-storages"
 }
 
-task stopStorages(type: Exec) {
-    commandLine "bash", "-c", "./nakadi.sh stop-storages"
-}
-
 task checkstyle {
     subprojects.each { dependsOn(":${it.name}:checkstyleMain") }
     subprojects.each { dependsOn(":${it.name}:checkstyleTest") }
