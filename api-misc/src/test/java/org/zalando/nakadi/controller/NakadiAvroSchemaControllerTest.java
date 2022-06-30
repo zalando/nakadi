@@ -5,8 +5,6 @@ import org.junit.Before;
 import org.junit.Test;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.core.io.DefaultResourceLoader;
-import org.springframework.core.io.Resource;
 import org.springframework.http.converter.StringHttpMessageConverter;
 import org.springframework.test.web.servlet.MockMvc;
 import org.zalando.nakadi.config.SecuritySettings;
@@ -15,10 +13,13 @@ import org.zalando.nakadi.controller.advice.SettingsExceptionHandler;
 import org.zalando.nakadi.plugin.api.authz.AuthorizationService;
 import org.zalando.nakadi.security.ClientResolver;
 import org.zalando.nakadi.service.LocalSchemaRegistry;
+import org.zalando.nakadi.utils.TestUtils;
 
 import java.io.IOException;
 import java.util.Optional;
 
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertTrue;
 import static org.mockito.Mockito.doReturn;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
@@ -32,12 +33,12 @@ public class NakadiAvroSchemaControllerTest {
     private static final Logger LOG = LoggerFactory.getLogger(NakadiAvroSchemaControllerTest.class);
     private final SecuritySettings securitySettings = mock(SecuritySettings.class);
     private final AuthorizationService authorizationService = mock(AuthorizationService.class);
+    private final ObjectMapper objectMapper = new ObjectMapper();
     private MockMvc mockMvc;
 
     @Before
     public void before() throws IOException {
-        final Resource eventTypeRes = new DefaultResourceLoader().getResource("avro-schema/");
-        final LocalSchemaRegistry localSchemaRegistry = new LocalSchemaRegistry(eventTypeRes);
+        final LocalSchemaRegistry localSchemaRegistry = TestUtils.getLocalSchemaRegistry();
         final NakadiAvroSchemaController controller = new NakadiAvroSchemaController(
                 localSchemaRegistry, new ObjectMapper());
         doReturn("org/zalando/nakadi").when(securitySettings).getAdminClientId();
@@ -62,6 +63,10 @@ public class NakadiAvroSchemaControllerTest {
                 .andReturn();
         final var response = result.getResponse().getContentAsString();
         LOG.info("Got response = {}", response);
+        final var jsonResponse = objectMapper.readTree(response);
+        assertTrue(jsonResponse.isObject());
+        assertEquals("record", jsonResponse.get("type").asText());
+        assertEquals("PublishingBatch", jsonResponse.get("name").asText());
     }
 
     @Test
@@ -75,6 +80,13 @@ public class NakadiAvroSchemaControllerTest {
                 .andReturn();
         final var response = result.getResponse().getContentAsString();
         LOG.info("Got response = {}", response);
+        final var jsonResponse = objectMapper.readTree(response);
+        assertTrue(jsonResponse.isObject());
+        final var items = jsonResponse.get("items");
+        assertTrue(items.isArray());
+        final var firstItem = items.get(0);
+        assertTrue(firstItem.get("version").isTextual());
+        assertTrue(firstItem.get("avro_schema").isObject());
     }
 
 }
