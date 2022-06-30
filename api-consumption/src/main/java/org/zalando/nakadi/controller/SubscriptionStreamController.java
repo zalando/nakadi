@@ -146,7 +146,7 @@ public class SubscriptionStreamController {
 
         @Override
         public void onException(final Exception ex) {
-            LOG.warn("Exception occurred while streaming: {}", ex.getMessage());
+            LOG.warn("Exception occurred while streaming", ex);
             if (!headersSent) {
                 headersSent = true;
                 try {
@@ -157,7 +157,7 @@ public class SubscriptionStreamController {
                     LOG.error("Failed to write exception to response", e);
                 }
             } else {
-                LOG.warn("Exception found while streaming, but no data could be provided to client", ex);
+                LOG.warn("Response was already sent, cannot report error to the client");
             }
         }
 
