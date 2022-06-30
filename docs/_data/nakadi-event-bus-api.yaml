@@ -2831,8 +2831,7 @@ definitions:
 
           Note: the name can encode the owner/responsible for this EventType and ideally should
           follow a common pattern that makes it easy to read and understand, but this level of
-          structure is not enforced. For example a team name and data type can be used such as
-          'acme-team.price-change'.
+          structure is not enforced.
         pattern: '[a-zA-Z][-0-9a-zA-Z_]*(\.[0-9a-zA-Z][-0-9a-zA-Z_]*)*'
         example: order.order_cancelled
       owning_application:
