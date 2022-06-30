@@ -5,7 +5,7 @@ import org.zalando.nakadi.config.KPIEventTypes;
 
 public class DataStreamedEvent extends KPIEvent {
 
-    private static final String PATH_SCHEMA = "avro-schema/nakadi.data.streamed/nakadi.data.streamed.0.avsc";
+    private static final String PATH_SCHEMA = "avro-schema/nakadi.data.streamed.avsc";
     private static final Schema SCHEMA = loadSchema(PATH_SCHEMA);
 
     @KPIField("event_type")

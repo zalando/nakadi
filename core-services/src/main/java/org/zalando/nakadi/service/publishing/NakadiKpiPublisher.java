@@ -1,6 +1,7 @@
 package org.zalando.nakadi.service.publishing;
 
 import org.apache.avro.generic.GenericRecord;
+import org.apache.avro.specific.SpecificRecord;
 import org.json.JSONObject;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -9,11 +10,9 @@ import org.springframework.stereotype.Component;
 import org.zalando.nakadi.domain.Feature;
 import org.zalando.nakadi.domain.NakadiMetadata;
 import org.zalando.nakadi.domain.NakadiRecord;
-import org.zalando.nakadi.domain.kpi.AccessLogEvent;
 import org.zalando.nakadi.domain.kpi.BatchPublishedEvent;
 import org.zalando.nakadi.domain.kpi.DataStreamedEvent;
 import org.zalando.nakadi.domain.kpi.EventTypeLogEvent;
-import org.zalando.nakadi.domain.kpi.KPIEvent;
 import org.zalando.nakadi.domain.kpi.SubscriptionLogEvent;
 import org.zalando.nakadi.mapper.NakadiRecordMapper;
 import org.zalando.nakadi.security.UsernameHasher;
@@ -67,14 +66,13 @@ public class NakadiKpiPublisher {
         this.localSchemaRegistry = localSchemaRegistry;
         this.nakadiRecordMapper = nakadiRecordMapper;
         this.kpiEventMapper = new KPIEventMapper(Set.of(
-                AccessLogEvent.class,
                 SubscriptionLogEvent.class,
                 EventTypeLogEvent.class,
                 BatchPublishedEvent.class,
                 DataStreamedEvent.class));
     }
 
-    public void publish(final Supplier<KPIEvent> kpiEventSupplier) {
+    public void publish(final Supplier<SpecificRecord> kpiEventSupplier) {
         try {
             if (!featureToggleService.isFeatureEnabled(Feature.KPI_COLLECTION)) {
                 return;
