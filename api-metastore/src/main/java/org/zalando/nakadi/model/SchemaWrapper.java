@@ -3,14 +3,14 @@ package org.zalando.nakadi.model;
 import javax.validation.constraints.NotNull;
 import java.util.Objects;
 
-public class CompatibilitySchemaRequest {
+public class SchemaWrapper {
     @NotNull
     private String schema;
 
-    public CompatibilitySchemaRequest() {
+    public SchemaWrapper() {
     }
 
-    public CompatibilitySchemaRequest(final String schema) {
+    public SchemaWrapper(final String schema) {
         this.schema = schema;
     }
 
@@ -30,7 +30,7 @@ public class CompatibilitySchemaRequest {
         if (o == null || getClass() != o.getClass()){
             return false;
         }
-        final CompatibilitySchemaRequest that = (CompatibilitySchemaRequest) o;
+        final SchemaWrapper that = (SchemaWrapper) o;
         return Objects.equals(schema, that.schema);
     }
 
@@ -41,7 +41,7 @@ public class CompatibilitySchemaRequest {
 
     @Override
     public String toString() {
-        return "CompatibilitySchemaRequest{" +
+        return "SchemaWrapper{" +
                 "schema='" + schema + '\'' +
                 '}';
     }

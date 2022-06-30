@@ -25,7 +25,7 @@ import org.zalando.nakadi.exceptions.runtime.NoSuchSchemaException;
 import org.zalando.nakadi.exceptions.runtime.SchemaEvolutionException;
 import org.zalando.nakadi.exceptions.runtime.ValidationException;
 import org.zalando.nakadi.model.CompatibilityResponse;
-import org.zalando.nakadi.model.CompatibilitySchemaRequest;
+import org.zalando.nakadi.model.SchemaWrapper;
 import org.zalando.nakadi.plugin.api.authz.AuthorizationService;
 import org.zalando.nakadi.service.AdminService;
 import org.zalando.nakadi.service.AuthorizationValidator;
@@ -67,12 +67,21 @@ public class SchemaController {
     @RequestMapping(value = "/event-types/{name}/schemas", method = RequestMethod.POST)
     public ResponseEntity<?> create(@PathVariable("name") final String name,
                                     @Valid @RequestBody final EventTypeSchemaBase schema,
+                                    @RequestParam(value = "fetch", defaultValue = "false")
+                                        final Boolean fetch,
                                     final Errors errors) {
         if (errors.hasErrors()) {
             throw new ValidationException(errors);
         }
 
         final var originalEventType = eventTypeService.fetchFromRepository(name);
+
+        if(fetch){
+            final String version;
+                version = schemaService.
+                        getSchemaVersion(name, schema.getSchema(), schema.getType());
+            return ResponseEntity.status(HttpStatus.OK).body(schemaService.getSchemaVersion(name, version));
+        }
 
         if (!adminService.isAdmin(AuthorizationService.Operation.WRITE)) {
             authorizationValidator.authorizeEventTypeAdmin(originalEventType);
@@ -102,7 +111,7 @@ public class SchemaController {
     @RequestMapping(value = "/event-types/{name}/schemas/{version}/compatibility-check", method = RequestMethod.POST)
     public ResponseEntity<?> checkCompatibility(@PathVariable("name") final String name,
                                                 @PathVariable("version") final String version,
-                                                @Valid @RequestBody final CompatibilitySchemaRequest schema,
+                                                @Valid @RequestBody final SchemaWrapper schema,
                                                 final Errors errors) {
         if (errors.hasErrors()) {
             throw new ValidationException(errors);

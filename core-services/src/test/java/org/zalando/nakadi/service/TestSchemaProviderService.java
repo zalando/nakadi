@@ -1,6 +1,7 @@
 package org.zalando.nakadi.service;
 
 import org.apache.avro.Schema;
+import org.zalando.nakadi.domain.EventTypeSchemaBase;
 
 public class TestSchemaProviderService implements SchemaProviderService {
 
@@ -17,6 +18,12 @@ public class TestSchemaProviderService implements SchemaProviderService {
 
     @Override
     public String getAvroSchemaVersion(final String etName, final Schema schema) {
+        return null;
+    }
+
+    @Override
+    public String getSchemaVersion(final String name, final String schema,
+                                   final EventTypeSchemaBase.Type type) {
         return null;
     }
 }

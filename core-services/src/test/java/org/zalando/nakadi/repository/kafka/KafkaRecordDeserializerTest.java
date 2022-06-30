@@ -12,6 +12,7 @@ import org.junit.Assert;
 import org.junit.Test;
 import org.springframework.core.io.DefaultResourceLoader;
 import org.springframework.core.io.Resource;
+import org.zalando.nakadi.domain.EventTypeSchemaBase;
 import org.zalando.nakadi.generated.avro.Envelope;
 import org.zalando.nakadi.generated.avro.Metadata;
 import org.zalando.nakadi.mapper.NakadiRecordMapper;
@@ -49,6 +50,12 @@ public class KafkaRecordDeserializerTest {
 
             @Override
             public String getAvroSchemaVersion(final String etName, final Schema schema) {
+                return null;
+            }
+
+            @Override
+            public String getSchemaVersion(final String name, final String schema,
+                                           final EventTypeSchemaBase.Type type) {
                 return null;
             }
         };

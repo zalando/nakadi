@@ -19,7 +19,7 @@ import org.zalando.nakadi.exceptions.runtime.SchemaEvolutionException;
 import org.zalando.nakadi.exceptions.runtime.NoSuchEventTypeException;
 import org.zalando.nakadi.exceptions.runtime.ValidationException;
 import org.zalando.nakadi.model.CompatibilityResponse;
-import org.zalando.nakadi.model.CompatibilitySchemaRequest;
+import org.zalando.nakadi.model.SchemaWrapper;
 import org.zalando.nakadi.service.AdminService;
 import org.zalando.nakadi.service.AuthorizationValidator;
 import org.zalando.nakadi.service.EventTypeService;
@@ -127,7 +127,7 @@ public class SchemaControllerTest {
                 .checkCompatibility(
                         eventTypeOriginal.getName(),
                         "latest",
-                        new CompatibilitySchemaRequest(eventTypeNew.getSchema().getSchema()),
+                        new SchemaWrapper(eventTypeNew.getSchema().getSchema()),
                         new MapBindingResult(new HashMap<>(), "name"));
 
         Assert.assertEquals(HttpStatus.OK, result.getStatusCode());
@@ -172,7 +172,7 @@ public class SchemaControllerTest {
                 .checkCompatibility(
                         eventTypeOriginal.getName(),
                         "latest",
-                        new CompatibilitySchemaRequest(eventTypeNew.getSchema().getSchema()),
+                        new SchemaWrapper(eventTypeNew.getSchema().getSchema()),
                         new MapBindingResult(new HashMap<>(), "name"));
 
         Assert.assertEquals(HttpStatus.OK, result.getStatusCode());
@@ -183,7 +183,7 @@ public class SchemaControllerTest {
 
     @Test(expected = ValidationException.class)
     public void testValidationExceptionOnSchemaNullWhenCompatibilityChecked() {
-        final var csr = new CompatibilitySchemaRequest(null);
+        final var csr = new SchemaWrapper(null);
         final var errors = new BeanPropertyBindingResult(csr, "csr");
         validator.validate(csr, errors);
 
@@ -196,7 +196,7 @@ public class SchemaControllerTest {
         final var errors = new BeanPropertyBindingResult(etSchemaBase, "etSchemaBase");
         validator.validate(etSchemaBase, errors);
 
-        schemaController.create("test", etSchemaBase, errors);
+        schemaController.create("test", etSchemaBase, false, errors);
     }
 
     @Test(expected = ValidationException.class)
@@ -205,6 +205,6 @@ public class SchemaControllerTest {
         final var errors = new BeanPropertyBindingResult(etSchemaBase, "etSchemaBase");
         validator.validate(etSchemaBase, errors);
 
-        schemaController.create("test", etSchemaBase, errors);
+        schemaController.create("test", etSchemaBase, false, errors);
     }
 }
