@@ -146,7 +146,13 @@ public class SubscriptionStreamController {
 
         @Override
         public void onException(final Exception ex) {
-            LOG.warn("Exception occurred while streaming", ex);
+            //
+            // Here we are trying to avoid spamming the logs with stacktraces for very common errors like "no free
+            // slots" or "access denied".
+            //
+            // FIXME: maybe these should not be exceptions in the first place?..
+            //
+            LOG.warn("Exception occurred while streaming: {}: {}", ex.getClass().getName(), ex.getMessage());
             if (!headersSent) {
                 headersSent = true;
                 try {
