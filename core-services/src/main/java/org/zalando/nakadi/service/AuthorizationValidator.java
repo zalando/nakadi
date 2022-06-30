@@ -6,6 +6,8 @@ import org.springframework.stereotype.Service;
 import org.zalando.nakadi.cache.EventTypeCache;
 import org.zalando.nakadi.domain.BatchItem;
 import org.zalando.nakadi.domain.EventType;
+import org.zalando.nakadi.domain.NakadiRecord;
+import org.zalando.nakadi.domain.NakadiRecordResource;
 import org.zalando.nakadi.domain.Subscription;
 import org.zalando.nakadi.exceptions.runtime.AccessDeniedException;
 import org.zalando.nakadi.exceptions.runtime.ForbiddenOperationException;
@@ -97,7 +99,8 @@ public class AuthorizationValidator {
         } catch (AuthorizationInvalidException e) {
             throw new UnprocessableEntityException(e.getMessage());
         } catch (PluginException e) {
-            throw new ServiceTemporarilyUnavailableException("Error calling authorization plugin", e);
+            throw new ServiceTemporarilyUnavailableException("Error calling authorization plugin: "
+                    + e.getMessage(), e);
         }
     }
 
@@ -114,6 +117,23 @@ public class AuthorizationValidator {
                     resource);
             if (!authorized) {
                 throw new AccessDeniedException(AuthorizationService.Operation.WRITE, resource);
+            }
+        } catch (final PluginException ex) {
+            throw new ServiceTemporarilyUnavailableException("Error while checking authorization", ex);
+        }
+    }
+
+    public void authorizeEventWrite(final NakadiRecord nakadiRecord)
+            throws AccessDeniedException, ServiceTemporarilyUnavailableException {
+        if (nakadiRecord.getOwner() == null) {
+            return;
+        }
+        try {
+            final var nakadiRecordResource = new NakadiRecordResource(nakadiRecord);
+            final boolean authorized = authorizationService.isAuthorized(
+                    AuthorizationService.Operation.WRITE, nakadiRecordResource);
+            if (!authorized) {
+                throw new AccessDeniedException(AuthorizationService.Operation.WRITE, nakadiRecordResource);
             }
         } catch (final PluginException ex) {
             throw new ServiceTemporarilyUnavailableException("Error while checking authorization", ex);
@@ -144,7 +164,8 @@ public class AuthorizationValidator {
                 }
             }
         } catch (final PluginException e) {
-            throw new ServiceTemporarilyUnavailableException("Error calling authorization plugin", e);
+            throw new ServiceTemporarilyUnavailableException("Error calling authorization plugin: "
+                    + e.getMessage(), e);
         }
     }
 
@@ -155,7 +176,8 @@ public class AuthorizationValidator {
                 throw new AccessDeniedException(AuthorizationService.Operation.VIEW, resource);
             }
         } catch (final PluginException e) {
-            throw new ServiceTemporarilyUnavailableException("Error calling authorization plugin", e);
+            throw new ServiceTemporarilyUnavailableException("Error calling authorization plugin: "
+                    + e.getMessage(), e);
         }
     }
 
@@ -219,7 +241,8 @@ public class AuthorizationValidator {
                 throw new AccessDeniedException(AuthorizationService.Operation.READ, resource);
             }
         } catch (final PluginException e) {
-            throw new ServiceTemporarilyUnavailableException("Error calling authorization plugin", e);
+            throw new ServiceTemporarilyUnavailableException("Error calling authorization plugin: "
+                    + e.getMessage(), e);
         }
     }
 

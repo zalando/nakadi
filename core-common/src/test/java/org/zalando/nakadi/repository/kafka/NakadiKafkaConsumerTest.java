@@ -45,6 +45,7 @@ public class NakadiKafkaConsumerTest {
     private static final int PARTITION = randomUInt();
     private static final long POLL_TIMEOUT = randomULong();
     private static final Date CREATED_AT = new Date();
+    private final RecordDeserializer recordDeserializer = (e) -> e;
 
     private static KafkaCursor kafkaCursor(final String topic, final int partition, final long offset) {
         return new KafkaCursor(topic, partition, offset);

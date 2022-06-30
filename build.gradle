@@ -1,7 +1,7 @@
 subprojects {
     buildscript {
         ext {
-            springBootVersion = '2.3.1.RELEASE'
+            springBootVersion = '2.5.12'
         }
         repositories {
             mavenCentral()
@@ -60,6 +60,7 @@ subprojects {
             curatorVersion = '5.1.0'
             zookeeperVersion = '3.6.1'
             jacksonVersion = '2.9.8'
+            opentracingVersion = '0.33.0'
         }
     }
 }
@@ -80,15 +81,11 @@ task startStorages(type: Exec) {
     commandLine "bash", "-c", "./nakadi.sh start-storages"
 }
 
-task stopStorages(type: Exec) {
-    commandLine "bash", "-c", "./nakadi.sh stop-storages"
-}
-
 task checkstyle {
     subprojects.each { dependsOn(":${it.name}:checkstyleMain") }
     subprojects.each { dependsOn(":${it.name}:checkstyleTest") }
     dependsOn(":acceptance-test:checkstyleMain")
-    dependsOn(":acceptance-test:checkstyleTest")
+    dependsOn(":acceptance-test:checkstyleAcceptanceTest")
 }
 
 task test {

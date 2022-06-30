@@ -12,7 +12,9 @@ import org.zalando.nakadi.domain.storage.Storage;
 import org.zalando.nakadi.repository.TopicRepositoryHolder;
 import org.zalando.nakadi.repository.db.TimelineDbRepository;
 import org.zalando.nakadi.service.SystemEventTypeInitializer;
+import org.zalando.nakadi.service.publishing.EventMetadata;
 import org.zalando.nakadi.service.publishing.EventsProcessor;
+import org.zalando.nakadi.service.publishing.JsonEventProcessor;
 
 import javax.annotation.PostConstruct;
 import java.io.IOException;
@@ -30,6 +32,7 @@ public class DiskUsageStatsJob {
     private final EventsProcessor eventsProcessor;
     private final SystemEventTypeInitializer systemEventTypeInitializer;
     private final DiskUsageStatsConfig config;
+    private final EventMetadata eventMetadata;
 
     private static final Logger LOG = LoggerFactory.getLogger(DiskUsageStatsJob.class);
 
@@ -37,15 +40,17 @@ public class DiskUsageStatsJob {
             final JobWrapperFactory jobWrapperFactory,
             final TimelineDbRepository timelineDbRepository,
             final TopicRepositoryHolder topicRepositoryHolder,
-            final EventsProcessor eventsProcessor,
+            final JsonEventProcessor eventsProcessor,
             final SystemEventTypeInitializer systemEventTypeInitializer,
-            final DiskUsageStatsConfig config) {
+            final DiskUsageStatsConfig config,
+            final EventMetadata eventMetadata) {
         this.timelineDbRepository = timelineDbRepository;
         this.topicRepositoryHolder = topicRepositoryHolder;
         this.eventsProcessor = eventsProcessor;
         this.systemEventTypeInitializer = systemEventTypeInitializer;
         this.config = config;
         this.wrapper = jobWrapperFactory.createExclusiveJobWrapper(JOB_NAME, config.getRunPeriodMs());
+        this.eventMetadata = eventMetadata;
     }
 
     @PostConstruct
@@ -112,11 +117,11 @@ public class DiskUsageStatsJob {
     private void publishSizeStats(final Map<String, Long> eventTypeSizes) {
         eventTypeSizes.entrySet().stream()
                 .map(x -> {
-                    final JSONObject obj = new JSONObject();
-                    obj.put("event_type", x.getKey());
-                    obj.put("size_bytes", x.getValue() * 1024);
-                    return obj;
+                    final JSONObject event = new JSONObject();
+                    event.put("event_type", x.getKey());
+                    event.put("size_bytes", x.getValue() * 1024);
+                    return eventMetadata.addTo(event);
                 })
-                .forEach(item -> eventsProcessor.enrichAndSubmit(config.getEventTypeName(), item));
+                .forEach(item -> eventsProcessor.queueEvent(config.getEventTypeName(), item));
     }
 }

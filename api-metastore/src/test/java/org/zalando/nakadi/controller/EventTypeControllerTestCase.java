@@ -1,7 +1,9 @@
 package org.zalando.nakadi.controller;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
+import com.google.common.collect.Lists;
 import org.junit.Before;
+import org.mockito.Mockito;
 import org.springframework.http.converter.StringHttpMessageConverter;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.ResultActions;
@@ -24,12 +26,12 @@ import org.zalando.nakadi.plugin.api.authz.AuthorizationService;
 import org.zalando.nakadi.repository.TopicRepository;
 import org.zalando.nakadi.repository.db.EventTypeRepository;
 import org.zalando.nakadi.repository.db.SubscriptionDbRepository;
-import org.zalando.nakadi.repository.db.SubscriptionTokenLister;
 import org.zalando.nakadi.repository.kafka.KafkaConfig;
 import org.zalando.nakadi.repository.kafka.PartitionsCalculator;
 import org.zalando.nakadi.security.ClientResolver;
 import org.zalando.nakadi.service.AdminService;
 import org.zalando.nakadi.service.AuthorizationValidator;
+import org.zalando.nakadi.service.AvroSchemaCompatibility;
 import org.zalando.nakadi.service.EventTypeService;
 import org.zalando.nakadi.service.FeatureToggleService;
 import org.zalando.nakadi.service.SchemaEvolutionService;
@@ -41,10 +43,12 @@ import org.zalando.nakadi.service.timeline.TimelineSync;
 import org.zalando.nakadi.service.validation.EventTypeOptionsValidator;
 import org.zalando.nakadi.util.UUIDGenerator;
 import org.zalando.nakadi.utils.TestUtils;
+import org.zalando.nakadi.validation.schema.CompatibilityModeChangeConstraint;
+import org.zalando.nakadi.validation.schema.PartitionStrategyConstraint;
 import org.zalando.problem.Problem;
 import uk.co.datumedge.hamcrest.json.SameJSONAs;
 
-import java.io.IOException;
+import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 
@@ -86,16 +90,14 @@ public class EventTypeControllerTestCase {
     protected final TransactionTemplate transactionTemplate = mock(TransactionTemplate.class);
     protected final AdminService adminService = mock(AdminService.class);
     protected final AuthorizationService authorizationService = mock(AuthorizationService.class);
-    protected final SchemaEvolutionService schemaEvolutionService = new SchemaValidatorConfig(adminService,
-            authorizationService).schemaEvolutionService();
     protected final AuthorizationValidator authorizationValidator = mock(AuthorizationValidator.class);
     protected final NakadiKpiPublisher nakadiKpiPublisher = mock(NakadiKpiPublisher.class);
     protected final NakadiAuditLogPublisher nakadiAuditLogPublisher = mock(NakadiAuditLogPublisher.class);
-    protected final SubscriptionTokenLister subscriptionTokenLister = mock(SubscriptionTokenLister.class);
     private final SchemaService schemaService = mock(SchemaService.class);
+    private final AvroSchemaCompatibility avroSchemaCompatibility = Mockito.mock(AvroSchemaCompatibility.class);
     protected MockMvc mockMvc;
 
-    public EventTypeControllerTestCase() throws IOException {
+    public EventTypeControllerTestCase() {
     }
 
     @Before
@@ -116,14 +118,20 @@ public class EventTypeControllerTestCase {
         });
         when(adminService.isAdmin(AuthorizationService.Operation.WRITE)).thenReturn(false);
 
+        final SchemaEvolutionService ses = new SchemaValidatorConfig(
+                new CompatibilityModeChangeConstraint(adminService, authorizationService),
+                new PartitionStrategyConstraint(adminService),
+                avroSchemaCompatibility
+        ).schemaEvolutionService();
+
         final EventTypeOptionsValidator eventTypeOptionsValidator =
                 new EventTypeOptionsValidator(TOPIC_RETENTION_MIN_MS, TOPIC_RETENTION_MAX_MS);
         final EventTypeService eventTypeService = new EventTypeService(eventTypeRepository, timelineService,
-                partitionResolver, enrichment, subscriptionRepository, schemaEvolutionService, partitionsCalculator,
+                partitionResolver, enrichment, subscriptionRepository, ses, partitionsCalculator,
                 featureToggleService, authorizationValidator, timelineSync, transactionTemplate, nakadiSettings,
-                nakadiKpiPublisher, "et-log-event-type", nakadiAuditLogPublisher,
+                nakadiKpiPublisher, nakadiAuditLogPublisher,
                 eventTypeOptionsValidator, eventTypeCache,
-                schemaService, adminService, subscriptionTokenLister);
+                schemaService, adminService, null);
 
         final EventTypeController controller = new EventTypeController(eventTypeService, featureToggleService,
                 adminService, nakadiSettings);
@@ -192,8 +200,15 @@ public class EventTypeControllerTestCase {
         return mockMvc.perform(requestBuilder);
     }
 
-    protected ResultActions getEventTypes(final String writer) throws Exception {
-        final MockHttpServletRequestBuilder requestBuilder = get("/event-types?writer=" + writer);
+    protected ResultActions getEventTypes(final String writer, final String owningApp) throws Exception {
+        final List<String> query = Lists.newArrayList();
+        if (writer != null && !writer.isEmpty()) {
+            query.add("writer=" + writer);
+        }
+        if (owningApp != null && !owningApp.isEmpty()) {
+            query.add("owning_application=" + owningApp);
+        }
+        final MockHttpServletRequestBuilder requestBuilder = get("/event-types?" + String.join("&", query));
         return mockMvc.perform(requestBuilder);
     }
 

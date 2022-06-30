@@ -48,7 +48,7 @@ dependencies {
     }
 
     compile 'org.zalando:nakadi-plugin-api:3.2.1'
-    compile 'com.google.guava:guava:29.0-jre'
+    compile 'com.google.guava:guava:30.1-jre'
     compile 'org.apache.commons:commons-lang3:3.8.1'
 
     compile "org.springframework.boot:spring-boot-starter-json"
@@ -59,8 +59,8 @@ dependencies {
     compile 'org.slf4j:slf4j-log4j12'
 
     // open tracing
-    compile 'io.opentracing:opentracing-api:0.31.0'
-    compile 'io.opentracing:opentracing-util:0.31.0'
+    compile "io.opentracing:opentracing-api:$opentracingVersion"
+    compile "io.opentracing:opentracing-util:$opentracingVersion"
 
     compile("org.apache.curator:curator-recipes:$curatorVersion") {
         exclude module: "zookeeper"

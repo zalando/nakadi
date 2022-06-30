@@ -6,11 +6,13 @@ import org.springframework.core.MethodParameter;
 import org.springframework.http.converter.StringHttpMessageConverter;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.ResultActions;
+import org.springframework.transaction.support.TransactionTemplate;
 import org.springframework.web.bind.support.WebDataBinderFactory;
 import org.springframework.web.context.request.NativeWebRequest;
 import org.springframework.web.method.support.HandlerMethodArgumentResolver;
 import org.springframework.web.method.support.ModelAndViewContainer;
 import org.zalando.nakadi.cache.EventTypeCache;
+import org.zalando.nakadi.cache.SubscriptionCache;
 import org.zalando.nakadi.config.NakadiSettings;
 import org.zalando.nakadi.controller.advice.NakadiProblemExceptionHandler;
 import org.zalando.nakadi.controller.advice.PostSubscriptionExceptionHandler;
@@ -32,6 +34,7 @@ import org.zalando.nakadi.exceptions.runtime.ServiceTemporarilyUnavailableExcept
 import org.zalando.nakadi.plugin.api.ApplicationService;
 import org.zalando.nakadi.plugin.api.authz.AuthorizationAttribute;
 import org.zalando.nakadi.repository.TopicRepository;
+import org.zalando.nakadi.repository.db.EventTypeRepository;
 import org.zalando.nakadi.repository.db.SubscriptionDbRepository;
 import org.zalando.nakadi.repository.kafka.KafkaPartitionEndStatistics;
 import org.zalando.nakadi.security.NakadiClient;
@@ -68,7 +71,6 @@ import java.util.Set;
 
 import static java.text.MessageFormat.format;
 import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.doReturn;
 import static org.mockito.Mockito.doThrow;
@@ -94,6 +96,7 @@ public class SubscriptionControllerTest {
     private static final Timeline TIMELINE = TestUtils.buildTimelineWithTopic("topic");
 
     private final SubscriptionDbRepository subscriptionRepository = mock(SubscriptionDbRepository.class);
+    private final SubscriptionCache subscriptionCache = mock(SubscriptionCache.class);
     private final EventTypeCache eventTypeCache = mock(EventTypeCache.class);
     private final MockMvc mockMvc;
     private final TopicRepository topicRepository;
@@ -102,6 +105,8 @@ public class SubscriptionControllerTest {
     private final CursorOperationsService cursorOperationsService;
     private final TimelineService timelineService;
     private final SubscriptionValidationService subscriptionValidationService;
+    private final EventTypeRepository eventTypeRepository;
+    private final TransactionTemplate transactionTemplate;
 
     public SubscriptionControllerTest() {
         final FeatureToggleService featureToggleService = mock(FeatureToggleService.class);
@@ -126,13 +131,17 @@ public class SubscriptionControllerTest {
         cursorOperationsService = mock(CursorOperationsService.class);
         cursorConverter = mock(CursorConverter.class);
         subscriptionValidationService = mock(SubscriptionValidationService.class);
+        eventTypeRepository = mock(EventTypeRepository.class);
+        transactionTemplate = mock(TransactionTemplate .class);
         final NakadiKpiPublisher nakadiKpiPublisher = mock(NakadiKpiPublisher.class);
         final NakadiAuditLogPublisher nakadiAuditLogPublisher = mock(NakadiAuditLogPublisher.class);
+
         final SubscriptionService subscriptionService = new SubscriptionService(subscriptionRepository,
+                subscriptionCache,
                 zkSubscriptionClientFactory, timelineService, subscriptionValidationService,
                 cursorConverter, cursorOperationsService, nakadiKpiPublisher, featureToggleService, null,
-                "subscription_log_et", nakadiAuditLogPublisher, mock(AuthorizationValidator.class), eventTypeCache,
-                null);
+                nakadiAuditLogPublisher, mock(AuthorizationValidator.class), eventTypeCache,
+                transactionTemplate, eventTypeRepository);
         final SubscriptionController controller = new SubscriptionController(subscriptionService);
         final ApplicationService applicationService = mock(ApplicationService.class);
         doReturn(true).when(applicationService).exists(any());
@@ -148,7 +157,7 @@ public class SubscriptionControllerTest {
     public void whenGetSubscriptionThenOk() throws Exception {
         final Subscription subscription = RandomSubscriptionBuilder.builder().build();
         subscription.setUpdatedAt(subscription.getCreatedAt());
-        when(subscriptionRepository.getSubscription(subscription.getId())).thenReturn(subscription);
+        when(subscriptionCache.getSubscription(subscription.getId())).thenReturn(subscription);
 
         getSubscription(subscription.getId())
                 .andExpect(status().isOk())
@@ -159,7 +168,7 @@ public class SubscriptionControllerTest {
     public void whenGetNoneExistingSubscriptionThenNotFound() throws Exception {
         final Subscription subscription = RandomSubscriptionBuilder.builder().build();
         subscription.setUpdatedAt(subscription.getCreatedAt());
-        when(subscriptionRepository.getSubscription(subscription.getId()))
+        when(subscriptionCache.getSubscription(subscription.getId()))
                 .thenThrow(new NoSuchSubscriptionException("dummy-message"));
         final ThrowableProblem expectedProblem = Problem.valueOf(NOT_FOUND, "dummy-message");
 
@@ -171,7 +180,7 @@ public class SubscriptionControllerTest {
     @Test
     public void whenListSubscriptionsWithoutQueryParamsThenOk() throws Exception {
         final List<Subscription> subscriptions = TestUtils.createRandomSubscriptions(10);
-        when(subscriptionRepository.listSubscriptions(any(), any(), any(), anyInt(), anyInt()))
+        when(subscriptionRepository.listSubscriptions(any(), any(), any(), any()))
                 .thenReturn(subscriptions);
         final PaginationWrapper subscriptionList =
                 new PaginationWrapper(subscriptions, new PaginationLinks());
@@ -181,13 +190,14 @@ public class SubscriptionControllerTest {
                 .andExpect(content().string(TestUtils.JSON_TEST_HELPER.matchesObject(subscriptionList)));
 
         verify(subscriptionRepository, times(1))
-                .listSubscriptions(ImmutableSet.of(), Optional.empty(), Optional.ofNullable(null), 0, 20);
+                .listSubscriptions(ImmutableSet.of(), Optional.empty(), Optional.ofNullable(null),  Optional.of(
+                        new SubscriptionDbRepository.PaginationParameters(20, 0)));
     }
 
     @Test
     public void whenListSubscriptionsWithQueryParamsThenOk() throws Exception {
         final List<Subscription> subscriptions = TestUtils.createRandomSubscriptions(10);
-        when(subscriptionRepository.listSubscriptions(any(), any(), any(), anyInt(), anyInt()))
+        when(subscriptionRepository.listSubscriptions(any(), any(), any(), any()))
                 .thenReturn(subscriptions);
         final PaginationWrapper subscriptionList =
                 new PaginationWrapper(subscriptions, new PaginationLinks());
@@ -198,12 +208,13 @@ public class SubscriptionControllerTest {
 
         verify(subscriptionRepository, times(1))
                 .listSubscriptions(ImmutableSet.of("et1", "et2"), Optional.of("app"),
-                        Optional.ofNullable(null), 0, 30);
+                        Optional.ofNullable(null),  Optional.of(new SubscriptionDbRepository.
+                                PaginationParameters(30, 0)));
     }
 
     @Test
     public void whenListSubscriptionsAndExceptionThenServiceUnavailable() throws Exception {
-        when(subscriptionRepository.listSubscriptions(any(), any(), any(), anyInt(), anyInt()))
+        when(subscriptionRepository.listSubscriptions(any(), any(), any(), any()))
                 .thenThrow(new ServiceTemporarilyUnavailableException("dummy message"));
         final Problem expectedProblem = Problem.valueOf(SERVICE_UNAVAILABLE, "dummy message");
         checkForProblem(getSubscriptions(), expectedProblem);
@@ -227,7 +238,7 @@ public class SubscriptionControllerTest {
     @Test
     public void whenListSubscriptionsThenPaginationIsOk() throws Exception {
         final List<Subscription> subscriptions = TestUtils.createRandomSubscriptions(10);
-        when(subscriptionRepository.listSubscriptions(any(), any(), any(), anyInt(), anyInt()))
+        when(subscriptionRepository.listSubscriptions(any(), any(), any(), any()))
                 .thenReturn(subscriptions);
 
         final PaginationLinks.Link prevLink = new PaginationLinks.Link(
@@ -244,7 +255,7 @@ public class SubscriptionControllerTest {
 
     @Test
     public void whenGetSubscriptionAndExceptionThenServiceUnavailable() throws Exception {
-        when(subscriptionRepository.getSubscription(any()))
+        when(subscriptionCache.getSubscription(any()))
                 .thenThrow(new ServiceTemporarilyUnavailableException("dummy message"));
         final Problem expectedProblem = Problem.valueOf(SERVICE_UNAVAILABLE, "dummy message");
         checkForProblem(getSubscription("dummyId"), expectedProblem);
@@ -259,7 +270,7 @@ public class SubscriptionControllerTest {
                 new Partition(TIMELINE.getEventType(), "0", "xz", null, Partition.State.ASSIGNED));
         final ZkSubscriptionNode zkSubscriptionNode =
                 new ZkSubscriptionNode(partitions, Arrays.asList(new Session("xz", 0)));
-        when(subscriptionRepository.getSubscription(subscription.getId())).thenReturn(subscription);
+        when(subscriptionCache.getSubscription(subscription.getId())).thenReturn(subscription);
         when(zkSubscriptionClient.getZkSubscriptionNode()).thenReturn(Optional.of(zkSubscriptionNode));
         final SubscriptionCursorWithoutToken currentOffset =
                 new SubscriptionCursorWithoutToken(TIMELINE.getEventType(), "0", "3");
@@ -297,7 +308,7 @@ public class SubscriptionControllerTest {
     public void whenGetSubscriptionNoEventTypesThenStatEmpty() throws Exception {
         final Subscription subscription = RandomSubscriptionBuilder.builder().withEventType("myET").build();
         subscription.setUpdatedAt(subscription.getCreatedAt());
-        when(subscriptionRepository.getSubscription(subscription.getId())).thenReturn(subscription);
+        when(subscriptionCache.getSubscription(subscription.getId())).thenReturn(subscription);
         when(zkSubscriptionClient.getZkSubscriptionNode()).thenReturn(
                 Optional.of(new ZkSubscriptionNode(Collections.emptyList(), Collections.emptyList())));
         when(eventTypeCache.getEventType("myET")).thenThrow(NoSuchEventTypeException.class);

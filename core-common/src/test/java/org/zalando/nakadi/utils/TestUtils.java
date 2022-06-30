@@ -9,6 +9,7 @@ import org.joda.time.DateTime;
 import org.joda.time.DateTimeZone;
 import org.json.JSONArray;
 import org.json.JSONObject;
+import org.springframework.core.io.DefaultResourceLoader;
 import org.springframework.http.converter.StringHttpMessageConverter;
 import org.springframework.http.converter.json.MappingJackson2HttpMessageConverter;
 import org.springframework.test.web.servlet.MockMvc;
@@ -23,10 +24,12 @@ import org.zalando.nakadi.domain.Subscription;
 import org.zalando.nakadi.domain.Timeline;
 import org.zalando.nakadi.domain.storage.Storage;
 import org.zalando.nakadi.exceptions.runtime.AccessDeniedException;
+import org.zalando.nakadi.mapper.NakadiRecordMapper;
 import org.zalando.nakadi.plugin.api.authz.AuthorizationAttribute;
 import org.zalando.nakadi.plugin.api.authz.AuthorizationService;
 import org.zalando.nakadi.plugin.api.authz.Resource;
 import org.zalando.nakadi.problem.ValidationProblem;
+import org.zalando.nakadi.service.LocalSchemaRegistry;
 import org.zalando.problem.Problem;
 
 import java.io.IOException;
@@ -246,6 +249,14 @@ public class TestUtils {
 
     public static String toTimelineOffset(final long offset) {
         return String.format("001-0001-%018d", offset);
+    }
+
+    public static NakadiRecordMapper getNakadiRecordMapper() throws IOException {
+        return new NakadiRecordMapper(getLocalSchemaRegistry());
+    }
+
+    public static LocalSchemaRegistry getLocalSchemaRegistry() throws IOException {
+        return new LocalSchemaRegistry(new DefaultResourceLoader().getResource("avro-schema/"));
     }
 
 }

@@ -36,7 +36,6 @@ import org.zalando.nakadi.security.FullAccessClient;
 import org.zalando.nakadi.security.NakadiClient;
 import org.zalando.nakadi.service.AdminService;
 import org.zalando.nakadi.service.AuthorizationValidator;
-import org.zalando.nakadi.service.ClosedConnectionsCrutch;
 import org.zalando.nakadi.service.EventStream;
 import org.zalando.nakadi.service.EventStreamChecks;
 import org.zalando.nakadi.service.EventStreamConfig;
@@ -61,7 +60,6 @@ import java.util.LinkedList;
 import java.util.List;
 import java.util.Optional;
 import java.util.concurrent.TimeUnit;
-import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.stream.Collectors;
 
 import static org.hamcrest.CoreMatchers.equalTo;
@@ -143,12 +141,8 @@ public class EventStreamControllerTest {
         metricRegistry = new MetricRegistry();
         streamMetrics = new MetricRegistry();
         final EventConsumer.LowLevelConsumer eventConsumerMock = mock(EventConsumer.LowLevelConsumer.class);
-        when(topicRepositoryMock.createEventConsumer(
-                eq(KAFKA_CLIENT_ID), any()))
+        when(topicRepositoryMock.createEventConsumer(eq(KAFKA_CLIENT_ID), any()))
                 .thenReturn(eventConsumerMock);
-
-        final ClosedConnectionsCrutch crutch = mock(ClosedConnectionsCrutch.class);
-        when(crutch.listenForConnectionClose(requestMock)).thenReturn(new AtomicBoolean(true));
 
         eventStreamChecks = Mockito.mock(EventStreamChecks.class);
         Mockito.when(eventStreamChecks.isConsumptionBlocked(any(), any())).thenReturn(false);
@@ -165,7 +159,7 @@ public class EventStreamControllerTest {
         when(eventTypeChangeListener.registerListener(any(), any())).thenReturn(mock(Closeable.class));
         controller = new EventStreamController(
                 eventTypeCache, timelineService, OBJECT_MAPPER, eventStreamFactoryMock, metricRegistry,
-                streamMetrics, crutch, eventStreamChecks,
+                streamMetrics, eventStreamChecks,
                 new CursorConverterImpl(eventTypeCache, timelineService), authorizationValidator,
                 eventTypeChangeListener, null);
 
@@ -198,8 +192,7 @@ public class EventStreamControllerTest {
         final ArgumentCaptor<EventStreamConfig> configCaptor = ArgumentCaptor.forClass(EventStreamConfig.class);
 
         final EventConsumer.LowLevelConsumer eventConsumerMock = mock(EventConsumer.LowLevelConsumer.class);
-        when(topicRepositoryMock.createEventConsumer(
-                any(), any()))
+        when(topicRepositoryMock.createEventConsumer(any(), any()))
                 .thenReturn(eventConsumerMock);
 
         final EventStream eventStreamMock = mock(EventStream.class);
@@ -368,7 +361,7 @@ public class EventStreamControllerTest {
                 eq(ImmutableList.of(NakadiCursor.of(timeline, "0", "000000000000000000"))));
         verify(eventStreamFactoryMock, times(1)).createEventStream(eq(outputStream),
                 eq(eventConsumerMock), eq(streamConfig), any());
-        verify(eventStreamMock, times(1)).streamEvents(any(), any());
+        verify(eventStreamMock, times(1)).streamEvents(any());
         verify(outputStream, times(2)).flush();
         verify(outputStream, times(1)).close();
     }
@@ -405,7 +398,7 @@ public class EventStreamControllerTest {
                 ThreadUtils.sleep(100);
             }
             return null;
-        }).when(eventStream).streamEvents(any(), any());
+        }).when(eventStream).streamEvents(any());
         when(eventStreamFactoryMock.createEventStream(any(), any(), any(), any())).thenReturn(eventStream);
 
         // "connect" to the server

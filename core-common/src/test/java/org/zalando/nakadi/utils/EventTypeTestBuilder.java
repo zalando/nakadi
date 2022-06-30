@@ -19,6 +19,7 @@ import org.zalando.nakadi.domain.ResourceAuthorization;
 import org.zalando.nakadi.partitioning.PartitionStrategy;
 import org.zalando.nakadi.view.EventOwnerSelector;
 
+import java.util.HashMap;
 import java.util.List;
 
 import static org.zalando.nakadi.utils.TestUtils.randomDate;
@@ -165,7 +166,8 @@ public class EventTypeTestBuilder {
     public EventType build() {
         final EventTypeBase eventTypeBase = new EventTypeBase(name, owningApplication, category,
                 enrichmentStrategies, partitionStrategy, partitionKeyFields, schema,
-                defaultStatistic, options, compatibilityMode, cleanupPolicy);
+                defaultStatistic, options, compatibilityMode, cleanupPolicy, new HashMap<>(),
+                new HashMap<>());
         eventTypeBase.setAuthorization(authorization);
         eventTypeBase.setAudience(audience);
         eventTypeBase.setEventOwnerSelector(eventOwnerSelector);

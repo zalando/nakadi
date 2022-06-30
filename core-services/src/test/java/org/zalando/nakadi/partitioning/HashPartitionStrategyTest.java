@@ -4,14 +4,19 @@ import com.google.common.collect.ImmutableList;
 import org.apache.commons.lang3.StringUtils;
 import org.json.JSONObject;
 import org.junit.Test;
+import org.mockito.Mockito;
 import org.zalando.nakadi.domain.EventType;
+import org.zalando.nakadi.domain.NakadiMetadata;
 import org.zalando.nakadi.exceptions.Try;
+import org.zalando.nakadi.exceptions.runtime.InvalidPartitionKeyFieldsException;
+import org.zalando.nakadi.exceptions.runtime.PartitioningException;
 
 import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Random;
@@ -30,9 +35,11 @@ import static org.apache.commons.lang3.RandomStringUtils.randomAlphabetic;
 import static org.hamcrest.Matchers.equalTo;
 import static org.hamcrest.Matchers.isIn;
 import static org.hamcrest.Matchers.lessThan;
+import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertThat;
 import static org.mockito.ArgumentMatchers.anyInt;
+import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 import static org.zalando.nakadi.partitioning.PartitionStrategy.HASH_STRATEGY;
@@ -52,17 +59,38 @@ public class HashPartitionStrategyTest {
 
     private final HashPartitionStrategy strategy;
     private final EventType simpleEventType;
+    private final HashPartitionStrategyCrutch hashPartitioningCrutch;
     private final ArrayList<List<JSONObject>> partitions = createEmptyPartitions(PARTITIONS.length);
 
     public HashPartitionStrategyTest() {
         simpleEventType = new EventType();
         simpleEventType.setPartitionKeyFields(asList("sku", "name"));
 
-        final HashPartitionStrategyCrutch hashPartitioningCrutch = mock(HashPartitionStrategyCrutch.class);
+        hashPartitioningCrutch = mock(HashPartitionStrategyCrutch.class);
         when(hashPartitioningCrutch.adjustPartitionIndex(anyInt(), anyInt()))
                 .thenAnswer(invocation -> invocation.getArguments()[0]); // don't do any adjustments
 
         strategy = new HashPartitionStrategy(hashPartitioningCrutch, new StringHash());
+    }
+
+    @Test
+    public void whenCorrectPartitionFieldsKeysThenOk() {
+        final var metadata = Mockito.mock(NakadiMetadata.class);
+        when(metadata.getPartitionKeys()).thenReturn(ImmutableList.of("sku=123", "price=512$"));
+
+        final var partitions = ImmutableList.of("0", "1", "2");
+
+        assertEquals("2", strategy.calculatePartition(metadata, partitions));
+    }
+
+    @Test(expected = PartitioningException.class)
+    public void whenPartitionKeysMissingInMetadataThenThrow() {
+        final var metadata = Mockito.mock(NakadiMetadata.class);
+        when(metadata.getPartitionKeys()).thenReturn(Collections.emptyList());
+
+        final var partitions = ImmutableList.of("0", "1", "2");
+
+        strategy.calculatePartition(metadata, partitions);
     }
 
     @Test
@@ -105,12 +133,42 @@ public class HashPartitionStrategyTest {
     }
 
     @Test
+    public void whenStringHashCodeIsIntMinThenItWorks() throws Exception {
+        final var partitionKeys = List.of("sku=ABC-123");
+        final String[] partitions = new String[]{"0", "1", "2"};
+
+        final StringHash stringHash = mock(StringHash.class);
+        final HashPartitionStrategy strategy = new HashPartitionStrategy(hashPartitioningCrutch, stringHash);
+        when(stringHash.hashCode(anyString())).thenReturn(Integer.MIN_VALUE);
+
+        final String partition = strategy.calculatePartition(partitionKeys, asList(partitions));
+        assertEquals("2", partition);
+    }
+
+    @Test
     public void whenValidateWithHashPartitionStrategyAndDataChangeEventLookupIntoDataField() throws Exception {
         final EventType eventType = loadEventType(
                 "org/zalando/nakadi/domain/event-type.with.partition-key-fields.json");
         eventType.setPartitionStrategy(HASH_STRATEGY);
         final JSONObject event = new JSONObject(readFile("sample-data-event.json"));
         assertThat(strategy.calculatePartition(eventType, event, ImmutableList.of("p0")), equalTo("p0"));
+    }
+
+    @Test(expected = PartitioningException.class)
+    public void whenPartitionKeyFieldsAreMissingThenItThrows() {
+        final var event = new JSONObject();
+        final var eventType = new EventType();
+
+        strategy.calculatePartition(eventType, event, Collections.emptyList());
+    }
+
+    @Test(expected = InvalidPartitionKeyFieldsException.class)
+    public void whenPayloadIsMissingPartitionKeysThenItThrows() {
+        final var event = new JSONObject();
+        final var eventType = new EventType();
+        eventType.setPartitionKeyFields(List.of("body.sku"));
+
+        strategy.calculatePartition(eventType, event, Collections.emptyList());
     }
 
     private double calculateVarianceOfUniformDistribution(final double[] samples) {
@@ -152,7 +210,9 @@ public class HashPartitionStrategyTest {
     }
 
     private List<TreeSet<String>> sortPartitions(final List<List<JSONObject>> unsortedPartitions) {
-        return unsortedPartitions.stream().parallel()
+        return unsortedPartitions
+                .stream()
+                .parallel()
                 .map(jsonObjects -> jsonObjects.stream()
                         .map(jsonObject -> jsonObject.getString("sku") + DELIMITER + jsonObject.getString("name"))
                         .distinct()
@@ -183,7 +243,8 @@ public class HashPartitionStrategyTest {
                     final int partitionNo = parseInt(partition);
                     partitions.get(partitionNo).add(event);
                     return null;
-                }).andThen(Try::getOrThrow)).collect(Collectors.toSet());
+                }).andThen(Try::getOrThrow))
+                .collect(Collectors.toSet());
     }
 
     private JSONObject randomArticleEvent() {
@@ -227,5 +288,4 @@ public class HashPartitionStrategyTest {
         }
         return events;
     }
-
 }

@@ -3,6 +3,7 @@ package org.zalando.nakadi.repository.db;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableSet;
+import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
 import org.zalando.nakadi.config.JsonConfig;
@@ -12,22 +13,25 @@ import org.zalando.nakadi.exceptions.runtime.DuplicatedSubscriptionException;
 import org.zalando.nakadi.exceptions.runtime.NoSuchSubscriptionException;
 import org.zalando.nakadi.exceptions.runtime.ServiceTemporarilyUnavailableException;
 import org.zalando.nakadi.util.HashGenerator;
-import org.zalando.nakadi.util.UUIDGenerator;
 import org.zalando.nakadi.utils.RandomSubscriptionBuilder;
 import org.zalando.nakadi.utils.TestUtils;
+import org.zalando.nakadi.util.UUIDGenerator;
 
+import java.util.Collections;
 import java.util.Comparator;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.stream.IntStream;
 
 import static java.util.Collections.emptySet;
 import static java.util.stream.Collectors.toList;
+import static org.hamcrest.core.IsEqual.equalTo;
 import static org.hamcrest.CoreMatchers.not;
-import static org.hamcrest.CoreMatchers.notNullValue;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.isEmptyOrNullString;
-import static org.hamcrest.core.IsEqual.equalTo;
+import static org.hamcrest.Matchers.notNullValue;
+import static org.hamcrest.Matchers.nullValue;
 import static org.zalando.nakadi.utils.TestUtils.createRandomSubscriptions;
 
 public class SubscriptionDbRepositoryTest extends AbstractDbRepositoryTest {
@@ -129,7 +133,8 @@ public class SubscriptionDbRepositoryTest extends AbstractDbRepositoryTest {
                 .collect(toList());
 
         final List<Subscription> subscriptions = repository.listSubscriptions(ImmutableSet.of("et1"),
-                Optional.of(owningApp), Optional.empty(), 0, 10);
+                Optional.of(owningApp), Optional.empty(), Optional.of(new SubscriptionDbRepository.
+                        PaginationParameters(10, 0)));
         assertThat(subscriptions, equalTo(expectedSubscriptions));
     }
 
@@ -155,7 +160,8 @@ public class SubscriptionDbRepositoryTest extends AbstractDbRepositoryTest {
                 .collect(toList());
 
         final List<Subscription> subscriptions = repository.listSubscriptions(ImmutableSet.of(et1, et2),
-                Optional.empty(), Optional.empty(), 0, 10);
+                Optional.empty(), Optional.empty(),  Optional.of(new SubscriptionDbRepository.
+                        PaginationParameters(10, 0)));
         assertThat(subscriptions, equalTo(expectedSubscriptions));
     }
 
@@ -170,7 +176,8 @@ public class SubscriptionDbRepositoryTest extends AbstractDbRepositoryTest {
         testSubscriptions.subList(3, testSubscriptions.size()).clear();
 
         final List<Subscription> subscriptions = repository.listSubscriptions(
-                emptySet(), Optional.of(owningApp), Optional.empty(), 2, 3);
+                emptySet(), Optional.of(owningApp), Optional.empty(),  Optional.of(new SubscriptionDbRepository.
+                        PaginationParameters(3, 2)));
         assertThat(subscriptions, equalTo(testSubscriptions));
     }
 
@@ -216,4 +223,157 @@ public class SubscriptionDbRepositoryTest extends AbstractDbRepositoryTest {
         assertThat(subscription.getReadFrom(), equalTo(subscriptionBase.getReadFrom()));
     }
 
+
+    @Test
+    public void testPagingFullPage() {
+        final Optional<String> owiningApp = Optional.of(TestUtils.randomUUID());
+        // There are 7 subscriptions
+        final List<Subscription> testSubscriptions = createTestSubscriptions(owiningApp.get(), 2);
+        // 1. Check that there are no paging links if requested more or equal to current count
+        SubscriptionDbRepository.ListResult result;
+
+        result = repository.listSubscriptions(emptySet(), owiningApp, Optional.empty(), null, 2);
+        assertThat(result.getPrev(), nullValue());
+        assertThat(result.getNext(), nullValue());
+        assertThat(result.getItems(), equalTo(testSubscriptions));
+
+        result = repository.listSubscriptions(emptySet(), owiningApp, Optional.empty(), null, 3);
+        assertThat(result.getPrev(), nullValue());
+        assertThat(result.getNext(), nullValue());
+        assertThat(result.getItems(), equalTo(testSubscriptions));
+    }
+
+    @Test
+    public void testPagingNoData() {
+        final SubscriptionDbRepository.ListResult result =
+                repository.listSubscriptions(
+                        emptySet(),
+                        Optional.of(TestUtils.randomUUID()),
+                        Optional.empty(),
+                        null,
+                        2
+                );
+        assertThat(result.getPrev(), nullValue());
+        assertThat(result.getNext(), nullValue());
+        Assert.assertTrue(result.getItems().isEmpty());
+    }
+
+    @Test
+    public void testPaging() {
+        final Optional<String> owiningApp = Optional.of(TestUtils.randomUUID());
+        // There are 7 subscriptions
+        final List<Subscription> testSubscriptions = createTestSubscriptions(owiningApp.get(), 7);
+
+        SubscriptionDbRepository.ListResult result;
+
+        // 1. Check that there are no paging links if requested more or equal to current count
+        result = repository.listSubscriptions(emptySet(), owiningApp, Optional.empty(), null, 7);
+        assertThat(result.getPrev(), nullValue());
+        assertThat(result.getNext(), nullValue());
+        assertThat(result.getItems(), equalTo(testSubscriptions));
+
+        result = repository.listSubscriptions(emptySet(), owiningApp, Optional.empty(), null, 8);
+        assertThat(result.getPrev(), nullValue());
+        assertThat(result.getNext(), nullValue());
+        assertThat(result.getItems(), equalTo(testSubscriptions));
+
+        // 2. Check actual iteration
+        result = repository.listSubscriptions(emptySet(), owiningApp, Optional.empty(), null, 3);
+        assertThat(result.getPrev(), nullValue());
+        assertThat(result.getNext(), notNullValue());
+        assertThat(result.getItems(), equalTo(testSubscriptions.subList(0, 3)));
+
+        // 2.1 Second page
+        final SubscriptionDbRepository.Token secondPage = result.getNext();
+        result = repository.listSubscriptions(emptySet(), owiningApp, Optional.empty(), secondPage, 3);
+        assertThat(result.getPrev(), notNullValue());
+        assertThat(result.getNext(), notNullValue());
+        assertThat(result.getItems(), equalTo(testSubscriptions.subList(3, 6)));
+
+        // 2.2 Second page backwards
+        final SubscriptionDbRepository.ListResult backResult = repository
+                .listSubscriptions(emptySet(), owiningApp, Optional.empty(), result.getPrev(), 3);
+        assertThat(backResult.getPrev(), nullValue());
+        assertThat(backResult.getNext(), equalTo(secondPage));
+        assertThat(backResult.getItems(), equalTo(testSubscriptions.subList(0, 3)));
+        // 2.3
+        final SubscriptionDbRepository.Token lastPageToken = result.getNext();
+        final SubscriptionDbRepository.ListResult lastPage1 = repository.listSubscriptions(
+                emptySet(), owiningApp, Optional.empty(), lastPageToken, 3);
+        assertThat(lastPage1.getNext(), nullValue());
+        assertThat(lastPage1.getPrev(), notNullValue());
+        assertThat(lastPage1.getItems(), equalTo(testSubscriptions.subList(6, 7)));
+        final SubscriptionDbRepository.ListResult lastPage2 = repository.listSubscriptions(
+                emptySet(), owiningApp, Optional.empty(), lastPageToken, 1);
+        assertThat(lastPage2, equalTo(lastPage1));
+    }
+
+    private List<Subscription> createTestSubscriptions(final String owiningApp, final int count) {
+        final List<Subscription> testSubscriptions = IntStream.range(0, count)
+                .mapToObj(i -> RandomSubscriptionBuilder.builder()
+                        .withOwningApplication(owiningApp).withEventType("et1").build())
+                .collect(toList());
+        testSubscriptions.forEach(this::insertSubscriptionToDB);
+        Collections.sort(testSubscriptions, Comparator.comparing(Subscription::getId));
+        return testSubscriptions;
+    }
+
+    @Test
+    public void testListing() {
+        // The test is a copy of SubscriptionDbRepositoryTest, that is to be deleted when deprecated method removed
+        final String owningApp = TestUtils.randomUUID();
+        final String owningApp2 = TestUtils.randomUUID();
+
+        final List<Subscription> testSubscriptions = ImmutableList.of(
+                RandomSubscriptionBuilder.builder().withOwningApplication(owningApp).withEventType("et1").build(),
+                RandomSubscriptionBuilder.builder().withOwningApplication(owningApp)
+                        .withEventTypes(ImmutableSet.of("et2", "et1")).build(),
+                RandomSubscriptionBuilder.builder().withOwningApplication(owningApp).withEventType("et1").build(),
+                RandomSubscriptionBuilder.builder().withOwningApplication(owningApp).withEventType("et2").build(),
+                RandomSubscriptionBuilder.builder().withOwningApplication(owningApp)
+                        .withEventTypes(ImmutableSet.of("et2", "et3")).build(),
+                RandomSubscriptionBuilder.builder().withOwningApplication(owningApp2).withEventType("et1").build(),
+                RandomSubscriptionBuilder.builder().withOwningApplication(owningApp2).withEventType("et2").build());
+        testSubscriptions.forEach(this::insertSubscriptionToDB);
+
+        final List<Subscription> expectedSubscriptions = testSubscriptions.stream()
+                .filter(sub -> owningApp.equals(sub.getOwningApplication()) && sub.getEventTypes().contains("et1"))
+                .sorted(Comparator.comparing(Subscription::getId))
+                .collect(toList());
+
+        final List<Subscription> subscriptions = repository.listSubscriptions(
+                ImmutableSet.of("et1"), Optional.of(owningApp), Optional.empty(), null, 10)
+                .getItems();
+        assertThat(subscriptions, equalTo(expectedSubscriptions));
+    }
+
+
+    @Test
+    public void whenListSubscriptionsByMultipleEventTypesWithoutTokenThenOk()
+            throws ServiceTemporarilyUnavailableException {
+        // The test is a copy of whenListSubscriptionsByMultipleEventTypesThenOk, that is to be deleted when
+        // deprecated method removed
+        final String et1 = TestUtils.randomUUID();
+        final String et2 = TestUtils.randomUUID();
+        final String et3 = TestUtils.randomUUID();
+        final String et4 = TestUtils.randomUUID();
+        final String et5 = TestUtils.randomUUID();
+
+        final List<Subscription> testSubscriptions = ImmutableList.of(
+                RandomSubscriptionBuilder.builder().withEventTypes(ImmutableSet.of(et1, et2)).build(),
+                RandomSubscriptionBuilder.builder().withEventTypes(ImmutableSet.of(et1, et2, et3)).build(),
+                RandomSubscriptionBuilder.builder().withEventTypes(ImmutableSet.of(et1)).build(),
+                RandomSubscriptionBuilder.builder().withEventTypes(ImmutableSet.of(et2)).build(),
+                RandomSubscriptionBuilder.builder().withEventTypes(ImmutableSet.of(et3, et4, et5)).build());
+        testSubscriptions.forEach(this::insertSubscriptionToDB);
+
+        final List<Subscription> expectedSubscriptions = testSubscriptions.stream()
+                .filter(sub -> sub.getEventTypes().containsAll(ImmutableSet.of(et1, et2)))
+                .sorted(Comparator.comparing(Subscription::getId))
+                .collect(toList());
+
+        final List<Subscription> subscriptions = repository.listSubscriptions(ImmutableSet.of(et1, et2),
+                Optional.empty(), Optional.empty(), null, 10).getItems();
+        assertThat(subscriptions, equalTo(expectedSubscriptions));
+    }
 }

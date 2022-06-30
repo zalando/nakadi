@@ -1,43 +1,58 @@
 package org.zalando.nakadi.service;
 
-import org.json.JSONObject;
 import org.junit.Before;
 import org.junit.Test;
+import org.junit.runner.RunWith;
+import org.mockito.ArgumentCaptor;
+import org.mockito.Captor;
 import org.mockito.Mockito;
+import org.mockito.junit.MockitoJUnitRunner;
+import org.springframework.transaction.support.TransactionTemplate;
 import org.zalando.nakadi.cache.EventTypeCache;
+import org.zalando.nakadi.cache.SubscriptionCache;
 import org.zalando.nakadi.domain.Feature;
 import org.zalando.nakadi.domain.ResourceImpl;
 import org.zalando.nakadi.domain.Subscription;
 import org.zalando.nakadi.domain.SubscriptionBase;
+import org.zalando.nakadi.domain.kpi.KPIEvent;
+import org.zalando.nakadi.domain.kpi.SubscriptionLogEvent;
 import org.zalando.nakadi.exceptions.runtime.AccessDeniedException;
 import org.zalando.nakadi.exceptions.runtime.AuthorizationNotPresentException;
 import org.zalando.nakadi.exceptions.runtime.NoSuchSubscriptionException;
 import org.zalando.nakadi.exceptions.runtime.UnableProcessException;
 import org.zalando.nakadi.plugin.api.authz.AuthorizationService;
+import org.zalando.nakadi.repository.db.EventTypeRepository;
 import org.zalando.nakadi.repository.db.SubscriptionDbRepository;
-import org.zalando.nakadi.repository.db.SubscriptionTokenLister;
 import org.zalando.nakadi.service.publishing.NakadiAuditLogPublisher;
 import org.zalando.nakadi.service.publishing.NakadiKpiPublisher;
 import org.zalando.nakadi.service.subscription.zk.SubscriptionClientFactory;
 import org.zalando.nakadi.service.subscription.zk.ZkSubscriptionClient;
 import org.zalando.nakadi.service.timeline.TimelineService;
-import org.zalando.nakadi.util.TestKpiUtils;
 import org.zalando.nakadi.utils.RandomSubscriptionBuilder;
 
+import java.util.function.Supplier;
+
+import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 
+@RunWith(MockitoJUnitRunner.class)
 public class SubscriptionServiceTest {
 
     private static final String SUBSCRIPTION_LOG_ET = "subscription_log_et";
 
     private SubscriptionDbRepository subscriptionRepository;
+    private SubscriptionCache subscriptionCache;
     private NakadiKpiPublisher nakadiKpiPublisher;
     private SubscriptionService subscriptionService;
     private FeatureToggleService featureToggleService;
     private AuthorizationValidator authorizationValidator;
     private SubscriptionValidationService subscriptionValidationService;
-    private SubscriptionTokenLister subscriptionTokenLister;
+    private EventTypeRepository eventTypeRepository;
+    private TransactionTemplate transactionTemplate;
+
+    @Captor
+    private ArgumentCaptor<Supplier<KPIEvent>> subscriptionLogEventCaptor;
 
     @Before
     public void setUp() throws Exception {
@@ -52,14 +67,18 @@ public class SubscriptionServiceTest {
         subscriptionValidationService = Mockito.mock(SubscriptionValidationService.class);
         nakadiKpiPublisher = Mockito.mock(NakadiKpiPublisher.class);
         subscriptionRepository = Mockito.mock(SubscriptionDbRepository.class);
+        subscriptionCache = Mockito.mock(SubscriptionCache.class);
         featureToggleService = Mockito.mock(FeatureToggleService.class);
         authorizationValidator = Mockito.mock(AuthorizationValidator.class);
-        subscriptionTokenLister = Mockito.mock(SubscriptionTokenLister.class);
+        eventTypeRepository = Mockito.mock(EventTypeRepository.class);
+        transactionTemplate = Mockito.mock(TransactionTemplate.class);
 
-        subscriptionService = new SubscriptionService(subscriptionRepository, zkSubscriptionClientFactory,
+        subscriptionService = new SubscriptionService(subscriptionRepository,
+                subscriptionCache, zkSubscriptionClientFactory,
                 timelineService, subscriptionValidationService, cursorConverter,
-                cursorOperationsService, nakadiKpiPublisher, featureToggleService, null, SUBSCRIPTION_LOG_ET,
-                nakadiAuditLogPublisher, authorizationValidator, cache, subscriptionTokenLister);
+                cursorOperationsService, nakadiKpiPublisher, featureToggleService, null,
+                nakadiAuditLogPublisher, authorizationValidator, cache,
+                transactionTemplate, eventTypeRepository);
     }
 
     @Test(expected = AuthorizationNotPresentException.class)
@@ -86,7 +105,6 @@ public class SubscriptionServiceTest {
         subscription.setUpdatedAt(subscription.getCreatedAt());
         Mockito.when(featureToggleService
                 .isFeatureEnabled(Feature.FORCE_SUBSCRIPTION_AUTHZ)).thenReturn(true);
-        Mockito.when(subscriptionRepository.createSubscription(subscriptionBase)).thenReturn(subscription);
         subscriptionService.createSubscription(subscriptionBase);
         subscriptionService.updateSubscription("my_subscription_id1", subscription);
     }
@@ -99,14 +117,13 @@ public class SubscriptionServiceTest {
                 .withId("my_subscription_id1")
                 .build();
         subscription.setUpdatedAt(subscription.getCreatedAt());
-        Mockito.when(subscriptionRepository.createSubscription(subscriptionBase)).thenReturn(subscription);
-
+        Mockito.when(transactionTemplate.execute(any())).thenReturn(subscription);
         subscriptionService.createSubscription(subscriptionBase);
 
-        TestKpiUtils.checkKPIEventSubmitted(nakadiKpiPublisher, SUBSCRIPTION_LOG_ET,
-                new JSONObject()
-                        .put("subscription_id", "my_subscription_id1")
-                        .put("status", "created"));
+        Mockito.verify(nakadiKpiPublisher).publish(subscriptionLogEventCaptor.capture());
+        final SubscriptionLogEvent event = (SubscriptionLogEvent) subscriptionLogEventCaptor.getValue().get();
+        assertEquals("my_subscription_id1", event.getSubscriptionId());
+        assertEquals("created", event.getStatus());
     }
 
     @Test
@@ -114,10 +131,10 @@ public class SubscriptionServiceTest {
         Mockito.when(subscriptionRepository.getSubscription(any())).thenReturn(new Subscription());
         subscriptionService.deleteSubscription("my_subscription_id1");
 
-        TestKpiUtils.checkKPIEventSubmitted(nakadiKpiPublisher, SUBSCRIPTION_LOG_ET,
-                new JSONObject()
-                        .put("subscription_id", "my_subscription_id1")
-                        .put("status", "deleted"));
+        Mockito.verify(nakadiKpiPublisher).publish(subscriptionLogEventCaptor.capture());
+        final SubscriptionLogEvent event = (SubscriptionLogEvent) subscriptionLogEventCaptor.getValue().get();
+        assertEquals("my_subscription_id1", event.getSubscriptionId());
+        assertEquals("deleted", event.getStatus());
     }
 
     @Test(expected = UnableProcessException.class)
@@ -126,7 +143,7 @@ public class SubscriptionServiceTest {
                 .buildSubscriptionBase();
 
         Mockito.doThrow(new UnableProcessException("fake"))
-                .when(subscriptionValidationService).validateSubscription(eq(subscriptionBase));
+                .when(subscriptionValidationService).validateSubscriptionOnCreate(eq(subscriptionBase));
 
         subscriptionService.createSubscription(subscriptionBase);
     }
@@ -134,7 +151,7 @@ public class SubscriptionServiceTest {
     @Test(expected = AccessDeniedException.class)
     public void whenSubscriptionModifiedAuthorizationIsValidated() throws NoSuchSubscriptionException {
         Mockito.doThrow(new AccessDeniedException(AuthorizationService.Operation.ADMIN,
-                new ResourceImpl<Subscription>("", ResourceImpl.SUBSCRIPTION_RESOURCE, null, null)))
+                        new ResourceImpl<Subscription>("", ResourceImpl.SUBSCRIPTION_RESOURCE, null, null)))
                 .when(authorizationValidator).authorizeSubscriptionAdmin(any());
 
         final SubscriptionBase subscriptionBase = RandomSubscriptionBuilder.builder()
@@ -146,7 +163,7 @@ public class SubscriptionServiceTest {
     @Test(expected = AccessDeniedException.class)
     public void whenSubscriptionDeletedAuthorizationIsValidated() {
         Mockito.doThrow(new AccessDeniedException(AuthorizationService.Operation.ADMIN,
-                new ResourceImpl<Subscription>("", ResourceImpl.SUBSCRIPTION_RESOURCE, null, null)))
+                        new ResourceImpl<Subscription>("", ResourceImpl.SUBSCRIPTION_RESOURCE, null, null)))
                 .when(authorizationValidator).authorizeSubscriptionAdmin(any());
 
         subscriptionService.deleteSubscription("test");

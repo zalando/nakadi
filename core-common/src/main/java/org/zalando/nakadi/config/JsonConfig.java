@@ -14,6 +14,7 @@ import com.fasterxml.jackson.databind.SerializerProvider;
 import com.fasterxml.jackson.databind.deser.BeanDeserializerModifier;
 import com.fasterxml.jackson.databind.module.SimpleModule;
 import com.fasterxml.jackson.databind.ser.std.StdSerializer;
+import com.fasterxml.jackson.dataformat.avro.AvroMapper;
 import com.fasterxml.jackson.datatype.jdk8.Jdk8Module;
 import com.fasterxml.jackson.datatype.joda.JodaModule;
 import org.springframework.context.annotation.Bean;
@@ -42,7 +43,7 @@ public class JsonConfig {
         objectMapper.registerModule(new Jdk8Module());
         objectMapper.registerModule(new ProblemModule());
         objectMapper.registerModule(new JodaModule());
-        objectMapper.configure(WRITE_DATES_AS_TIMESTAMPS , false);
+        objectMapper.configure(WRITE_DATES_AS_TIMESTAMPS, false);
         objectMapper.configure(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES, false);
 
         return objectMapper;
@@ -73,8 +74,7 @@ public class JsonConfig {
 
         @Override
         public Enum deserialize(final JsonParser jp, final DeserializationContext ctxt) throws IOException {
-            @SuppressWarnings("unchecked")
-            final Class<? extends Enum> rawClass = (Class<Enum<?>>) type.getRawClass();
+            @SuppressWarnings("unchecked") final Class<? extends Enum> rawClass = (Class<Enum<?>>) type.getRawClass();
             final String jpValueAsString = jp.getValueAsString();
 
             try {
@@ -109,10 +109,15 @@ public class JsonConfig {
         public void serialize(final Enum value, final JsonGenerator jgen, final SerializerProvider provider)
                 throws IOException {
             if (value.getClass().equals(Audience.class)) {
-                jgen.writeString(((Audience)value).getText());
+                jgen.writeString(((Audience) value).getText());
             } else {
                 jgen.writeString(value.name().toLowerCase());
             }
         }
+    }
+
+    @Bean
+    public AvroMapper avroMapper() {
+        return new AvroMapper();
     }
 }

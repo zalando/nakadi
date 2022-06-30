@@ -10,7 +10,6 @@ import org.zalando.nakadi.domain.ResourceAuthorizationAttribute;
 import org.zalando.nakadi.plugin.api.authz.AuthorizationAttribute;
 import org.zalando.nakadi.plugin.api.authz.AuthorizationService;
 import org.zalando.nakadi.repository.db.AuthorizationDbRepository;
-import org.zalando.nakadi.service.publishing.NakadiAuditLogPublisher;
 
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -64,9 +63,8 @@ public class AdminServiceTest {
         this.authorizationService = mock(AuthorizationService.class);
         this.nakadiSettings = mock(NakadiSettings.class);
         this.featureToggleService = mock(FeatureToggleService.class);
-        final NakadiAuditLogPublisher auditLogPublisher = mock(NakadiAuditLogPublisher.class);
         this.adminService = new AdminService(authorizationDbRepository, authorizationService,
-                featureToggleService, nakadiSettings, auditLogPublisher);
+                featureToggleService, nakadiSettings);
         this.adminList = new ArrayList<>(Arrays.asList(permAdminUser1, permAdminService1,
                 permAdminService2, permReadUser1, permReadService1, permReadService2, permWriteUser1,
                 permWriteService1, permWriteService2));

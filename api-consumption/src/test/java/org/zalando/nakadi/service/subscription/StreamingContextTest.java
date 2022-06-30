@@ -1,7 +1,6 @@
 package org.zalando.nakadi.service.subscription;
 
 import com.google.common.collect.ImmutableList;
-import io.opentracing.Span;
 import org.junit.Assert;
 import org.junit.Ignore;
 import org.junit.Test;
@@ -17,7 +16,6 @@ import org.zalando.nakadi.util.ThreadUtils;
 
 import java.io.IOException;
 import java.io.OutputStream;
-import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.Consumer;
 
@@ -51,8 +49,6 @@ public class StreamingContextTest {
         // Mocks
         final ZkSubscriptionClient zkClient = mock(ZkSubscriptionClient.class);
         doNothing().when(zkClient).close();
-        final Span span = mock(Span.class);
-        doNothing().when(span).finish();
 
         return new StreamingContext.Builder()
                 .setOut(output)
@@ -63,11 +59,9 @@ public class StreamingContextTest {
                 .setZkClient(zkClient)
                 .setRebalancer(null)
                 .setKafkaPollTimeout(0)
-                .setConnectionReady(new AtomicBoolean(true))
                 .setCursorTokenService(null)
                 .setObjectMapper(null)
                 .setEventStreamChecks(null)
-                .setCurrentSpan(span)
                 .build();
     }
 
@@ -168,7 +162,7 @@ public class StreamingContextTest {
         t.start();
         t.join(1000);
 
-        new Thread(() -> ctxSpy.onNodeShutdown()).start();
+        new Thread(() -> ctxSpy.terminateStream()).start();
         ThreadUtils.sleep(2000);
 
         Mockito.verify(ctxSpy).switchState(Mockito.isA(CleanupState.class));
@@ -177,7 +171,7 @@ public class StreamingContextTest {
     }
 
     @Test
-    public void testSessionAlwaysCleaned() throws Exception {
+    public void testSessionAlwaysCleanedManyTimesOk() {
 
         final ZkSubscriptionClient zkMock = mock(ZkSubscriptionClient.class);
         when(zkMock.isActiveSession(any())).thenReturn(true);
@@ -187,13 +181,15 @@ public class StreamingContextTest {
                 .setSubscription(new Subscription())
                 .setZkClient(zkMock)
                 .setKafkaPollTimeout(0)
-                .setConnectionReady(new AtomicBoolean(true))
                 .build();
 
         doThrow(new NakadiRuntimeException(new Exception("Failed!"))).when(zkMock).registerSession(any());
         assertThrows(NakadiRuntimeException.class, () -> context.registerSession());
 
         // CleanupState calls context.unregisterSession() in finally block
+        context.unregisterSession();
+
+        // It can also be called many times and should not result in exceptions
         context.unregisterSession();
 
         Mockito.verify(zkMock, Mockito.times(1)).unregisterSession(any());

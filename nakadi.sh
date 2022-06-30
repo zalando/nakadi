@@ -2,7 +2,8 @@
 
 function waitForNakadi() {
   echo "Waiting for Nakadi to start up"
-  while :; do
+  x=1
+  while [[ x -lt 10 ]]; do
     res=$(curl -s -w "%{http_code}" -o /dev/null http://localhost:8080/health)
     if ((res == 200)); then
       echo "Nakadi is fully started"
@@ -10,6 +11,7 @@ function waitForNakadi() {
     fi
     echo "Nakadi boots up"
     sleep 10
+    x=$((x + 1))
   done
 }
 
@@ -27,18 +29,19 @@ function startStorages() {
   docker-compose up -d postgres zookeeper kafka
 }
 
-function stopStorages() {
-  docker-compose down
-}
-
 function acceptanceTests() {
   export SPRING_PROFILES_ACTIVE=acceptanceTest
   docker-compose up -d --build
   waitForNakadi
-  set -e
-  ./gradlew :acceptance-test:acceptanceTest
-  set +e
+  if ./gradlew :acceptance-test:acceptanceTest
+  then
+      errcode=0
+  else
+      errcode=1
+      docker-compose logs nakadi
+  fi
   docker-compose down
+  return $errcode
 }
 
 function buildNakadi() {

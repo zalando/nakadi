@@ -15,6 +15,7 @@ import org.zalando.nakadi.plugin.api.authz.Subject;
 import org.zalando.nakadi.security.UsernameHasher;
 import org.zalando.nakadi.service.FeatureToggleService;
 
+import java.util.Collections;
 import java.util.Optional;
 
 @Component
@@ -23,20 +24,23 @@ public class NakadiAuditLogPublisher {
     private static final Logger LOG = LoggerFactory.getLogger(NakadiAuditLogPublisher.class);
 
     private final FeatureToggleService featureToggleService;
-    private final EventsProcessor eventsProcessor;
+    private final JsonEventProcessor eventsProcessor;
     private final UsernameHasher usernameHasher;
     private final String auditEventType;
     private final ObjectMapper objectMapper;
     private final AuthorizationService authorizationService;
+    private final EventMetadata eventMetadata;
 
     @Autowired
     protected NakadiAuditLogPublisher(final FeatureToggleService featureToggleService,
-                                      final EventsProcessor eventsProcessor,
+                                      final JsonEventProcessor eventsProcessor,
+                                      final EventMetadata eventMetadata,
                                       final ObjectMapper objectMapper,
                                       final UsernameHasher usernameHasher,
                                       final AuthorizationService authorizationService,
                                       @Value("${nakadi.audit.eventType}") final String auditEventType) {
         this.eventsProcessor = eventsProcessor;
+        this.eventMetadata = eventMetadata;
         this.usernameHasher = usernameHasher;
         this.objectMapper = objectMapper;
         this.auditEventType = auditEventType;
@@ -79,8 +83,8 @@ public class NakadiAuditLogPublisher {
                     .put("data_op", actionType.getShortname())
                     .put("data", payload);
 
-
-            eventsProcessor.enrichAndSubmit(auditEventType, dataEvent);
+            eventsProcessor.sendEvents(auditEventType,
+                    Collections.singletonList(eventMetadata.addTo(dataEvent)));
         } catch (final Throwable e) {
             LOG.error("Error occurred when submitting audit event for publishing", e);
         }

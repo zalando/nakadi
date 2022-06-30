@@ -40,7 +40,6 @@ public class CleanupState extends State {
             } catch (final IOException e) {
                 getLog().error("Unexpected fail to release zk connection", e);
             }
-            getContext().getCurrentSpan().finish();
         }
     }
 }

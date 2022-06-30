@@ -1,20 +1,19 @@
 package org.zalando.nakadi.service;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
-import org.apache.curator.framework.CuratorFramework;
-import org.apache.curator.shaded.com.google.common.base.Charsets;
-import org.apache.zookeeper.Watcher;
 import org.json.JSONException;
 import org.json.JSONObject;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.beans.factory.annotation.Qualifier;
+import org.springframework.core.env.Environment;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.TransactionException;
+import org.springframework.transaction.support.TransactionTemplate;
 import org.zalando.nakadi.domain.Feature;
-import org.zalando.nakadi.domain.storage.DefaultStorage;
+import org.zalando.nakadi.domain.storage.KafkaConfiguration;
 import org.zalando.nakadi.domain.storage.Storage;
+import org.zalando.nakadi.domain.storage.ZookeeperConnection;
 import org.zalando.nakadi.exceptions.runtime.DbWriteOperationsBlockedException;
 import org.zalando.nakadi.exceptions.runtime.DuplicatedStorageException;
 import org.zalando.nakadi.exceptions.runtime.InternalNakadiException;
@@ -24,75 +23,57 @@ import org.zalando.nakadi.exceptions.runtime.StorageIsUsedException;
 import org.zalando.nakadi.exceptions.runtime.UnknownStorageTypeException;
 import org.zalando.nakadi.exceptions.runtime.UnprocessableEntityException;
 import org.zalando.nakadi.repository.db.StorageDbRepository;
-import org.zalando.nakadi.repository.zookeeper.ZooKeeperHolder;
 import org.zalando.nakadi.service.publishing.NakadiAuditLogPublisher;
 
 import javax.annotation.PostConstruct;
-import javax.annotation.PreDestroy;
 import java.io.IOException;
 import java.util.List;
 import java.util.Optional;
-import java.util.concurrent.Executors;
-import java.util.concurrent.ScheduledExecutorService;
-import java.util.concurrent.TimeUnit;
 import java.util.function.Function;
 
-@Service
+@Service("storageService")
 public class StorageService {
 
-    public static final String ZK_TIMELINES_DEFAULT_STORAGE = "/nakadi/timelines/default_storage";
     private static final Logger LOG = LoggerFactory.getLogger(StorageService.class);
     private final ObjectMapper objectMapper;
     private final StorageDbRepository storageDbRepository;
-    private final DefaultStorage defaultStorage;
-    private final CuratorFramework curator;
     private final FeatureToggleService featureToggleService;
     private final NakadiAuditLogPublisher auditLogPublisher;
-    private final ScheduledExecutorService zkNotificationThread;
+    private final TransactionTemplate transactionTemplate;
+    private final Environment environment;
 
     @Autowired
     public StorageService(final ObjectMapper objectMapper,
                           final StorageDbRepository storageDbRepository,
-                          @Qualifier("default_storage") final DefaultStorage defaultStorage,
-                          final ZooKeeperHolder zooKeeperHolder,
                           final FeatureToggleService featureToggleService,
-                          final NakadiAuditLogPublisher auditLogPublisher) {
+                          final NakadiAuditLogPublisher auditLogPublisher,
+                          final TransactionTemplate transactionTemplate,
+                          final Environment environment) {
         this.objectMapper = objectMapper;
         this.storageDbRepository = storageDbRepository;
-        this.defaultStorage = defaultStorage;
-        this.curator = zooKeeperHolder.get();
         this.featureToggleService = featureToggleService;
         this.auditLogPublisher = auditLogPublisher;
-        this.zkNotificationThread = Executors.newSingleThreadScheduledExecutor();
-    }
-
-    private void refreshDefaultStorageAndCreateWatcher() {
-        final byte[] defaultStorageId;
-        try {
-            defaultStorageId = curator.getData()
-                    .usingWatcher(
-                            (Watcher) evt -> zkNotificationThread.submit(this::refreshDefaultStorageAndCreateWatcher))
-                    .forPath(ZK_TIMELINES_DEFAULT_STORAGE);
-        } catch (Exception ex) {
-            LOG.error("Failed to refresh default storage id, updates may be blocked", ex);
-            zkNotificationThread.schedule(this::refreshDefaultStorageAndCreateWatcher, 10, TimeUnit.SECONDS);
-            return;
-        }
-        if (defaultStorageId != null) {
-            final Storage storage = getStorage(new String(defaultStorageId));
-            defaultStorage.setStorage(storage);
-        }
+        this.transactionTemplate = transactionTemplate;
+        this.environment = environment;
     }
 
     @PostConstruct
-    public void watchDefaultStorage() {
-        this.zkNotificationThread.submit(this::refreshDefaultStorageAndCreateWatcher);
+    public void initializeDefaultStorage() {
+        if (!storageDbRepository.listStorages().isEmpty()) {
+            return;
+        }
+        final String defaultStorageId = environment.getProperty("nakadi.timelines.storage.default");
+
+        LOG.info("Creating storage `{}` from defaults", defaultStorageId);
+        final Storage storage = new Storage();
+        storage.setId(defaultStorageId);
+        storage.setType(Storage.Type.KAFKA);
+        storage.setConfiguration(new KafkaConfiguration(
+                ZookeeperConnection.valueOf(environment.getProperty("nakadi.zookeeper.connection-string"))));
+        storage.setDefault(true);
+        storageDbRepository.createStorage(storage);
     }
 
-    @PreDestroy
-    public void stopThreads() {
-        this.zkNotificationThread.shutdown();
-    }
 
     public List<Storage> listStorages() throws InternalNakadiException {
         final List<Storage> storages;
@@ -130,10 +111,12 @@ public class StorageService {
         final String type;
         final String id;
         final JSONObject configuration;
+        final boolean isDefault;
 
         try {
             id = json.getString("id");
             type = json.getString("storage_type");
+            isDefault = json.has("default") ? json.getBoolean("default") : false;
             switch (type) {
                 case "kafka":
                     configuration = json.getJSONObject("kafka_configuration");
@@ -148,6 +131,7 @@ public class StorageService {
         final Storage storage = new Storage();
         storage.setId(id);
         storage.setType(Storage.Type.valueOf(type.toUpperCase()));
+        storage.setDefault(isDefault);
         try {
             storage.parseConfiguration(objectMapper, configuration.toString());
         } catch (final IOException e) {
@@ -199,13 +183,26 @@ public class StorageService {
 
     public Storage setDefaultStorage(final String defaultStorageId)
             throws NoSuchStorageException, InternalNakadiException {
-        final Storage storage = getStorage(defaultStorageId);
-        try {
-            curator.setData().forPath(ZK_TIMELINES_DEFAULT_STORAGE, defaultStorageId.getBytes(Charsets.UTF_8));
-        } catch (final Exception e) {
-            LOG.error("Error while setting default storage in zk {} ", e.getMessage(), e);
-            throw new InternalNakadiException("Error while setting default storage in zk");
+        if (featureToggleService.isFeatureEnabled(Feature.DISABLE_DB_WRITE_OPERATIONS)) {
+            throw new DbWriteOperationsBlockedException("Cannot change default storage: write operations on DB " +
+                    "are blocked by feature flag.");
         }
-        return storage;
+
+        return transactionTemplate.execute((status) -> {
+            final List<Storage> allStorages = storageDbRepository.listStorages();
+            final Optional<Storage> newDefaultStorageOpt = allStorages.stream()
+                    .filter(s -> s.getId().equals(defaultStorageId)).findAny();
+            if (!newDefaultStorageOpt.isPresent()) {
+                throw new NoSuchStorageException("Storage with id " + defaultStorageId + " is not found");
+            }
+            final Storage newDefaultStorage = newDefaultStorageOpt.get();
+            for (final Storage s : allStorages) {
+                if (s.isDefault() && !newDefaultStorage.getId().equals(s.getId())) {
+                    storageDbRepository.setDefaultStorage(s.getId(), false);
+                }
+            }
+            storageDbRepository.setDefaultStorage(newDefaultStorage.getId(), true);
+            return storageDbRepository.getStorage(newDefaultStorage.getId());
+        }).get();
     }
 }

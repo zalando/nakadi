@@ -78,7 +78,7 @@ public class TimelineSyncImplTest {
     }
 
     @Test(timeout = 2_000)
-    public void whenStartTimelineUpdateFailThanLockedRolledBack() throws InterruptedException {
+    public void whenStartTimelineUpdateFailThenLockedRolledBack() throws InterruptedException {
         final VersionedLockedEventTypes expectedVersion = new VersionedLockedEventTypes(
                 VersionedLockedEventTypes.EMPTY.getVersion() + 1, Collections.singleton("test"));
         final VersionedLockedEventTypes expectedRollback = new VersionedLockedEventTypes(

@@ -1,8 +1,10 @@
 package org.zalando.nakadi.service.subscription.state;
 
+import com.google.common.collect.ImmutableMap;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.zalando.nakadi.domain.NakadiCursor;
+import org.zalando.nakadi.service.TracingService;
 import org.zalando.nakadi.service.subscription.LogPathBuilder;
 import org.zalando.nakadi.service.subscription.StreamParameters;
 import org.zalando.nakadi.service.subscription.StreamingContext;
@@ -62,10 +64,6 @@ public abstract class State {
         context.switchState(newState);
     }
 
-    protected boolean isConnectionReady() {
-        return context.isConnectionReady();
-    }
-
     public void scheduleTask(final Runnable task, final long timeout, final TimeUnit unit) {
         context.scheduleTask(linkTaskToState(task), timeout, unit);
     }
@@ -93,5 +91,9 @@ public abstract class State {
 
     protected AutocommitSupport getAutocommit() {
         return getContext().getAutocommitSupport();
+    }
+
+    protected static void logStreamCloseReason(final String reason) {
+        TracingService.log(ImmutableMap.of("stream.close.reason", reason));
     }
 }

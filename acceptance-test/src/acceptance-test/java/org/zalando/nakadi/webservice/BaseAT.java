@@ -52,6 +52,7 @@ public abstract class BaseAT {
         storage.setId("default");
         storage.setType(Storage.Type.KAFKA);
         storage.setConfiguration(new KafkaConfiguration(ZOOKEEPER_CONNECTION));
+        storage.setDefault(true);
         try {
             STORAGE_DB_REPOSITORY.createStorage(storage);
         } catch (final DuplicatedStorageException ignore) {

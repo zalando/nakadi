@@ -7,6 +7,7 @@ import org.springframework.stereotype.Component;
 @Component
 public class KafkaSettings {
 
+    private final int retries;
     // kafka client requires this property to be int
     // https://github.com/apache/kafka/blob/d9206500bf2f99ce93f6ad64c7a89483100b3b5f/clients/src/main/java/org/apache
     // /kafka/clients/producer/ProducerConfig.java#L261
@@ -22,9 +23,11 @@ public class KafkaSettings {
     private final int deliveryTimeoutMs;
     private final int maxBlockMs;
     private final String clientRack;
+    private final String compressionType;
 
     @Autowired
-    public KafkaSettings(@Value("${nakadi.kafka.request.timeout.ms}") final int requestTimeoutMs,
+    public KafkaSettings(@Value("${nakadi.kafka.retries}") final int retries,
+                         @Value("${nakadi.kafka.request.timeout.ms}") final int requestTimeoutMs,
                          @Value("${nakadi.kafka.batch.size}") final int batchSize,
                          @Value("${nakadi.kafka.buffer.memory}") final long bufferMemory,
                          @Value("${nakadi.kafka.linger.ms}") final int lingerMs,
@@ -32,7 +35,9 @@ public class KafkaSettings {
                          @Value("${nakadi.kafka.max.request.size}") final int maxRequestSize,
                          @Value("${nakadi.kafka.delivery.timeout.ms}") final int deliveryTimeoutMs,
                          @Value("${nakadi.kafka.max.block.ms}") final int maxBlockMs,
-                         @Value("${nakadi.kafka.client.rack:}") final String clientRack) {
+                         @Value("${nakadi.kafka.client.rack:}") final String clientRack,
+                         @Value("${nakadi.kafka.compression.type:lz4}") final String compressionType) {
+        this.retries = retries;
         this.requestTimeoutMs = requestTimeoutMs;
         this.batchSize = batchSize;
         this.bufferMemory = bufferMemory;
@@ -42,6 +47,11 @@ public class KafkaSettings {
         this.deliveryTimeoutMs = deliveryTimeoutMs;
         this.maxBlockMs = maxBlockMs;
         this.clientRack = clientRack;
+        this.compressionType = compressionType;
+    }
+
+    public int getRetries() {
+        return retries;
     }
 
     public int getRequestTimeoutMs() {
@@ -78,5 +88,9 @@ public class KafkaSettings {
 
     public String getClientRack() {
         return clientRack;
+    }
+
+    public String getCompressionType() {
+        return compressionType;
     }
 }

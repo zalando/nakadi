@@ -6,12 +6,10 @@ import com.google.common.io.Resources;
 import org.everit.json.schema.Schema;
 import org.everit.json.schema.loader.SchemaLoader;
 import org.json.JSONObject;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.zalando.nakadi.domain.SchemaChange;
-import org.zalando.nakadi.plugin.api.authz.AuthorizationService;
-import org.zalando.nakadi.service.AdminService;
+import org.zalando.nakadi.service.AvroSchemaCompatibility;
 import org.zalando.nakadi.service.SchemaEvolutionService;
 import org.zalando.nakadi.validation.schema.CategoryChangeConstraint;
 import org.zalando.nakadi.validation.schema.CompatibilityModeChangeConstraint;
@@ -47,13 +45,17 @@ import static org.zalando.nakadi.domain.SchemaChange.Type.TYPE_NARROWED;
 @Configuration
 public class SchemaValidatorConfig {
 
-    private final AdminService adminService;
-    private final AuthorizationService authorizationService;
+    private final CompatibilityModeChangeConstraint compatibilityModeChangeConstraint;
+    private final PartitionStrategyConstraint partitionStrategyConstraint;
+    private final AvroSchemaCompatibility avroSchemaCompatibility;
 
-    @Autowired
-    public SchemaValidatorConfig(final AdminService adminService, final AuthorizationService authorizationService) {
-        this.adminService = adminService;
-        this.authorizationService = authorizationService;
+    public SchemaValidatorConfig(
+            final CompatibilityModeChangeConstraint compatibilityModeChangeConstraint,
+            final PartitionStrategyConstraint partitionStrategyConstraint,
+            final AvroSchemaCompatibility avroSchemaCompatibility) {
+        this.compatibilityModeChangeConstraint = compatibilityModeChangeConstraint;
+        this.partitionStrategyConstraint = partitionStrategyConstraint;
+        this.avroSchemaCompatibility = avroSchemaCompatibility;
     }
 
     @Bean
@@ -64,9 +66,9 @@ public class SchemaValidatorConfig {
 
         final List<SchemaEvolutionConstraint> schemaEvolutionConstraints = Lists.newArrayList(
                 new CategoryChangeConstraint(),
-                new CompatibilityModeChangeConstraint(adminService, authorizationService),
+                compatibilityModeChangeConstraint,
                 new PartitionKeyFieldsConstraint(),
-                new PartitionStrategyConstraint(),
+                partitionStrategyConstraint,
                 new EnrichmentStrategyConstraint()
         );
 
@@ -91,6 +93,7 @@ public class SchemaValidatorConfig {
 
         final SchemaDiff diff = new SchemaDiff();
 
-        return new SchemaEvolutionService(metaSchema, schemaEvolutionConstraints, diff, errorMessage);
+        return new SchemaEvolutionService(metaSchema, schemaEvolutionConstraints, diff, errorMessage,
+                avroSchemaCompatibility);
     }
 }

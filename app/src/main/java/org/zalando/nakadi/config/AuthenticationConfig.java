@@ -64,7 +64,7 @@ public class AuthenticationConfig {
                 securitySettings.getClientId(),
                 new DefaultAuthenticationExtractor(),
                 new DefaultUserRolesProvider(),
-                new NakadiTokenInfoRequestExecutor(securitySettings.getTokenInfoUrl(), restTemplate)
+                new NakadiTokenInfoRequestExecutor(securitySettings.getLocalTokenInfoUrl(), restTemplate)
         );
     }
 

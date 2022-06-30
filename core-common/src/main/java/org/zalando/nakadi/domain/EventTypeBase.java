@@ -3,6 +3,10 @@ package org.zalando.nakadi.domain;
 import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fasterxml.jackson.annotation.JsonInclude;
 import com.google.common.collect.ImmutableList;
+import org.zalando.nakadi.annotations.validation.AnnotationKey;
+import org.zalando.nakadi.annotations.validation.AnnotationValue;
+import org.zalando.nakadi.annotations.validation.LabelKey;
+import org.zalando.nakadi.annotations.validation.LabelValue;
 import org.zalando.nakadi.partitioning.PartitionStrategy;
 import org.zalando.nakadi.plugin.api.authz.EventTypeAuthz;
 import org.zalando.nakadi.plugin.api.authz.Resource;
@@ -15,11 +19,14 @@ import javax.validation.constraints.Pattern;
 import javax.validation.constraints.Size;
 import java.util.Collections;
 import java.util.List;
+import java.util.Map;
 
 import static java.util.Collections.unmodifiableList;
 
 public class EventTypeBase implements EventTypeAuthz {
 
+    public static final String DATA_CHANGE_WRAP_FIELD = "data";
+    public static final String DATA_PATH_PREFIX = DATA_CHANGE_WRAP_FIELD + ".";
     private static final List<String> EMPTY_PARTITION_KEY_FIELDS = ImmutableList.of();
     private static final List<String> EMPTY_ORDERING_KEY_FIELDS = ImmutableList.of();
 
@@ -65,6 +72,18 @@ public class EventTypeBase implements EventTypeAuthz {
     @Valid
     private ResourceAuthorization authorization;
 
+    @Valid
+    @Nullable
+    private Map<
+            @AnnotationKey String,
+            @AnnotationValue String> annotations;
+
+    @Valid
+    @Nullable
+    private Map<
+            @LabelKey String,
+            @LabelValue String> labels;
+
     @NotNull
     private CompatibilityMode compatibilityMode;
 
@@ -95,7 +114,9 @@ public class EventTypeBase implements EventTypeAuthz {
                          final EventTypeStatistics defaultStatistic,
                          final EventTypeOptions options,
                          final CompatibilityMode compatibilityMode,
-                         final CleanupPolicy cleanupPolicy) {
+                         final CleanupPolicy cleanupPolicy,
+                         final Map<String, String> annotations,
+                         final Map<String, String> labels) {
         this.name = name;
         this.owningApplication = owningApplication;
         this.category = category;
@@ -107,6 +128,8 @@ public class EventTypeBase implements EventTypeAuthz {
         this.options = options;
         this.compatibilityMode = compatibilityMode;
         this.cleanupPolicy = cleanupPolicy;
+        this.annotations = annotations;
+        this.labels = labels;
     }
 
     public EventTypeBase(final EventTypeBase eventType) {
@@ -126,6 +149,8 @@ public class EventTypeBase implements EventTypeAuthz {
         this.setOrderingInstanceIds(eventType.getOrderingInstanceIds());
         this.setCleanupPolicy(eventType.getCleanupPolicy());
         this.setEventOwnerSelector(eventType.getEventOwnerSelector());
+        this.setAnnotations(eventType.getAnnotations());
+        this.setLabels(eventType.getLabels());
     }
 
     public String getName() {
@@ -274,5 +299,21 @@ public class EventTypeBase implements EventTypeAuthz {
     @JsonIgnore
     public Resource<EventTypeBase> asBaseResource() {
         return new ResourceImpl<>(getName(), ResourceImpl.EVENT_TYPE_RESOURCE, getAuthorization(), this);
+    }
+
+    public void setAnnotations(final Map<String, String> annotations) {
+        this.annotations = annotations;
+    }
+
+    public Map<String, String> getAnnotations() {
+        return this.annotations;
+    }
+
+    public void setLabels(final Map<String, String> labels) {
+        this.labels = labels;
+    }
+
+    public Map<String, String> getLabels() {
+        return this.labels;
     }
 }

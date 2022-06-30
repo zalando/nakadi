@@ -10,7 +10,6 @@ import org.zalando.nakadi.domain.EventType;
 import org.zalando.nakadi.domain.EventTypeSchema;
 import org.zalando.nakadi.domain.ResourceAuthorization;
 import org.zalando.nakadi.domain.ResourceAuthorizationAttribute;
-import org.zalando.nakadi.domain.Version;
 import org.zalando.nakadi.exceptions.runtime.DuplicatedEventTypeNameException;
 import org.zalando.nakadi.exceptions.runtime.NoSuchEventTypeException;
 import org.zalando.nakadi.utils.TestUtils;
@@ -18,6 +17,7 @@ import org.zalando.nakadi.utils.TestUtils;
 import java.io.IOException;
 import java.util.Collections;
 import java.util.List;
+import java.util.Optional;
 import java.util.stream.Collectors;
 
 import static org.hamcrest.CoreMatchers.hasItem;
@@ -118,7 +118,20 @@ public class EventTypeDbRepositoryTest extends AbstractDbRepositoryTest {
 
         insertEventType(eventType1);
 
-        final List<EventType> persistedEventTypes = repository.list(auth);
+        final List<EventType> persistedEventTypes = repository.list(Optional.ofNullable(auth), Optional.empty());
+
+        assertThat(persistedEventTypes, hasItem(hasProperty("name", is(eventType1.getName()))));
+    }
+
+    @Test
+    public void whenEventTypeExistsFindByOwningApplication() throws Exception {
+        final EventType eventType1 = buildDefaultEventType();
+        final String owningApp = "some_owning_application";
+        eventType1.setOwningApplication(owningApp);
+
+        insertEventType(eventType1);
+
+        final List<EventType> persistedEventTypes = repository.list(Optional.empty(), Optional.ofNullable(owningApp));
 
         assertThat(persistedEventTypes, hasItem(hasProperty("name", is(eventType1.getName()))));
     }
@@ -164,7 +177,7 @@ public class EventTypeDbRepositoryTest extends AbstractDbRepositoryTest {
 
         repository.saveEventType(eventType);
 
-        eventType.getSchema().setVersion(new Version("1.1.0"));
+        eventType.getSchema().setVersion("1.1.0");
 
         repository.update(eventType);
 
@@ -182,7 +195,7 @@ public class EventTypeDbRepositoryTest extends AbstractDbRepositoryTest {
         repository.saveEventType(eventType1);
         repository.saveEventType(eventType2);
 
-        final List<EventType> eventTypes = repository.list().stream()
+        final List<EventType> eventTypes = repository.list(Optional.empty(), Optional.empty()).stream()
                 .filter(et -> et.getName() != null)
                 .filter(et -> et.getName().equals(eventType1.getName()) || et.getName().equals(eventType2.getName()))
                 .collect(Collectors.toList());

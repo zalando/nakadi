@@ -39,7 +39,8 @@ public class JsonSchemaEnrichmentTest {
 
             final EventType eventType = EventTypeTestBuilder.builder().schema(original).build();
 
-            assertThat(description, loader.effectiveSchema(eventType), is(sameJSONObjectAs(effective)));
+            assertThat(description, loader.effectiveSchema(eventType, original.toString()),
+                    is(sameJSONObjectAs(effective)));
         }
     }
 

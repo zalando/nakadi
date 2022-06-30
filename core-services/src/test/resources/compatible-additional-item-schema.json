@@ -1,0 +1,11 @@
+{
+  "type": "object",
+  "properties": {
+    "some_array": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    }
+  }
+}

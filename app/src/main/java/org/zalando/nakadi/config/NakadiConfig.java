@@ -1,89 +1,96 @@
 package org.zalando.nakadi.config;
 
-import com.google.common.base.Charsets;
-import org.apache.curator.framework.CuratorFramework;
-import org.apache.zookeeper.KeeperException;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+
+import com.google.common.collect.Lists;
+import org.apache.log4j.NDC;
+import org.slf4j.MDC;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
-import org.springframework.core.env.Environment;
-import org.springframework.core.task.SimpleAsyncTaskExecutor;
-import org.springframework.core.task.TaskExecutor;
+import org.springframework.core.task.AsyncTaskExecutor;
+import org.springframework.core.task.TaskDecorator;
 import org.springframework.scheduling.annotation.EnableScheduling;
-import org.zalando.nakadi.domain.storage.DefaultStorage;
-import org.zalando.nakadi.domain.storage.KafkaConfiguration;
-import org.zalando.nakadi.domain.storage.Storage;
-import org.zalando.nakadi.domain.storage.ZookeeperConnection;
-import org.zalando.nakadi.exceptions.runtime.DuplicatedStorageException;
-import org.zalando.nakadi.exceptions.runtime.InternalNakadiException;
-import org.zalando.nakadi.repository.db.StorageDbRepository;
-import org.zalando.nakadi.repository.zookeeper.ZooKeeperHolder;
-import org.zalando.nakadi.service.StorageService;
+import org.springframework.scheduling.concurrent.ConcurrentTaskExecutor;
+import org.zalando.nakadi.service.AuthorizationValidator;
+import org.zalando.nakadi.service.publishing.EventOwnerExtractorFactory;
+import org.zalando.nakadi.service.publishing.check.Check;
+import org.zalando.nakadi.service.publishing.check.EnrichmentCheck;
+import org.zalando.nakadi.service.publishing.check.EventDeletionEmptyPayloadCheck;
+import org.zalando.nakadi.service.publishing.check.EventKeyCheck;
+import org.zalando.nakadi.service.publishing.check.EventOwnerSelectorCheck;
+import org.zalando.nakadi.service.publishing.check.EventSizeCheck;
+import org.zalando.nakadi.service.publishing.check.EventTypeCheck;
+import org.zalando.nakadi.service.publishing.check.PartitioningCheck;
 
-import java.util.Optional;
+import java.util.List;
+import java.util.concurrent.Executors;
+
 
 @Configuration
 @EnableScheduling
 public class NakadiConfig {
 
-    private static final Logger LOGGER = LoggerFactory.getLogger(NakadiConfig.class);
+    @Bean
+    public AsyncTaskExecutor asyncTaskExecutor() {
+        final ConcurrentTaskExecutor taskExecutor = new ConcurrentTaskExecutor(Executors.newCachedThreadPool());
+        taskExecutor.setTaskDecorator(new TaskDecorator() {
+            @Override
+            public Runnable decorate(final Runnable runnable) {
+                return new Runnable() {
+                    @Override
+                    public void run() {
+                        NDC.clear();
+                        MDC.clear();
+
+                        runnable.run();
+                    }
+                };
+            }
+        });
+        return taskExecutor;
+    }
 
     @Bean
-    public TaskExecutor taskExecutor() {
-        return new SimpleAsyncTaskExecutor();
+    @Qualifier("internal-publishing-checks")
+    public List<Check> internalPublishingChecks(final EnrichmentCheck enrichmentCheck,
+                                                final PartitioningCheck partitioningCheck) {
+        return Lists.newArrayList(
+                partitioningCheck,
+                enrichmentCheck,
+                new EventKeyCheck()
+        );
     }
 
     @Bean
-    @Qualifier("default_storage")
-    public DefaultStorage defaultStorage(final StorageDbRepository storageDbRepository,
-                                         final Environment environment,
-                                         final ZooKeeperHolder zooKeeperHolder)
-            throws InternalNakadiException {
-        final String storageId = getStorageId(zooKeeperHolder, environment);
-        final Optional<Storage> storageOpt = storageDbRepository.getStorage(storageId);
-        if (!storageOpt.isPresent()) {
-            LOGGER.info("Creating timelines storage `{}` from defaults", storageId);
-            final Storage storage = new Storage();
-            storage.setId(storageId);
-            storage.setType(Storage.Type.KAFKA);
-            storage.setConfiguration(new KafkaConfiguration(
-                    ZookeeperConnection.valueOf(environment.getProperty("nakadi.zookeeper.connection-string"))));
-            try {
-                storageDbRepository.createStorage(storage);
-            } catch (final DuplicatedStorageException e) {
-                LOGGER.info("Creation of default storage failed: {}", e.getMessage());
-            }
-            return new DefaultStorage(storage);
-        } else {
-            return new DefaultStorage(storageOpt.get());
-        }
+    @Qualifier("pre-publishing-checks")
+    public List<Check> prePublishingChecks(final EventTypeCheck eventTypeCheck,
+                                           final EventOwnerExtractorFactory eventOwnerExtractorFactory,
+                                           final AuthorizationValidator authValidator,
+                                           final EnrichmentCheck enrichmentCheck,
+                                           final PartitioningCheck partitioningCheck) {
+        return Lists.newArrayList(
+                eventTypeCheck,
+                new EventOwnerSelectorCheck(eventOwnerExtractorFactory, authValidator),
+                new EventSizeCheck(),
+                partitioningCheck,
+                enrichmentCheck,
+                new EventKeyCheck()
+        );
     }
 
-    private String getStorageId(final ZooKeeperHolder zooKeeperHolder,
-                                final Environment environment) {
-        final CuratorFramework curator = zooKeeperHolder.get();
-        try {
-            curator.create().creatingParentsIfNeeded()
-                    .forPath(StorageService.ZK_TIMELINES_DEFAULT_STORAGE, null);
-        } catch (final KeeperException.NodeExistsException e) {
-            LOGGER.trace("Node {} already is there", StorageService.ZK_TIMELINES_DEFAULT_STORAGE);
-        } catch (final Exception e) {
-            LOGGER.error("Zookeeper access error {}", e.getMessage(), e);
-        }
-
-        try {
-            final byte[] storageIdBytes = curator.getData()
-                    .forPath(StorageService.ZK_TIMELINES_DEFAULT_STORAGE);
-            if (storageIdBytes != null) {
-                return new String(storageIdBytes, Charsets.UTF_8);
-            }
-        } catch (final Exception e) {
-            LOGGER.warn("Init of default storage from zk failed, will use default from env", e);
-        }
-
-        return environment.getProperty("nakadi.timelines.storage.default");
+    @Bean
+    @Qualifier("pre-deleting-checks")
+    public List<Check> preDeletingChecks(final EventTypeCheck eventTypeCheck,
+                                         final EventOwnerExtractorFactory eventOwnerExtractorFactory,
+                                         final AuthorizationValidator authValidator,
+                                         final PartitioningCheck partitioningCheck) {
+        // TODO: potentially we could skip the event type check for deletion
+        return Lists.newArrayList(
+                eventTypeCheck,
+                new EventOwnerSelectorCheck(eventOwnerExtractorFactory, authValidator),
+                new EventDeletionEmptyPayloadCheck(),
+                partitioningCheck,
+                new EventKeyCheck()
+        );
     }
-
 }

@@ -2,7 +2,6 @@ package org.zalando.nakadi.controller;
 
 import com.google.common.collect.ArrayListMultimap;
 import com.google.common.collect.ImmutableList;
-import com.google.common.collect.ImmutableSet;
 import com.google.common.collect.Lists;
 import com.google.common.collect.Multimap;
 import org.hamcrest.core.StringContains;
@@ -19,10 +18,8 @@ import org.zalando.nakadi.domain.EventCategory;
 import org.zalando.nakadi.domain.EventType;
 import org.zalando.nakadi.domain.EventTypeBase;
 import org.zalando.nakadi.domain.EventTypeOptions;
-import org.zalando.nakadi.domain.Feature;
 import org.zalando.nakadi.domain.ResourceAuthorization;
 import org.zalando.nakadi.domain.ResourceAuthorizationAttribute;
-import org.zalando.nakadi.domain.Subscription;
 import org.zalando.nakadi.domain.Timeline;
 import org.zalando.nakadi.exceptions.runtime.AccessDeniedException;
 import org.zalando.nakadi.exceptions.runtime.InternalNakadiException;
@@ -32,16 +29,15 @@ import org.zalando.nakadi.exceptions.runtime.TopicConfigException;
 import org.zalando.nakadi.exceptions.runtime.TopicCreationException;
 import org.zalando.nakadi.exceptions.runtime.UnableProcessException;
 import org.zalando.nakadi.partitioning.PartitionStrategy;
+import org.zalando.nakadi.plugin.api.authz.AuthorizationAttribute;
 import org.zalando.nakadi.plugin.api.authz.AuthorizationService;
 import org.zalando.nakadi.repository.TopicRepository;
-import org.zalando.nakadi.repository.db.SubscriptionTokenLister;
 import org.zalando.nakadi.utils.EventTypeTestBuilder;
 import org.zalando.nakadi.utils.TestUtils;
 import org.zalando.nakadi.view.EventOwnerSelector;
 import org.zalando.problem.Problem;
 import org.zalando.problem.ThrowableProblem;
 
-import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Date;
@@ -53,14 +49,11 @@ import static org.hamcrest.core.StringContains.containsString;
 import static org.junit.Assert.assertEquals;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyInt;
-import static org.mockito.ArgumentMatchers.eq;
-import static org.mockito.ArgumentMatchers.isNull;
 import static org.mockito.Matchers.anyLong;
 import static org.mockito.Matchers.anyString;
 import static org.mockito.Mockito.doNothing;
 import static org.mockito.Mockito.doReturn;
 import static org.mockito.Mockito.doThrow;
-import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -70,7 +63,6 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.header;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 import static org.zalando.nakadi.domain.EventCategory.BUSINESS;
-import static org.zalando.problem.Status.CONFLICT;
 import static org.zalando.problem.Status.INTERNAL_SERVER_ERROR;
 import static org.zalando.problem.Status.NOT_FOUND;
 import static org.zalando.problem.Status.SERVICE_UNAVAILABLE;
@@ -78,7 +70,7 @@ import static org.zalando.problem.Status.UNPROCESSABLE_ENTITY;
 
 public class EventTypeControllerTest extends EventTypeControllerTestCase {
 
-    public EventTypeControllerTest() throws IOException {
+    public EventTypeControllerTest() {
     }
 
     @Test
@@ -147,10 +139,11 @@ public class EventTypeControllerTest extends EventTypeControllerTestCase {
     @Test
     public void eventTypeWithoutSchemaReturns422() throws Exception {
         final EventType invalidEventType = TestUtils.buildDefaultEventType();
-        invalidEventType.setSchema(null);
+        final JSONObject jsonObject = new JSONObject(TestUtils.OBJECT_MAPPER.writeValueAsString(invalidEventType));
+        jsonObject.remove("schema");
 
         final Problem expectedProblem = TestUtils.invalidProblem("schema", "must not be null");
-        postETAndExpect422WithProblem(invalidEventType, expectedProblem);
+        postETAndExpect422WithProblem(jsonObject.toString(), expectedProblem);
     }
 
     @Test
@@ -570,33 +563,6 @@ public class EventTypeControllerTest extends EventTypeControllerTestCase {
     }
 
     @Test
-    public void whenDeleteEventTypeThatHasSubscriptionsThenConflict() throws Exception {
-        final EventType eventType = TestUtils.buildDefaultEventType();
-        when(eventTypeCache.getEventTypeIfExists(eventType.getName())).thenReturn(Optional.of(eventType));
-        when(featureToggleService.isFeatureEnabled(Feature.DELETE_EVENT_TYPE_WITH_SUBSCRIPTIONS)).thenReturn(false);
-
-        final Subscription mockSubscription = mock(Subscription.class);
-        when(mockSubscription.getConsumerGroup()).thenReturn("def");
-        when(mockSubscription.getOwningApplication()).thenReturn("asdf");
-        when(subscriptionTokenLister
-                .listSubscriptions(
-                        eq(ImmutableSet.of(eventType.getName())),
-                        eq(Optional.empty()),
-                        eq(Optional.empty()),
-                        isNull(),
-                        anyInt()))
-                .thenReturn(new SubscriptionTokenLister.ListResult(ImmutableList.of(mockSubscription), null, null));
-
-        final Problem expectedProblem = Problem.valueOf(CONFLICT,
-                "Can't remove event type " + eventType.getName() + ", as it has subscriptions");
-
-        deleteEventType(eventType.getName())
-                .andExpect(status().isConflict())
-                .andExpect(content().contentType("application/problem+json"))
-                .andExpect(content().string(matchesProblem(expectedProblem)));
-    }
-
-    @Test
     public void whenDeleteEventTypeAndNakadiExceptionThen500() throws Exception {
 
         final String eventTypeName = TestUtils.randomValidEventTypeName();
@@ -610,7 +576,7 @@ public class EventTypeControllerTest extends EventTypeControllerTestCase {
 
         deleteEventType(eventTypeName).andExpect(status().isInternalServerError())
                 .andExpect(content().contentType("application/problem+json")).andExpect(content()
-                .string(matchesProblem(expectedProblem)));
+                        .string(matchesProblem(expectedProblem)));
     }
 
     @Test
@@ -621,7 +587,7 @@ public class EventTypeControllerTest extends EventTypeControllerTestCase {
 
         postEventType(TestUtils.buildDefaultEventType()).andExpect(status().isInternalServerError())
                 .andExpect(content().contentType("application/problem+json")).andExpect(
-                content().string(matchesProblem(expectedProblem)));
+                        content().string(matchesProblem(expectedProblem)));
     }
 
     @Test
@@ -648,7 +614,7 @@ public class EventTypeControllerTest extends EventTypeControllerTestCase {
 
         postEventType(et).andExpect(status().isServiceUnavailable())
                 .andExpect(content().contentType("application/problem+json")).andExpect(content().string(
-                matchesProblem(expectedProblem)));
+                        matchesProblem(expectedProblem)));
 
         verify(eventTypeRepository, times(1)).saveEventType(any(EventTypeBase.class));
         verify(timelineService, times(1)).createDefaultTimeline(any(), anyInt());
@@ -667,8 +633,8 @@ public class EventTypeControllerTest extends EventTypeControllerTestCase {
         putEventType(jsonObject.toString(), invalidEventType.getName()).andExpect(status().isUnprocessableEntity())
                 .andExpect(content().contentType(
                         "application/problem+json")).andExpect(
-                content().string(
-                        matchesProblem(expectedProblem)));
+                        content().string(
+                                matchesProblem(expectedProblem)));
     }
 
     @Test
@@ -684,7 +650,7 @@ public class EventTypeControllerTest extends EventTypeControllerTestCase {
 
         putEventType(eventType, eventTypeName).andExpect(status().isUnprocessableEntity())
                 .andExpect(content().contentType("application/problem+json")).andExpect(
-                content().string(matchesProblem(expectedProblem)));
+                        content().string(matchesProblem(expectedProblem)));
     }
 
     @Test
@@ -711,7 +677,7 @@ public class EventTypeControllerTest extends EventTypeControllerTestCase {
 
         mockMvc.perform(requestBuilder).andExpect(status().is(200))
                 .andExpect(content().contentTypeCompatibleWith(APPLICATION_JSON)).andExpect(content().json(
-                TestUtils.OBJECT_MAPPER.writeValueAsString(expectedEventType)));
+                        TestUtils.OBJECT_MAPPER.writeValueAsString(expectedEventType)));
 
     }
 
@@ -729,7 +695,7 @@ public class EventTypeControllerTest extends EventTypeControllerTestCase {
 
         mockMvc.perform(requestBuilder).andExpect(status().is(404))
                 .andExpect(content().contentTypeCompatibleWith("application/problem+json")).andExpect(content().string(
-                matchesProblem(expectedProblem)));
+                        matchesProblem(expectedProblem)));
 
     }
 
@@ -921,9 +887,14 @@ public class EventTypeControllerTest extends EventTypeControllerTestCase {
     @Test
     public void testWhenFilteringEventTypes() throws Exception {
         final String writer = "user:bshala";
+        final Optional<AuthorizationAttribute> authorizationAttribute =
+                Optional.ofNullable(new ResourceAuthorizationAttribute("user", "bshala"));
+        final Optional<String> owningApplication = Optional.ofNullable("someApplication");
         final EventType eventType = TestUtils.buildDefaultEventType();
         doReturn(List.of(eventType)).when(eventTypeRepository)
-                .list(new ResourceAuthorizationAttribute("user", "bshala"));
-        getEventTypes(writer).andExpect(status().is2xxSuccessful());
+                .list(authorizationAttribute, owningApplication);
+        getEventTypes(writer, "someApplication")
+                .andExpect(status().is2xxSuccessful());
+        verify(eventTypeRepository, times(1)).list(authorizationAttribute, owningApplication);
     }
 }

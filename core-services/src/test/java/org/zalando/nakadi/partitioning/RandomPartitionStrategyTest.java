@@ -29,7 +29,7 @@ public class RandomPartitionStrategyTest {
         final List<String> resolvedPartitions = newArrayList();
         final int numberOfRuns = 5;
         for (int run = 0; run < numberOfRuns; run++) {
-            final String resolvedPartition = strategy.calculatePartition(null, null, partitions);
+            final String resolvedPartition = strategy.calculatePartition(partitions);
             resolvedPartitions.add(resolvedPartition);
         }
 
@@ -42,10 +42,21 @@ public class RandomPartitionStrategyTest {
         final Random randomMock = mock(Random.class);
         final RandomPartitionStrategy strategy = new RandomPartitionStrategy(randomMock);
 
-        final String resolvedPartition = strategy.calculatePartition(null, null, ImmutableList.of("a"));
+        final String resolvedPartition = strategy.calculatePartition(ImmutableList.of("a"));
         assertThat(resolvedPartition, equalTo("a"));
 
         verify(randomMock, Mockito.never()).nextInt(anyInt());
     }
 
+    @Test
+    public void calculatesPartitionsForJsonAndAvro() {
+        final Random randomMock = mock(Random.class);
+        final RandomPartitionStrategy strategy = new RandomPartitionStrategy(randomMock);
+
+        strategy.calculatePartition(null, null, ImmutableList.of("a", "b"));
+        strategy.calculatePartition(null, ImmutableList.of("a", "b", "c"));
+
+        verify(randomMock, Mockito.times(1)).nextInt(2);
+        verify(randomMock, Mockito.times(1)).nextInt(3);
+    }
 }

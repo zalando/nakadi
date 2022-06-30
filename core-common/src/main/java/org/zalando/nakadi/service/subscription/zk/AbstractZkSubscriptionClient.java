@@ -87,7 +87,7 @@ public abstract class AbstractZkSubscriptionClient implements ZkSubscriptionClie
     @Override
     public final void deleteSubscription() {
         try {
-            getCurator().delete().guaranteed()
+            getCurator().delete()
                     .deletingChildrenIfNeeded()
                     .forPath(getSubscriptionPath(""));
         } catch (final KeeperException.NoNodeException nne) {
@@ -172,7 +172,7 @@ public abstract class AbstractZkSubscriptionClient implements ZkSubscriptionClie
     @Override
     public final void unregisterSession(final Session session) {
         try {
-            getCurator().delete().guaranteed().forPath(getSubscriptionPath("/sessions/" + session.getId()));
+            getCurator().delete().forPath(getSubscriptionPath("/sessions/" + session.getId()));
         } catch (final KeeperException.NoNodeException ke) {
             // It's OK that the session node was not there: all we want is to make sure it's deleted.
         } catch (final Exception e) {
@@ -227,7 +227,6 @@ public abstract class AbstractZkSubscriptionClient implements ZkSubscriptionClie
     @Override
     public final Collection<Session> listSessions()
             throws SubscriptionNotInitializedException, NakadiRuntimeException, ServiceTemporarilyUnavailableException {
-        getLog().info("fetching sessions information");
         for (int i = 0; i < 5; i++) {
             try {
                 final List<String> sessions = getCurator().getChildren().forPath(getSubscriptionPath("/sessions"));
@@ -346,7 +345,7 @@ public abstract class AbstractZkSubscriptionClient implements ZkSubscriptionClie
 
             try {
                 if (!resetWasAlreadyInitiated) {
-                    getCurator().delete().guaranteed().forPath(closeSubscriptionStream);
+                    getCurator().delete().forPath(closeSubscriptionStream);
                 }
             } catch (final Exception e) {
                 getLog().error(e.getMessage(), e);

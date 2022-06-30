@@ -22,6 +22,7 @@ import org.zalando.nakadi.exceptions.runtime.ServiceTemporarilyUnavailableExcept
 import org.zalando.nakadi.repository.EventConsumer;
 import org.zalando.nakadi.repository.TopicRepository;
 import org.zalando.nakadi.security.Client;
+import org.zalando.nakadi.service.ConsumptionKpiCollector;
 import org.zalando.nakadi.service.CursorConverter;
 import org.zalando.nakadi.service.CursorOperationsService;
 import org.zalando.nakadi.service.subscription.StreamParameters;
@@ -91,9 +92,9 @@ public class StreamingStateTest {
         when(contextMock.getMetricRegistry()).thenReturn(mock(MetricRegistry.class));
         when(contextMock.getZkClient()).thenReturn(zkMock);
         when(contextMock.getCursorConverter()).thenReturn(cursorConverter);
-        when(contextMock.isConnectionReady()).thenReturn(true);
         when(contextMock.getCursorOperationsService())
                 .thenReturn(Mockito.mock(CursorOperationsService.class));
+        when(contextMock.getKpiCollector()).thenReturn(mock(ConsumptionKpiCollector.class));
 
         final Client client = mock(Client.class);
         when(client.getClientId()).thenReturn("consumingAppId");

@@ -62,7 +62,7 @@ public class PartitionResolverTest {
         final EventType eventType = new EventType();
         eventType.setPartitionStrategy("blah_strategy");
 
-        partitionResolver.resolvePartition(eventType, null);
+        partitionResolver.resolvePartition(eventType, new JSONObject());
     }
 
     @Test(expected = NoSuchPartitionStrategyException.class)

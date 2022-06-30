@@ -8,7 +8,6 @@ import org.junit.Before;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.test.context.SpringBootTest.WebEnvironment;
@@ -32,8 +31,6 @@ import org.zalando.nakadi.Application;
 import org.zalando.nakadi.cache.ChangesRegistry;
 import org.zalando.nakadi.cache.EventTypeCache;
 import org.zalando.nakadi.config.SecuritySettings;
-import org.zalando.nakadi.domain.storage.DefaultStorage;
-import org.zalando.nakadi.domain.storage.Storage;
 import org.zalando.nakadi.metrics.EventTypeMetricRegistry;
 import org.zalando.nakadi.repository.TopicRepository;
 import org.zalando.nakadi.repository.TopicRepositoryHolder;
@@ -276,13 +273,6 @@ public abstract class AuthenticationTest {
         @Primary
         public TopicRepositoryHolder mockTopicRepositoryHolder() {
             return mock(TopicRepositoryHolder.class);
-        }
-
-        @Bean
-        @Primary
-        @Qualifier("default_storage")
-        public DefaultStorage mockDefaultStorage() {
-            return new DefaultStorage(mock(Storage.class));
         }
 
         @Bean

@@ -12,6 +12,7 @@ import org.apache.kafka.common.config.ConfigResource;
 import org.assertj.core.util.Lists;
 import org.zalando.nakadi.view.Cursor;
 
+import java.nio.charset.StandardCharsets;
 import java.util.List;
 import java.util.Optional;
 import java.util.Properties;
@@ -30,29 +31,29 @@ public class KafkaTestHelper {
         this.kafkaUrl = kafkaUrl;
     }
 
-    public KafkaConsumer<String, String> createConsumer() {
+    public KafkaConsumer<byte[], byte[]> createConsumer() {
         return new KafkaConsumer<>(createKafkaProperties());
     }
 
-    public KafkaProducer<String, String> createProducer() {
+    public KafkaProducer<byte[], byte[]> createProducer() {
         return new KafkaProducer<>(createKafkaProperties());
     }
 
     protected static Properties createKafkaProperties() {
         final Properties props = new Properties();
         props.put("bootstrap.servers", "localhost:29092");
-        props.put("value.serializer", "org.apache.kafka.common.serialization.StringSerializer");
-        props.put("key.serializer", "org.apache.kafka.common.serialization.StringSerializer");
-        props.put("value.deserializer", "org.apache.kafka.common.serialization.StringDeserializer");
-        props.put("key.deserializer", "org.apache.kafka.common.serialization.StringDeserializer");
+        props.put("value.serializer", "org.apache.kafka.common.serialization.ByteArraySerializer");
+        props.put("key.serializer", "org.apache.kafka.common.serialization.ByteArraySerializer");
+        props.put("value.deserializer", "org.apache.kafka.common.serialization.ByteArrayDeserializer");
+        props.put("key.deserializer", "org.apache.kafka.common.serialization.ByteArrayDeserializer");
         return props;
     }
 
     public void writeMessageToPartition(final String partition, final String topic, final String message)
             throws ExecutionException, InterruptedException {
         final String messageToSend = String.format("\"%s\"", message);
-        final ProducerRecord<String, String> producerRecord = new ProducerRecord<>(topic, Integer.parseInt(partition),
-                "someKey", messageToSend);
+        final ProducerRecord<byte[], byte[]> producerRecord = new ProducerRecord<>(topic, Integer.parseInt(partition),
+                "someKey".getBytes(StandardCharsets.UTF_8), messageToSend.getBytes(StandardCharsets.UTF_8));
         createProducer().send(producerRecord).get();
     }
 
@@ -82,7 +83,7 @@ public class KafkaTestHelper {
 
     public List<Cursor> getNextOffsets(final String topic) {
 
-        final KafkaConsumer<String, String> consumer = createConsumer();
+        final KafkaConsumer<byte[], byte[]> consumer = createConsumer();
         final List<TopicPartition> partitions = consumer
                 .partitionsFor(topic)
                 .stream()

@@ -5,7 +5,6 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.google.common.collect.ImmutableList;
 import org.apache.curator.framework.CuratorFramework;
 import org.apache.curator.framework.api.BackgroundPathAndBytesable;
-import org.apache.curator.framework.api.ChildrenDeletable;
 import org.apache.curator.framework.api.DeleteBuilder;
 import org.apache.curator.framework.api.GetDataBuilder;
 import org.apache.curator.framework.api.SetDataBuilder;
@@ -31,7 +30,6 @@ public class NewZkSubscriptionClientTest {
     private final BackgroundPathAndBytesable bytesable = Mockito.mock(BackgroundPathAndBytesable.class);
     private final WatchPathable watchPathable = Mockito.mock(WatchPathable.class);
     private final DeleteBuilder deleteBuilder = Mockito.mock(DeleteBuilder.class);
-    private final ChildrenDeletable childrenDeletable = Mockito.mock(ChildrenDeletable.class);
 
     private final ObjectMapper objectMapper = new ObjectMapper();
     private NewZkSubscriptionClient client;
@@ -45,7 +43,6 @@ public class NewZkSubscriptionClientTest {
         Mockito.when(setDataBuilder.withVersion(Mockito.anyInt())).thenReturn(bytesable);
         Mockito.when(getDataBuilder.storingStatIn(Mockito.any())).thenReturn(watchPathable);
         Mockito.when(curator.delete()).thenReturn(deleteBuilder);
-        Mockito.when(deleteBuilder.guaranteed()).thenReturn(childrenDeletable);
 
         topology = objectMapper.writeValueAsBytes(new ZkSubscriptionClient.Topology(
                 new Partition[]{new Partition(
@@ -101,7 +98,7 @@ public class NewZkSubscriptionClientTest {
     @Test
     public void whenUnregisterSessionMissingNodeThenOk() throws Exception {
 
-        Mockito.when(curator.delete().guaranteed().forPath(Mockito.any()))
+        Mockito.when(curator.delete().forPath(Mockito.any()))
             .thenThrow(KeeperException.NoNodeException.class);
 
         final Session session = Session.generate(1, ImmutableList.of());

@@ -143,12 +143,13 @@ Some other useful tasks are:
 - `./gradlew startNakadi`: build Nakadi and start docker-compose services: nakadi, postgresql, zookeeper and kafka
 - `./gradlew stopNakadi`: shutdown docker-compose services
 - `./gradlew startStorages`: start docker-compose services: postgres, zookeeper and kafka (useful for development purposes)
-- `./gradlew stopStorages`: shutdown docker-compose services
 - `./gradlew fullAcceptanceTest`: start Nakadi configured for acceptance tests and run acceptance tests
 
 For working with an IDE, the `eclipse` IDE task is available and you'll be able to import the `build.gradle` into Intellij IDEA directly.
 
 ### Running a Server
+
+**Note**: Nakadi Docker for ARM processors is available at [here](./docker-arm)
 
 From the project's home directory you can start Nakadi via Gradle:
 

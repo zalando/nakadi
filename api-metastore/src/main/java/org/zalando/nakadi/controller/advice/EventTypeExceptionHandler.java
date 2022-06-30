@@ -16,6 +16,7 @@ import org.zalando.nakadi.exceptions.runtime.NakadiBaseException;
 import org.zalando.nakadi.exceptions.runtime.NoSuchPartitionStrategyException;
 import org.zalando.nakadi.exceptions.runtime.TopicCreationException;
 import org.zalando.nakadi.exceptions.runtime.UnableProcessException;
+import org.zalando.nakadi.exceptions.runtime.InvalidOwningApplicationException;
 import org.zalando.problem.Problem;
 import org.zalando.problem.spring.web.advice.AdviceTrait;
 
@@ -34,7 +35,9 @@ public class EventTypeExceptionHandler implements AdviceTrait {
             UnableProcessException.class,
             EventTypeOptionsValidationException.class,
             AuthorizationSectionException.class,
-            NoSuchPartitionStrategyException.class})
+            NoSuchPartitionStrategyException.class,
+            InvalidOwningApplicationException.class,
+    })
     public ResponseEntity<Problem> handleUnprocessableEntityResponses(final NakadiBaseException exception,
                                                                       final NativeWebRequest request) {
         AdviceTrait.LOG.debug(exception.getMessage());

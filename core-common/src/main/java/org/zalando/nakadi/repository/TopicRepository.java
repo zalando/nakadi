@@ -3,6 +3,8 @@ package org.zalando.nakadi.repository;
 import org.zalando.nakadi.domain.BatchItem;
 import org.zalando.nakadi.domain.CleanupPolicy;
 import org.zalando.nakadi.domain.NakadiCursor;
+import org.zalando.nakadi.domain.NakadiRecord;
+import org.zalando.nakadi.domain.NakadiRecordResult;
 import org.zalando.nakadi.domain.PartitionEndStatistics;
 import org.zalando.nakadi.domain.PartitionStatistics;
 import org.zalando.nakadi.domain.Timeline;
@@ -50,6 +52,8 @@ public interface TopicRepository {
     void syncPostBatch(String topicId, List<BatchItem> batch, String eventTypeName, boolean delete)
             throws EventPublishingException;
 
+    List<NakadiRecordResult> sendEvents(String topic, List<NakadiRecord> nakadiRecords);
+
     void repartition(String topic, int partitionsNumber) throws CannotAddPartitionToTopicException,
             TopicConfigException;
 
@@ -82,8 +86,9 @@ public interface TopicRepository {
      */
     Map<TopicPartition, Long> getSizeStats();
 
-    EventConsumer.LowLevelConsumer createEventConsumer(String clientId, List<NakadiCursor> positions)
-            throws InvalidCursorException;
+    EventConsumer.LowLevelConsumer createEventConsumer(
+            String clientId,
+            List<NakadiCursor> positions) throws InvalidCursorException;
 
     void validateReadCursors(List<NakadiCursor> cursors) throws InvalidCursorException,
             ServiceTemporarilyUnavailableException;

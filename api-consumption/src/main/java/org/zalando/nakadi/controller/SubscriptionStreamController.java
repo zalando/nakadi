@@ -5,51 +5,56 @@ import com.codahale.metrics.MetricRegistry;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.google.common.collect.ImmutableList;
 import io.opentracing.Span;
+import io.opentracing.Tracer;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.MediaType;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestHeader;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestMethod;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.servlet.mvc.method.annotation.StreamingResponseBody;
+import org.zalando.nakadi.ShutdownHooks;
+import org.zalando.nakadi.cache.SubscriptionCache;
 import org.zalando.nakadi.config.NakadiSettings;
 import org.zalando.nakadi.domain.Subscription;
 import org.zalando.nakadi.exceptions.runtime.AccessDeniedException;
 import org.zalando.nakadi.exceptions.runtime.ConflictException;
 import org.zalando.nakadi.exceptions.runtime.InternalNakadiException;
 import org.zalando.nakadi.exceptions.runtime.InvalidCursorException;
+import org.zalando.nakadi.exceptions.runtime.InvalidStreamParametersException;
 import org.zalando.nakadi.exceptions.runtime.NoStreamingSlotsAvailable;
 import org.zalando.nakadi.exceptions.runtime.NoSuchSubscriptionException;
 import org.zalando.nakadi.exceptions.runtime.SubscriptionPartitionConflictException;
-import org.zalando.nakadi.exceptions.runtime.WrongStreamParametersException;
-import org.zalando.nakadi.repository.db.SubscriptionDbRepository;
 import org.zalando.nakadi.security.Client;
-import org.zalando.nakadi.service.ClosedConnectionsCrutch;
 import org.zalando.nakadi.service.EventStreamChecks;
 import org.zalando.nakadi.service.SubscriptionValidationService;
 import org.zalando.nakadi.service.TracingService;
+import org.zalando.nakadi.service.subscription.StreamContentType;
 import org.zalando.nakadi.service.subscription.StreamParameters;
 import org.zalando.nakadi.service.subscription.SubscriptionOutput;
 import org.zalando.nakadi.service.subscription.SubscriptionStreamer;
 import org.zalando.nakadi.service.subscription.SubscriptionStreamerFactory;
+import org.zalando.nakadi.service.subscription.model.Session;
 import org.zalando.nakadi.util.FlowIdUtils;
 import org.zalando.nakadi.view.UserStreamParameters;
 import org.zalando.problem.Problem;
 
 import javax.annotation.Nullable;
-import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
 import javax.validation.Valid;
+import java.io.Closeable;
 import java.io.IOException;
 import java.io.OutputStream;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
-import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.function.Function;
 
 import static org.zalando.nakadi.metrics.MetricUtils.metricNameForSubscription;
@@ -65,33 +70,34 @@ import static org.zalando.problem.Status.UNPROCESSABLE_ENTITY;
 public class SubscriptionStreamController {
     public static final String CONSUMERS_COUNT_METRIC_NAME = "consumers";
     private static final Logger LOG = LoggerFactory.getLogger(SubscriptionStreamController.class);
+    public static final MediaType BINARY_MEDIA_TYPE = new MediaType("application", "avro-binary");
 
     private final SubscriptionStreamerFactory subscriptionStreamerFactory;
     private final ObjectMapper jsonMapper;
-    private final ClosedConnectionsCrutch closedConnectionsCrutch;
     private final NakadiSettings nakadiSettings;
     private final EventStreamChecks eventStreamChecks;
     private final MetricRegistry metricRegistry;
-    private final SubscriptionDbRepository subscriptionDbRepository;
+    private final SubscriptionCache subscriptionCache;
     private final SubscriptionValidationService subscriptionValidationService;
+    private final ShutdownHooks shutdownHooks;
 
     @Autowired
     public SubscriptionStreamController(final SubscriptionStreamerFactory subscriptionStreamerFactory,
                                         final ObjectMapper objectMapper,
-                                        final ClosedConnectionsCrutch closedConnectionsCrutch,
                                         final NakadiSettings nakadiSettings,
                                         final EventStreamChecks eventStreamChecks,
                                         @Qualifier("perPathMetricRegistry") final MetricRegistry metricRegistry,
-                                        final SubscriptionDbRepository subscriptionDbRepository,
-                                        final SubscriptionValidationService subscriptionValidationService) {
+                                        final SubscriptionCache subscriptionCache,
+                                        final SubscriptionValidationService subscriptionValidationService,
+                                        final ShutdownHooks shutdownHooks) {
         this.subscriptionStreamerFactory = subscriptionStreamerFactory;
         this.jsonMapper = objectMapper;
-        this.closedConnectionsCrutch = closedConnectionsCrutch;
         this.nakadiSettings = nakadiSettings;
         this.eventStreamChecks = eventStreamChecks;
         this.metricRegistry = metricRegistry;
-        this.subscriptionDbRepository = subscriptionDbRepository;
+        this.subscriptionCache = subscriptionCache;
         this.subscriptionValidationService = subscriptionValidationService;
+        this.shutdownHooks = shutdownHooks;
     }
 
     class SubscriptionOutputImpl implements SubscriptionOutput {
@@ -113,7 +119,7 @@ public class SubscriptionStreamController {
                     (ex) -> Problem.valueOf(FORBIDDEN, ((AccessDeniedException) ex).explain()));
             this.exceptionProblem.put(SubscriptionPartitionConflictException.class,
                     (ex) -> Problem.valueOf(CONFLICT, ex.getMessage()));
-            this.exceptionProblem.put(WrongStreamParametersException.class,
+            this.exceptionProblem.put(InvalidStreamParametersException.class,
                     (ex) -> Problem.valueOf(UNPROCESSABLE_ENTITY, ex.getMessage()));
             this.exceptionProblem.put(NoSuchSubscriptionException.class,
                     (ex) -> Problem.valueOf(NOT_FOUND, ex.getMessage()));
@@ -166,13 +172,14 @@ public class SubscriptionStreamController {
     public StreamingResponseBody streamEvents(
             @PathVariable("subscription_id") final String subscriptionId,
             @Valid @RequestBody final UserStreamParameters userParameters,
-            final HttpServletRequest request,
+            @RequestHeader(name = "Accept", required = false,
+                    defaultValue = "application/x-json-stream") final String acceptHeader,
             final HttpServletResponse response,
             final Client client) {
+
         final StreamParameters streamParameters = StreamParameters.of(userParameters,
                 nakadiSettings.getMaxCommitTimeout(), client);
-        return stream(subscriptionId, request, response, client, streamParameters,
-                (Span) request.getAttribute("span"));
+        return stream(subscriptionId, response, client, streamParameters, mapToStreamContentType(acceptHeader));
     }
 
     @RequestMapping(value = "/subscriptions/{subscription_id}/events", method = RequestMethod.GET)
@@ -188,7 +195,10 @@ public class SubscriptionStreamController {
             @Nullable @RequestParam(value = "stream_keep_alive_limit", required = false) final Integer
                     streamKeepAliveLimit,
             @Nullable @RequestParam(value = "commit_timeout", required = false) final Long commitTimeout,
-            final HttpServletRequest request, final HttpServletResponse response, final Client client) {
+            @RequestHeader(name = "Accept", required = false,
+                    defaultValue = "application/x-json-stream") final String acceptHeader,
+            final HttpServletResponse response, final Client client) {
+
         final UserStreamParameters userParameters = new UserStreamParameters(batchLimit, streamLimit, batchTimespan,
                 batchTimeout, streamTimeout, streamKeepAliveLimit, maxUncommittedEvents, ImmutableList.of(),
                 commitTimeout);
@@ -196,17 +206,29 @@ public class SubscriptionStreamController {
         final StreamParameters streamParameters = StreamParameters.of(userParameters,
                 nakadiSettings.getMaxCommitTimeout(), client);
 
-        return stream(subscriptionId, request, response, client, streamParameters,
-                TracingService.extractSpan(request, "stream_events_request")
-                        .setTag("subscription.id", subscriptionId));
+        return stream(subscriptionId, response, client, streamParameters, mapToStreamContentType(acceptHeader));
+    }
+
+    private StreamContentType mapToStreamContentType(final String acceptHeader) {
+        final List<MediaType> mediaTypes = MediaType.parseMediaTypes(acceptHeader);
+        if (mediaTypes.size() == 1 &&
+                BINARY_MEDIA_TYPE.equalsTypeAndSubtype(mediaTypes.get(0))) {
+            return StreamContentType.BINARY;
+        } else {
+            return StreamContentType.JSON;
+        }
     }
 
     private StreamingResponseBody stream(final String subscriptionId,
-                                         final HttpServletRequest request,
                                          final HttpServletResponse response,
                                          final Client client,
                                          final StreamParameters streamParameters,
-                                         final Span parentSubscriptionSpan) {
+                                         final StreamContentType streamContentType) {
+
+        TracingService.setOperationName("stream_events")
+                .setTag("subscription.id", subscriptionId);
+
+        final Span requestSpan = TracingService.getActiveSpan();
         final String flowId = FlowIdUtils.peek();
 
         return outputStream -> {
@@ -214,23 +236,36 @@ public class SubscriptionStreamController {
             final String metricName = metricNameForSubscription(subscriptionId, CONSUMERS_COUNT_METRIC_NAME);
             final Counter consumerCounter = metricRegistry.counter(metricName);
             consumerCounter.inc();
-            // Setting always true to validate that ClosedConnectionsCrutch is not needed in Springboot 2 version.
-            final AtomicBoolean connectionReady = new AtomicBoolean(true);
-            // closedConnectionsCrutch.listenForConnectionClose(request);
+
             SubscriptionStreamer streamer = null;
             final SubscriptionOutputImpl output = new SubscriptionOutputImpl(response, outputStream);
+
             try {
                 if (eventStreamChecks.isSubscriptionConsumptionBlocked(subscriptionId, client.getClientId())) {
                     writeProblemResponse(response, outputStream,
                             Problem.valueOf(FORBIDDEN, "Application or event type is blocked"));
                     return;
                 }
-                final Subscription subscription = subscriptionDbRepository.getSubscription(subscriptionId);
+                final Subscription subscription = subscriptionCache.getSubscription(subscriptionId);
                 subscriptionValidationService.validatePartitionsToStream(subscription,
                         streamParameters.getPartitions());
-                streamer = subscriptionStreamerFactory.build(subscription, streamParameters, output,
-                        connectionReady, parentSubscriptionSpan, client.getClientId());
-                streamer.stream();
+
+                final Session session = Session.generate(1, streamParameters.getPartitions());
+
+                streamer = subscriptionStreamerFactory.build(subscription, streamParameters,
+                        session, output, streamContentType);
+
+                final Tracer.SpanBuilder spanBuilder =
+                        TracingService.buildNewFollowerSpan("streaming_async", requestSpan.context())
+                                .withTag("client", client.getClientId())
+                                .withTag("session.id", session.getId())
+                                .withTag("subscription.id", subscriptionId);
+                try (
+                        Closeable ignore1 = TracingService.withActiveSpan(spanBuilder);
+                        Closeable ignore2 = shutdownHooks.addHook(streamer::terminateStream) // bugfix ARUHA-485
+                ) {
+                    streamer.stream();
+                }
             } catch (final InterruptedException ex) {
                 LOG.warn("Interrupted while streaming with " + streamer, ex);
                 Thread.currentThread().interrupt();

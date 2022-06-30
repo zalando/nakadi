@@ -5,7 +5,6 @@ import com.google.common.cache.CacheBuilder;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.context.annotation.Lazy;
 import org.springframework.stereotype.Service;
 import org.zalando.nakadi.config.NakadiSettings;
 import org.zalando.nakadi.domain.Feature;
@@ -20,10 +19,8 @@ import org.zalando.nakadi.plugin.api.authz.Resource;
 import org.zalando.nakadi.plugin.api.exceptions.AuthorizationInvalidException;
 import org.zalando.nakadi.plugin.api.exceptions.PluginException;
 import org.zalando.nakadi.repository.db.AuthorizationDbRepository;
-import org.zalando.nakadi.service.publishing.NakadiAuditLogPublisher;
 
 import java.util.List;
-import java.util.Optional;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeUnit;
 import java.util.function.Predicate;
@@ -43,27 +40,31 @@ public class AdminService {
     private final FeatureToggleService featureToggleService;
     private final NakadiSettings nakadiSettings;
     private Cache<String, Resource<Void>> resourceCache;
-    private final NakadiAuditLogPublisher auditLogPublisher;
 
     @Autowired
     public AdminService(final AuthorizationDbRepository authorizationDbRepository,
                         final AuthorizationService authorizationService,
                         final FeatureToggleService featureToggleService,
-                        final NakadiSettings nakadiSettings,
-                        @Lazy final NakadiAuditLogPublisher auditLogPublisher) {
+                        final NakadiSettings nakadiSettings) {
         this.authorizationDbRepository = authorizationDbRepository;
         this.authorizationService = authorizationService;
         this.featureToggleService = featureToggleService;
         this.nakadiSettings = nakadiSettings;
         this.resourceCache = CacheBuilder.newBuilder().expireAfterWrite(5, TimeUnit.MINUTES).build();
-        this.auditLogPublisher = auditLogPublisher;
     }
 
     public List<Permission> getAdmins() {
         return addDefaultAdmin(authorizationDbRepository.listAdmins());
     }
 
-    public void updateAdmins(final List<Permission> newAdmins)
+    /**
+     * Update the admins with newAdmins and return the list of old admins
+     *
+     * @param newAdmins List of new admins
+     * @return list of old admins
+     * @throws DbWriteOperationsBlockedException thrown when writes to DB is blocked
+     */
+    public List<Permission> updateAdmins(final List<Permission> newAdmins)
             throws DbWriteOperationsBlockedException {
         if (featureToggleService.isFeatureEnabled(Feature.DISABLE_DB_WRITE_OPERATIONS)) {
             throw new DbWriteOperationsBlockedException("Cannot update admins: write operations on DB " +
@@ -77,12 +78,7 @@ public class AdminService {
                 .filter(p -> !newAdmins.stream().anyMatch(Predicate.isEqual(p))).collect(Collectors.toList()));
         authorizationDbRepository.update(add, delete);
 
-        auditLogPublisher.publish(
-                Optional.of(ResourceAuthorization.fromPermissionsList(currentAdmins)),
-                Optional.of(ResourceAuthorization.fromPermissionsList(newAdmins)),
-                NakadiAuditLogPublisher.ResourceType.ADMINS,
-                NakadiAuditLogPublisher.ActionType.UPDATED,
-                "-");
+        return currentAdmins;
     }
 
     private Resource<Void> getAdminResource() {

@@ -7,6 +7,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 import org.zalando.nakadi.domain.EventType;
 import org.zalando.nakadi.domain.EventTypeBase;
+import org.zalando.nakadi.domain.NakadiMetadata;
 import org.zalando.nakadi.exceptions.runtime.InvalidEventTypeException;
 import org.zalando.nakadi.exceptions.runtime.NoSuchPartitionStrategyException;
 import org.zalando.nakadi.exceptions.runtime.PartitioningException;
@@ -58,17 +59,36 @@ public class PartitionResolver {
 
     public String resolvePartition(final EventType eventType, final JSONObject eventAsJson)
             throws PartitioningException {
+        final PartitionStrategy partitionStrategy = getPartitionStrategy(eventType);
+        final List<String> partitions = getPartitions(eventType);
 
+        return partitionStrategy.calculatePartition(eventType, eventAsJson, partitions);
+    }
+
+    public String resolvePartition(final EventType eventType, final NakadiMetadata nakadiRecordMetadata)
+            throws PartitioningException {
+        final PartitionStrategy partitionStrategy = getPartitionStrategy(eventType);
+        final List<String> partitions = getPartitions(eventType);
+
+        return partitionStrategy.calculatePartition(nakadiRecordMetadata, partitions);
+    }
+
+    private List<String> getPartitions(final EventType eventType) {
+        return timelineService.getTopicRepository(eventType)
+                .listPartitionNames(timelineService.getActiveTimeline(eventType).getTopic());
+    }
+
+    private PartitionStrategy getPartitionStrategy(final EventType eventType) {
         final String eventTypeStrategy = eventType.getPartitionStrategy();
         final PartitionStrategy partitionStrategy = partitionStrategies.get(eventTypeStrategy);
+
         if (partitionStrategy == null) {
             throw new PartitioningException("Partition Strategy defined for this EventType is not found: " +
                     eventTypeStrategy);
         }
 
-        final List<String> partitions = timelineService.getTopicRepository(eventType)
-                .listPartitionNames(timelineService.getActiveTimeline(eventType).getTopic());
-        return partitionStrategy.calculatePartition(eventType, eventAsJson, partitions);
+        return partitionStrategy;
     }
-
 }
+
+

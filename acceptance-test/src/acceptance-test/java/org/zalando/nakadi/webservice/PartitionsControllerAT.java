@@ -18,6 +18,7 @@ import org.zalando.nakadi.view.Cursor;
 import org.zalando.nakadi.webservice.utils.NakadiTestUtils;
 
 import java.io.IOException;
+import java.nio.charset.StandardCharsets;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -192,9 +193,10 @@ public class PartitionsControllerAT extends BaseAT {
     }
 
     private void writeMessageToPartition(final int partition) throws InterruptedException, ExecutionException {
-        final KafkaProducer<String, String> producer = kafkaHelper.createProducer();
-        final ProducerRecord<String, String> producerRecord = new ProducerRecord<>(topicName, partition, "blahKey",
-                "blahValue");
+        final KafkaProducer<byte[], byte[]> producer = kafkaHelper.createProducer();
+        final ProducerRecord<byte[], byte[]> producerRecord = new ProducerRecord<>(topicName, partition,
+                "blahKey".getBytes(StandardCharsets.UTF_8),
+                "blahValue".getBytes(StandardCharsets.UTF_8));
         producer.send(producerRecord).get();
     }
 

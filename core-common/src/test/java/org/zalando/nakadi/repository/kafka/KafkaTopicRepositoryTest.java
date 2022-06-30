@@ -1,8 +1,7 @@
 package org.zalando.nakadi.repository.kafka;
 
-import com.codahale.metrics.Meter;
-import com.codahale.metrics.MetricRegistry;
 import com.google.common.collect.ImmutableList;
+import com.google.common.collect.Lists;
 import org.apache.kafka.clients.consumer.Consumer;
 import org.apache.kafka.clients.producer.BufferExhaustedException;
 import org.apache.kafka.clients.producer.Callback;
@@ -11,7 +10,6 @@ import org.apache.kafka.clients.producer.ProducerRecord;
 import org.apache.kafka.common.KafkaException;
 import org.apache.kafka.common.Node;
 import org.apache.kafka.common.PartitionInfo;
-import org.apache.kafka.common.errors.TimeoutException;
 import org.apache.kafka.common.header.Header;
 import org.junit.Assert;
 import org.junit.Test;
@@ -25,26 +23,31 @@ import org.zalando.nakadi.domain.CursorError;
 import org.zalando.nakadi.domain.EventOwnerHeader;
 import org.zalando.nakadi.domain.EventPublishingStatus;
 import org.zalando.nakadi.domain.NakadiCursor;
+import org.zalando.nakadi.domain.NakadiMetadata;
+import org.zalando.nakadi.domain.NakadiRecord;
+import org.zalando.nakadi.domain.NakadiRecordResult;
 import org.zalando.nakadi.domain.PartitionEndStatistics;
 import org.zalando.nakadi.domain.PartitionStatistics;
 import org.zalando.nakadi.domain.Timeline;
 import org.zalando.nakadi.domain.TopicPartition;
 import org.zalando.nakadi.exceptions.runtime.EventPublishingException;
 import org.zalando.nakadi.exceptions.runtime.InvalidCursorException;
-import org.zalando.nakadi.repository.zookeeper.ZookeeperSettings;
+import org.zalando.nakadi.mapper.NakadiRecordMapper;
+import org.zalando.nakadi.utils.TestUtils;
 import org.zalando.nakadi.view.Cursor;
 
+import java.io.IOException;
+import java.time.Instant;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
-import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.UUID;
 import java.util.concurrent.Future;
-import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
 
 import static com.google.common.collect.Sets.newHashSet;
@@ -57,9 +60,9 @@ import static org.hamcrest.core.StringContains.containsString;
 import static org.junit.Assert.assertThat;
 import static org.junit.Assert.fail;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Matchers.anyString;
 import static org.mockito.Matchers.anyVararg;
-import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.atLeastOnce;
 import static org.mockito.Mockito.doAnswer;
 import static org.mockito.Mockito.mock;
@@ -74,13 +77,12 @@ public class KafkaTopicRepositoryTest {
     private static final Node NODE = new Node(1, "host", 9091);
     private final NakadiSettings nakadiSettings = mock(NakadiSettings.class);
     private final KafkaSettings kafkaSettings = mock(KafkaSettings.class);
-    private final ZookeeperSettings zookeeperSettings = mock(ZookeeperSettings.class);
     private final KafkaTopicConfigFactory kafkaTopicConfigFactory = mock(KafkaTopicConfigFactory.class);
     private final KafkaLocationManager kafkaLocationManager = mock(KafkaLocationManager.class);
+    private NakadiRecordMapper nakadiRecordMapper;
     private static final String KAFKA_CLIENT_ID = "application_name-topic_name";
-
     @Captor
-    private ArgumentCaptor<ProducerRecord<String, String>> producerRecordArgumentCaptor;
+    private ArgumentCaptor<ProducerRecord<byte[], byte[]>> producerRecordArgumentCaptor;
 
     @SuppressWarnings("unchecked")
     public static final ProducerRecord EXPECTED_PRODUCER_RECORD = new ProducerRecord(MY_TOPIC, 0, "0", "payload");
@@ -116,37 +118,20 @@ public class KafkaTopicRepositoryTest {
             cursor("5", "30"), cursor("9", "100"));
 
     private final KafkaTopicRepository kafkaTopicRepository;
-    private final KafkaProducer<String, String> kafkaProducer;
+    private final KafkaProducer<byte[], byte[]> kafkaProducer;
     private final KafkaFactory kafkaFactory;
 
     @SuppressWarnings("unchecked")
-    public KafkaTopicRepositoryTest() {
-        //lower hystrix configs for tests to execute faster
-        System.setProperty(
-                String.format(
-                        "hystrix.command.%s.metrics.healthSnapshot.intervalInMilliseconds",
-                        NODE.idString() + "_" + NODE.host()),
-                "10");
-        System.setProperty(
-                String.format(
-                        "hystrix.command.%s.metrics.rollingStats.timeInMilliseconds",
-                        NODE.idString() + "_" + NODE.host()),
-                "500");
-        System.setProperty(
-                String.format(
-                        "hystrix.command.%s.circuitBreaker.sleepWindowInMilliseconds",
-                        NODE.idString() + "_" + NODE.host()),
-                "500");
-
+    public KafkaTopicRepositoryTest() throws IOException {
         kafkaProducer = mock(KafkaProducer.class);
         when(kafkaProducer.partitionsFor(anyString())).then(
                 invocation -> partitionsOfTopic((String) invocation.getArguments()[0])
         );
+        nakadiRecordMapper = TestUtils.getNakadiRecordMapper();
         kafkaFactory = createKafkaFactory();
-        kafkaTopicRepository = createKafkaRepository(kafkaFactory, new MetricRegistry());
+        kafkaTopicRepository = createKafkaRepository(kafkaFactory);
         MockitoAnnotations.initMocks(this);
     }
-
 
     @Test
     public void canListAllTopics() {
@@ -171,7 +156,7 @@ public class KafkaTopicRepositoryTest {
             kafkaTopicRepository.syncPostBatch(myTopic, batch, "random", false);
             fail();
         } catch (final EventPublishingException e) {
-            final ProducerRecord<String, String> recordSent = captureProducerRecordSent();
+            final ProducerRecord<byte[], byte[]> recordSent = captureProducerRecordSent();
             final Header nameHeader = recordSent.headers().headers(EventOwnerHeader.AUTH_PARAM_NAME)
                     .iterator().next();
             Assert.assertEquals(new String(nameHeader.value()), "retailer");
@@ -200,18 +185,25 @@ public class KafkaTopicRepositoryTest {
     public void validateValidCursors() throws InvalidCursorException {
         // validate each individual valid cursor
         for (final Cursor cursor : MY_TOPIC_VALID_CURSORS) {
-            kafkaTopicRepository.createEventConsumer(KAFKA_CLIENT_ID, asTopicPosition(MY_TOPIC, asList(cursor)));
-        }
-        // validate all valid cursors
-        kafkaTopicRepository.createEventConsumer(KAFKA_CLIENT_ID, asTopicPosition(MY_TOPIC, MY_TOPIC_VALID_CURSORS));
-
-        // validate each individual valid cursor
-        for (final Cursor cursor : ANOTHER_TOPIC_VALID_CURSORS) {
-            kafkaTopicRepository.createEventConsumer(KAFKA_CLIENT_ID, asTopicPosition(ANOTHER_TOPIC, asList(cursor)));
+            kafkaTopicRepository.createEventConsumer(
+                    KAFKA_CLIENT_ID,
+                    asTopicPosition(MY_TOPIC, asList(cursor)));
         }
         // validate all valid cursors
         kafkaTopicRepository.createEventConsumer(
-                KAFKA_CLIENT_ID, asTopicPosition(ANOTHER_TOPIC, ANOTHER_TOPIC_VALID_CURSORS));
+                KAFKA_CLIENT_ID,
+                asTopicPosition(MY_TOPIC, MY_TOPIC_VALID_CURSORS));
+
+        // validate each individual valid cursor
+        for (final Cursor cursor : ANOTHER_TOPIC_VALID_CURSORS) {
+            kafkaTopicRepository.createEventConsumer(
+                    KAFKA_CLIENT_ID,
+                    asTopicPosition(ANOTHER_TOPIC, asList(cursor)));
+        }
+        // validate all valid cursors
+        kafkaTopicRepository.createEventConsumer(
+                KAFKA_CLIENT_ID,
+                asTopicPosition(ANOTHER_TOPIC, ANOTHER_TOPIC_VALID_CURSORS));
     }
 
     @Test
@@ -220,7 +212,8 @@ public class KafkaTopicRepositoryTest {
         final Cursor outOfBoundOffset = cursor("0", "38");
         try {
             kafkaTopicRepository.createEventConsumer(
-                    KAFKA_CLIENT_ID, asTopicPosition(MY_TOPIC, asList(outOfBoundOffset)));
+                    KAFKA_CLIENT_ID,
+                    asTopicPosition(MY_TOPIC, asList(outOfBoundOffset)));
         } catch (final InvalidCursorException e) {
             assertThat(e.getError(), equalTo(CursorError.UNAVAILABLE));
         }
@@ -228,14 +221,17 @@ public class KafkaTopicRepositoryTest {
         final Cursor nonExistingPartition = cursor("99", "100");
         try {
             kafkaTopicRepository.createEventConsumer(
-                    KAFKA_CLIENT_ID, asTopicPosition(MY_TOPIC, asList(nonExistingPartition)));
+                    KAFKA_CLIENT_ID,
+                    asTopicPosition(MY_TOPIC, asList(nonExistingPartition)));
         } catch (final InvalidCursorException e) {
             assertThat(e.getError(), equalTo(CursorError.PARTITION_NOT_FOUND));
         }
 
         final Cursor wrongOffset = cursor("0", "blah");
         try {
-            kafkaTopicRepository.createEventConsumer(KAFKA_CLIENT_ID, asTopicPosition(MY_TOPIC, asList(wrongOffset)));
+            kafkaTopicRepository.createEventConsumer(
+                    KAFKA_CLIENT_ID,
+                    asTopicPosition(MY_TOPIC, asList(wrongOffset)));
         } catch (final InvalidCursorException e) {
             assertThat(e.getError(), equalTo(CursorError.INVALID_FORMAT));
         }
@@ -415,62 +411,6 @@ public class KafkaTopicRepositoryTest {
     }
 
     @Test
-    public void checkCircuitBreakerStateBasedOnKafkaResponse() {
-        when(nakadiSettings.getKafkaSendTimeoutMs()).thenReturn(1000L);
-        when(kafkaProducer.partitionsFor(EXPECTED_PRODUCER_RECORD.topic())).thenReturn(ImmutableList.of(
-                new PartitionInfo(EXPECTED_PRODUCER_RECORD.topic(), 1, NODE, null, null)));
-
-        //Timeout Exception should cause circuit breaker to open
-        List<BatchItem> batches = setResponseForSendingBatches(new TimeoutException(), new MetricRegistry());
-        Assert.assertTrue(batches.stream()
-                .filter(item -> item.getResponse().getPublishingStatus() == EventPublishingStatus.FAILED &&
-                        item.getResponse().getDetail().equals("short circuited"))
-                .count() >= 1);
-
-        //No exception should close the circuit
-        batches = setResponseForSendingBatches(null, new MetricRegistry());
-        Assert.assertTrue(batches.stream()
-                .filter(item -> item.getResponse().getPublishingStatus() == EventPublishingStatus.SUBMITTED &&
-                        item.getResponse().getDetail().equals(""))
-                .count() >= 1);
-
-        //Timeout Exception should cause circuit breaker to open again
-        batches = setResponseForSendingBatches(new TimeoutException(), new MetricRegistry());
-        Assert.assertTrue(batches.stream()
-                .filter(item -> item.getResponse().getPublishingStatus() == EventPublishingStatus.FAILED &&
-                        item.getResponse().getDetail().equals("short circuited"))
-                .count() >= 1);
-
-    }
-
-    private List<BatchItem> setResponseForSendingBatches(final Exception e, final MetricRegistry metricRegistry) {
-        when(kafkaProducer.send(any(), any())).thenAnswer(invocation -> {
-            final Callback callback = (Callback) invocation.getArguments()[1];
-            if (callback != null) {
-                callback.onCompletion(null, e);
-            }
-            return null;
-        });
-        final List<BatchItem> batches = new LinkedList<>();
-        final KafkaTopicRepository kafkaTopicRepository = createKafkaRepository(kafkaFactory, metricRegistry);
-        for (int i = 0; i < 100; i++) {
-            try {
-                final BatchItem batchItem = new BatchItem("{}",
-                        BatchItem.EmptyInjectionConfiguration.build(1, true),
-                        new BatchItem.InjectionConfiguration[BatchItem.Injection.values().length],
-                        Collections.emptyList());
-                batchItem.setPartition("1");
-                batches.add(batchItem);
-                TimeUnit.MILLISECONDS.sleep(5);
-                kafkaTopicRepository.syncPostBatch(EXPECTED_PRODUCER_RECORD.topic(),
-                        ImmutableList.of(batchItem), "random", false);
-            } catch (final EventPublishingException | InterruptedException ex) {
-            }
-        }
-        return batches;
-    }
-
-    @Test
     public void testGetSizeStatsWorksProperly() throws Exception {
         final KafkaZookeeper kz = mock(KafkaZookeeper.class);
         when(kz.getBrokerIdsForSizeStats()).thenReturn(Arrays.asList("1", "2"));
@@ -502,37 +442,107 @@ public class KafkaTopicRepositoryTest {
         Assert.assertEquals(new Long(222L), result.get(new TopicPartition("t3", "0")));
     }
 
+    @Test
+    public void testSendNakadiRecordsOk() {
+        final String eventType = UUID.randomUUID().toString();
+        final String topic = UUID.randomUUID().toString();
+        final var nakadiRecord = getTestNakadiRecord("0");
+        final List<NakadiRecord> nakadiRecords = Lists.newArrayList(nakadiRecord, nakadiRecord, nakadiRecord);
+
+        when(kafkaProducer.send(any(), any())).thenAnswer(invocation -> {
+            final Callback callback = (Callback) invocation.getArguments()[1];
+            callback.onCompletion(null, null);
+            return null;
+        });
+
+        final List<NakadiRecordResult> result = kafkaTopicRepository.sendEvents(topic, nakadiRecords);
+        Assert.assertEquals(3, result.size());
+        result.forEach(r -> Assert.assertEquals(NakadiRecordResult.Status.SUCCEEDED, r.getStatus()));
+    }
 
     @Test
-    public void whenPublishShortCircuitingIsRecorded() {
-        when(nakadiSettings.getKafkaSendTimeoutMs()).thenReturn(1000L);
-        when(kafkaProducer.partitionsFor(EXPECTED_PRODUCER_RECORD.topic())).thenReturn(ImmutableList.of(
-                new PartitionInfo(EXPECTED_PRODUCER_RECORD.topic(), 1, new Node(1, "10.10.0.1", 9091), null, null)));
+    public void testSendNakadiRecordsHalfPublished() throws IOException {
+        final String eventType = UUID.randomUUID().toString();
+        final String topic = UUID.randomUUID().toString();
+        final List<NakadiRecord> nakadiRecords = Lists.newArrayList(
+                getTestNakadiRecord("0"),
+                getTestNakadiRecord("1"),
+                getTestNakadiRecord("2"),
+                getTestNakadiRecord("3"));
 
-        final MetricRegistry metricRegistry = new MetricRegistry();
-        setResponseForSendingBatches(new TimeoutException(), metricRegistry);
-        final String meterName = metricRegistry.getMeters().firstKey();
-        final Meter meter = metricRegistry.getMeters().get(meterName);
-        Assert.assertEquals(meterName, "hystrix.short.circuit.1_10.10.0.1");
-        Assert.assertTrue(meter.getCount() >= 1);
+        final Exception exception = new Exception();
+        when(kafkaProducer.send(any(), any())).thenAnswer(invocation -> {
+            final ProducerRecord record = (ProducerRecord) invocation.getArguments()[0];
+            final Callback callback = (Callback) invocation.getArguments()[1];
+            if (record.partition() % 2 == 0) {
+                callback.onCompletion(null, exception);
+            } else {
+                callback.onCompletion(null, null);
+            }
+            return null;
+        });
+
+        final List<NakadiRecordResult> result =
+                kafkaTopicRepository.sendEvents(topic, nakadiRecords);
+        Assert.assertEquals(4, result.size());
+        Assert.assertEquals(exception, result.get(0).getException());
+        Assert.assertEquals(NakadiRecordResult.Status.FAILED, result.get(0).getStatus());
+        Assert.assertEquals(null, result.get(1).getException());
+        Assert.assertEquals(NakadiRecordResult.Status.SUCCEEDED, result.get(1).getStatus());
+        Assert.assertEquals(exception, result.get(2).getException());
+        Assert.assertEquals(NakadiRecordResult.Status.FAILED, result.get(2).getStatus());
+        Assert.assertEquals(null, result.get(3).getException());
+        Assert.assertEquals(NakadiRecordResult.Status.SUCCEEDED, result.get(3).getStatus());
+    }
+
+    @Test
+    public void testSendNakadiRecordsHalfSubmitted() throws IOException {
+        final String topic = UUID.randomUUID().toString();
+        final List<NakadiRecord> nakadiRecords = Lists.newArrayList(
+                getTestNakadiRecord("0"),
+                getTestNakadiRecord("1"),
+                getTestNakadiRecord("2"),
+                getTestNakadiRecord("3"));
+
+        final KafkaException exception = new KafkaException();
+        when(kafkaProducer.send(any(), any())).thenAnswer(invocation -> {
+            final ProducerRecord record = (ProducerRecord) invocation.getArguments()[0];
+            final Callback callback = (Callback) invocation.getArguments()[1];
+            if (record.partition() <= 1) {
+                callback.onCompletion(null, null);
+            } else {
+                throw exception;
+            }
+            return null;
+        });
+
+        final List<NakadiRecordResult> result =
+                kafkaTopicRepository.sendEvents(topic, nakadiRecords);
+        Assert.assertEquals(4, result.size());
+        Assert.assertEquals(null, result.get(0).getException());
+        Assert.assertEquals(NakadiRecordResult.Status.SUCCEEDED, result.get(0).getStatus());
+        Assert.assertEquals(null, result.get(1).getException());
+        Assert.assertEquals(NakadiRecordResult.Status.SUCCEEDED, result.get(1).getStatus());
+        Assert.assertEquals(exception, result.get(2).getException());
+        Assert.assertEquals(NakadiRecordResult.Status.ABORTED, result.get(2).getStatus());
+        Assert.assertEquals(exception, result.get(3).getException());
+        Assert.assertEquals(NakadiRecordResult.Status.ABORTED, result.get(3).getStatus());
     }
 
     private static Cursor cursor(final String partition, final String offset) {
         return new Cursor(partition, offset);
     }
 
-    private KafkaTopicRepository createKafkaRepository(final KafkaFactory kafkaFactory,
-                                                       final MetricRegistry metricRegistry) {
+    private KafkaTopicRepository createKafkaRepository(final KafkaFactory kafkaFactory) {
         try {
             return new KafkaTopicRepository.Builder()
                     .setKafkaZookeeper(createKafkaZookeeper())
                     .setKafkaFactory(kafkaFactory)
                     .setNakadiSettings(nakadiSettings)
                     .setKafkaSettings(kafkaSettings)
-                    .setZookeeperSettings(zookeeperSettings)
                     .setKafkaTopicConfigFactory(kafkaTopicConfigFactory)
                     .setKafkaLocationManager(kafkaLocationManager)
-                    .setMetricRegistry(metricRegistry)
+                    .setNakadiRecordMapper(nakadiRecordMapper)
                     .build();
         } catch (final Exception e) {
             throw new RuntimeException(e);
@@ -603,8 +613,22 @@ public class KafkaTopicRepositoryTest {
     }
 
     @SuppressWarnings("unchecked")
-    private ProducerRecord<String, String> captureProducerRecordSent() {
+    private ProducerRecord<byte[], byte[]> captureProducerRecordSent() {
         verify(kafkaProducer, atLeastOnce()).send(producerRecordArgumentCaptor.capture(), any());
         return producerRecordArgumentCaptor.getValue();
     }
+
+    private NakadiRecord getTestNakadiRecord(final String partition) {
+        final NakadiMetadata metadata = new NakadiMetadata();
+        metadata.setEid(UUID.randomUUID().toString());
+        metadata.setOccurredAt(Instant.now());
+        metadata.setSchemaVersion("0");
+        metadata.setPartition(partition);
+        metadata.setEventType("test-event");
+
+        return new NakadiRecord()
+                .setMetadata(metadata)
+                .setPayload(new byte[0]);
+    }
+
 }

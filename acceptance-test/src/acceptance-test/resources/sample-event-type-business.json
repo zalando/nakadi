@@ -1,0 +1,13 @@
+{
+  "name": "NAME_PLACEHOLDER",
+  "owning_application": "OWNING_APP_PLACEHOLDER",
+  "category": "business",
+  "enrichment_strategies": ["metadata_enrichment"],
+  "compatibility_mode": "compatible",
+  "schema": {
+    "type": "json_schema",
+    "schema": "{\"type\": \"object\", \"properties\": {\"foo\": {\"type\": \"string\"}, \"bar\": {\"type\": \"object\", \"properties\": {\"baz\": {\"type\": \"string\"}}}}, \"required\": [\"foo\"]}"
+  },
+  "audience": "external-public",
+  "ordering_key_fields": ["foo", "bar.baz"]
+}

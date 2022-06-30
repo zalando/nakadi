@@ -5,8 +5,10 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.ControllerAdvice;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.context.request.NativeWebRequest;
+import org.zalando.nakadi.exceptions.runtime.AvroDecodingException;
 import org.zalando.nakadi.exceptions.runtime.EnrichmentException;
 import org.zalando.nakadi.exceptions.runtime.EventTypeTimeoutException;
+import org.zalando.nakadi.exceptions.runtime.InvalidEventTypeException;
 import org.zalando.nakadi.exceptions.runtime.InvalidPartitionKeyFieldsException;
 import org.zalando.nakadi.exceptions.runtime.NakadiBaseException;
 import org.zalando.nakadi.exceptions.runtime.PartitioningException;
@@ -31,15 +33,30 @@ public class EventPublishingExceptionHandler implements AdviceTrait {
     @ExceptionHandler(JSONException.class)
     public ResponseEntity<Problem> handleJSONException(final JSONException exception,
                                                        final NativeWebRequest request) {
+        return handlePayloadException(exception, "Error occurred when parsing event(s). ", request);
+    }
+
+    @ExceptionHandler(AvroDecodingException.class)
+    public ResponseEntity<Problem> handleAvroException(final AvroDecodingException exception,
+                                                       final NativeWebRequest request) {
+        return handlePayloadException(exception, "Error occurred when parsing avro. ", request);
+    }
+
+    private ResponseEntity<Problem> handlePayloadException(final Exception exception,
+                                                           final String message,
+                                                           final NativeWebRequest request) {
         if (exception.getCause() == null) {
             return create(Problem.valueOf(Status.BAD_REQUEST,
-                    "Error occurred when parsing event(s). " + exception.getMessage()), request);
+                    message + exception.getMessage()), request);
         }
+
         return create(Problem.valueOf(Status.BAD_REQUEST), request);
     }
 
+
     @ExceptionHandler({EnrichmentException.class,
             PartitioningException.class,
+            InvalidEventTypeException.class,
             InvalidPartitionKeyFieldsException.class})
     public ResponseEntity<Problem> handleUnprocessableEntityResponses(final NakadiBaseException exception,
                                                                       final NativeWebRequest request) {

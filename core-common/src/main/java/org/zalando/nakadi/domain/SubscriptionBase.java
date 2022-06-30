@@ -1,6 +1,10 @@
 package org.zalando.nakadi.domain;
 
 import com.google.common.collect.ImmutableList;
+import org.zalando.nakadi.annotations.validation.AnnotationKey;
+import org.zalando.nakadi.annotations.validation.AnnotationValue;
+import org.zalando.nakadi.annotations.validation.LabelKey;
+import org.zalando.nakadi.annotations.validation.LabelValue;
 import org.zalando.nakadi.plugin.api.authz.Resource;
 import org.zalando.nakadi.view.SubscriptionCursorWithoutToken;
 
@@ -10,6 +14,7 @@ import javax.validation.constraints.NotNull;
 import javax.validation.constraints.Size;
 import java.util.Collections;
 import java.util.List;
+import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.Set;
@@ -46,6 +51,16 @@ public class SubscriptionBase {
     @Valid
     private SubscriptionAuthorization authorization;
 
+    @Nullable
+    private Map<
+            @AnnotationKey String,
+            @AnnotationValue String> annotations;
+
+    @Nullable
+    private Map<
+            @LabelKey String,
+            @LabelValue String> labels;
+
     public SubscriptionBase() {
     }
 
@@ -56,6 +71,8 @@ public class SubscriptionBase {
         this.setReadFrom(subscriptionBase.getReadFrom());
         this.setInitialCursors(subscriptionBase.getInitialCursors());
         this.setAuthorization(subscriptionBase.getAuthorization());
+        this.setAnnotations(subscriptionBase.getAnnotations());
+        this.setLabels(subscriptionBase.getLabels());
     }
 
     public SubscriptionAuthorization getAuthorization() {
@@ -106,6 +123,24 @@ public class SubscriptionBase {
         this.initialCursors = Optional.ofNullable(initialCursors).orElse(ImmutableList.of());
     }
 
+    @Nullable
+    public Map<String, String> getAnnotations() {
+        return annotations;
+    }
+
+    public void setAnnotations(@Nullable final Map<String, String> annotations) {
+        this.annotations = annotations;
+    }
+
+    @Nullable
+    public Map<String, String> getLabels() {
+        return labels;
+    }
+
+    public void setLabels(@Nullable final Map<String, String> labels) {
+        this.labels = labels;
+    }
+
     @Override
     public boolean equals(final Object o) {
         if (this == o) {
@@ -120,12 +155,15 @@ public class SubscriptionBase {
                 && Objects.equals(consumerGroup, that.consumerGroup)
                 && Objects.equals(readFrom, that.readFrom)
                 && Objects.equals(authorization, that.authorization)
-                && Objects.equals(initialCursors, that.initialCursors);
+                && Objects.equals(initialCursors, that.initialCursors)
+                && Objects.equals(annotations, that.annotations)
+                && Objects.equals(labels, that.labels);
     }
 
     @Override
     public int hashCode() {
-        return Objects.hash(owningApplication, eventTypes, consumerGroup, readFrom, initialCursors);
+        return Objects
+                .hash(owningApplication, eventTypes, consumerGroup, readFrom, initialCursors, annotations, labels);
     }
 
     public Resource<SubscriptionBase> asBaseResource(final String id) {

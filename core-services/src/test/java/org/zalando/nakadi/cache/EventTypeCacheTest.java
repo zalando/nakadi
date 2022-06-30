@@ -1,6 +1,7 @@
 package org.zalando.nakadi.cache;
 
 import org.echocat.jomon.runtime.concurrent.RetryForSpecifiedTimeStrategy;
+import org.joda.time.DateTime;
 import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
@@ -9,17 +10,21 @@ import org.mockito.Captor;
 import org.mockito.Mock;
 import org.mockito.MockitoAnnotations;
 import org.zalando.nakadi.domain.EventType;
+import org.zalando.nakadi.domain.EventTypeSchema;
+import org.zalando.nakadi.domain.EventTypeSchemaBase;
 import org.zalando.nakadi.domain.Timeline;
 import org.zalando.nakadi.exceptions.runtime.NoSuchEventTypeException;
 import org.zalando.nakadi.repository.db.EventTypeRepository;
 import org.zalando.nakadi.repository.db.TimelineDbRepository;
+import org.zalando.nakadi.service.SchemaService;
 import org.zalando.nakadi.service.timeline.TimelineSync;
-import org.zalando.nakadi.validation.EventTypeValidator;
+import org.zalando.nakadi.validation.JsonSchemaValidator;
 import org.zalando.nakadi.validation.EventValidatorBuilder;
 
 import java.util.Collections;
 import java.util.Date;
 import java.util.List;
+import java.util.Optional;
 
 import static org.echocat.jomon.runtime.concurrent.Retryer.executeWithRetry;
 import static org.mockito.ArgumentMatchers.any;
@@ -44,6 +49,8 @@ public class EventTypeCacheTest {
     @Mock
     private EventValidatorBuilder eventValidatorBuilder;
     @Mock
+    private SchemaService schemaService;
+    @Mock
     private TimelineSync.ListenerRegistration listener;
     private EventTypeCache eventTypeCache;
     @Captor
@@ -55,8 +62,8 @@ public class EventTypeCacheTest {
 
         eventTypeCache = new EventTypeCache(
                 changesRegistry, eventTypeRepository, timelineDbRepository, timelineSync, eventValidatorBuilder,
-                1,
-                3); // Update every second, so tests should be fast enough
+                schemaService,
+                1, 3); // Update every second, so tests should be fast enough
     }
 
     @Test
@@ -147,14 +154,21 @@ public class EventTypeCacheTest {
         final String eventTypeName = "test";
 
         final EventType et1 = mock(EventType.class);
-        final EventTypeValidator validator1 = mock(EventTypeValidator.class);
+        final JsonSchemaValidator validator1 = mock(JsonSchemaValidator.class);
         final List<Timeline> expectedTimelines1 = mock(List.class);
 
         final EventType et2 = mock(EventType.class);
-        final EventTypeValidator validator2 = mock(EventTypeValidator.class);
+        final JsonSchemaValidator validator2 = mock(JsonSchemaValidator.class);
         final List<Timeline> expectedTimelines2 = mock(List.class);
 
+        final EventTypeSchema etSchema = new EventTypeSchema(new EventTypeSchemaBase(
+                EventTypeSchemaBase.Type.JSON_SCHEMA, "{}"),
+                "1.0.0", DateTime.now());
+        when(et1.getSchema()).thenReturn(etSchema);
+        when(et2.getSchema()).thenReturn(etSchema);
         when(eventTypeRepository.findByName(eq(eventTypeName))).thenReturn(et1, et2);
+        when(schemaService.getLatestSchemaByType(eventTypeName, EventTypeSchema.Type.JSON_SCHEMA))
+                .thenReturn(Optional.of(etSchema));
         when(eventValidatorBuilder.build(eq(et1))).thenReturn(validator1);
         when(eventValidatorBuilder.build(eq(et2))).thenReturn(validator2);
         when(timelineDbRepository.listTimelinesOrdered(eq(eventTypeName)))

@@ -3,15 +3,11 @@ package org.zalando.nakadi.service;
 import com.codahale.metrics.Meter;
 import com.google.common.collect.Lists;
 import org.apache.kafka.common.KafkaException;
-import org.json.JSONObject;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.zalando.nakadi.domain.ConsumedEvent;
 import org.zalando.nakadi.domain.NakadiCursor;
-import org.zalando.nakadi.metrics.StreamKpiData;
 import org.zalando.nakadi.repository.EventConsumer;
-import org.zalando.nakadi.security.Client;
-import org.zalando.nakadi.service.publishing.NakadiKpiPublisher;
 
 import java.io.IOException;
 import java.io.OutputStream;
@@ -21,7 +17,6 @@ import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
-import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 
@@ -38,34 +33,28 @@ public class EventStream {
     private final CursorConverter cursorConverter;
     private final Meter bytesFlushedMeter;
     private final EventStreamWriter eventStreamWriter;
-    private final StreamKpiData kpiData;
-    private final String kpiDataStreamedEventType;
-    private final long kpiFrequencyMs;
-    private final NakadiKpiPublisher kpiPublisher;
+    private final ConsumptionKpiCollector kpiCollector;
     private final EventStreamChecks eventStreamChecks;
 
     public EventStream(final EventConsumer eventConsumer,
                        final OutputStream outputStream,
                        final EventStreamConfig config,
                        final EventStreamChecks eventStreamChecks,
-                       final CursorConverter cursorConverter, final Meter bytesFlushedMeter,
+                       final CursorConverter cursorConverter,
+                       final Meter bytesFlushedMeter,
                        final EventStreamWriter eventStreamWriter,
-                       final NakadiKpiPublisher kpiPublisher, final String kpiDataStreamedEventType,
-                       final long kpiFrequencyMs) {
+                       final ConsumptionKpiCollector kpiCollector) {
         this.eventConsumer = eventConsumer;
         this.outputStream = outputStream;
         this.config = config;
         this.cursorConverter = cursorConverter;
         this.bytesFlushedMeter = bytesFlushedMeter;
         this.eventStreamWriter = eventStreamWriter;
-        this.kpiPublisher = kpiPublisher;
         this.eventStreamChecks = eventStreamChecks;
-        this.kpiData = new StreamKpiData();
-        this.kpiDataStreamedEventType = kpiDataStreamedEventType;
-        this.kpiFrequencyMs = kpiFrequencyMs;
+        this.kpiCollector = kpiCollector;
     }
 
-    public void streamEvents(final AtomicBoolean connectionReady, final Runnable checkAuthorization) {
+    public void streamEvents(final Runnable checkAuthorization) {
         try {
             int messagesRead = 0;
             final Map<String, Integer> keepAliveInARow = createMapWithPartitionKeys(partition -> 0);
@@ -79,10 +68,10 @@ public class EventStream {
             final long start = currentTimeMillis();
             final Map<String, Long> batchStartTimes = createMapWithPartitionKeys(partition -> start);
             final List<ConsumedEvent> consumedEvents = new LinkedList<>();
-            long lastKpiEventSent = System.currentTimeMillis();
+
             long bytesInMemory = 0;
 
-            while (connectionReady.get()) {
+            while (true) {
 
                 if (eventStreamChecks.isConsumptionBlocked(
                         Collections.singleton(config.getEtName()),
@@ -94,7 +83,7 @@ public class EventStream {
 
                 if (consumedEvents.isEmpty()) {
                     final List<ConsumedEvent> eventsFromKafka = eventConsumer.readEvents();
-                    for (final ConsumedEvent evt: eventsFromKafka) {
+                    for (final ConsumedEvent evt : eventsFromKafka) {
                         if (eventStreamChecks.isConsumptionBlocked(evt)) {
                             continue;
                         }
@@ -122,7 +111,7 @@ public class EventStream {
                 // for each partition check if it's time to send the batch
                 for (final String partition : latestOffsets.keySet()) {
                     final long timeSinceBatchStart = currentTimeMillis() - batchStartTimes.get(partition);
-                    if (config.getBatchTimeout() * 1000 <= timeSinceBatchStart
+                    if (config.getBatchTimeout() * 1000L <= timeSinceBatchStart
                             || currentBatches.get(partition).size() >= config.getBatchLimit()) {
                         final List<byte[]> eventsToSend = currentBatches.get(partition);
                         sendBatch(latestOffsets.get(partition), eventsToSend);
@@ -154,14 +143,7 @@ public class EventStream {
                     batchStartTimes.put(heaviestPartition.getKey(), currentTimeMillis());
                 }
 
-                if (lastKpiEventSent + kpiFrequencyMs < System.currentTimeMillis()) {
-                    final long count = kpiData.getAndResetNumberOfEventsSent();
-                    final long bytes = kpiData.getAndResetBytesSent();
-
-                    publishKpi(config.getConsumingClient(), count, bytes);
-
-                    lastKpiEventSent = System.currentTimeMillis();
-                }
+                kpiCollector.checkAndSendKpi();
 
                 // check if we reached keepAliveInARow for all the partitions; if yes - then close stream
                 if (config.getStreamKeepAliveLimit() != 0) {
@@ -177,7 +159,7 @@ public class EventStream {
 
                 // check if we reached the stream timeout or message count limit
                 final long timeSinceStart = currentTimeMillis() - start;
-                if (config.getStreamTimeout() != 0 && timeSinceStart >= config.getStreamTimeout() * 1000
+                if (config.getStreamTimeout() != 0 && timeSinceStart >= config.getStreamTimeout() * 1000L
                         || config.getStreamLimit() != 0 && messagesRead >= config.getStreamLimit()) {
 
                     for (final String partition : latestOffsets.keySet()) {
@@ -197,33 +179,12 @@ public class EventStream {
             LOG.error("Error occurred when polling events from kafka; consumer: {}, event-type: {}",
                     config.getConsumingClient().getClientId(), config.getEtName(), e);
         } finally {
-            publishKpi(
-                    config.getConsumingClient(),
-                    kpiData.getAndResetNumberOfEventsSent(),
-                    kpiData.getAndResetBytesSent());
+            kpiCollector.sendKpi();
         }
     }
 
     private boolean isMemoryLimitReached(final long memoryUsed) {
         return memoryUsed > config.getMaxMemoryUsageBytes();
-    }
-
-    private void publishKpi(final Client client, final long count, final long bytes) {
-        final String appNameHashed = kpiPublisher.hash(client.getClientId());
-
-        LOG.info("[SLO] [streamed-data] api={} eventTypeName={} app={} appHashed={} numberOfEvents={} bytesStreamed={}",
-                "lola", config.getEtName(), client.getClientId(), appNameHashed, count, bytes);
-
-        kpiPublisher.publish(
-                kpiDataStreamedEventType,
-                () -> new JSONObject()
-                        .put("api", "lola")
-                        .put("event_type", config.getEtName())
-                        .put("app", client.getClientId())
-                        .put("app_hashed", appNameHashed)
-                        .put("token_realm", client.getRealm())
-                        .put("number_of_events", count)
-                        .put("bytes_streamed", bytes));
     }
 
     private <T> Map<String, T> createMapWithPartitionKeys(final Function<String, T> valueFunction) {
@@ -234,11 +195,10 @@ public class EventStream {
 
     private void sendBatch(final NakadiCursor topicPosition, final List<byte[]> currentBatch)
             throws IOException {
-        final int bytesWritten = eventStreamWriter
+        final long bytesWritten = eventStreamWriter
                 .writeBatch(outputStream, cursorConverter.convert(topicPosition), currentBatch);
         bytesFlushedMeter.mark(bytesWritten);
-        kpiData.addBytesSent(bytesWritten);
-        kpiData.addNumberOfEventsSent(currentBatch.size());
+        kpiCollector.recordBatchSent(config.getEtName(), bytesWritten, currentBatch.size());
     }
 
 
