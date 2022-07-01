@@ -86,7 +86,7 @@ public class NakadiKpiPublisherTest {
         new NakadiKpiPublisher(featureToggleService, jsonProcessor, binaryProcessor, usernameHasher,
                 new EventMetadataTestStub(), uuidGenerator, schemaProviderService, recordMapper)
                 .publish(mockEventSupplier);
-        verifyNoInteractions(mockEventSupplier, jsonProcessor, binaryProcessor, uuidGenerator, localRegistryMock);
+        verifyNoInteractions(mockEventSupplier, jsonProcessor, binaryProcessor, localRegistryMock);
     }
 
     @Test
