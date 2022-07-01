@@ -11,7 +11,6 @@ import org.zalando.nakadi.domain.NakadiMetadata;
 import org.zalando.nakadi.exceptions.runtime.InvalidEventTypeException;
 import org.zalando.nakadi.exceptions.runtime.NoSuchPartitionStrategyException;
 import org.zalando.nakadi.exceptions.runtime.PartitioningException;
-import org.zalando.nakadi.service.timeline.TimelineService;
 
 import java.util.List;
 import java.util.Map;
@@ -29,12 +28,9 @@ public class PartitionResolver {
             HASH_STRATEGY, USER_DEFINED_STRATEGY, RANDOM_STRATEGY);
 
     private final Map<String, PartitionStrategy> partitionStrategies;
-    private final TimelineService timelineService;
 
     @Autowired
-    public PartitionResolver(final TimelineService timelineService, final HashPartitionStrategy hashPartitionStrategy) {
-        this.timelineService = timelineService;
-
+    public PartitionResolver(final HashPartitionStrategy hashPartitionStrategy) {
         partitionStrategies = ImmutableMap.of(
                 HASH_STRATEGY, hashPartitionStrategy,
                 USER_DEFINED_STRATEGY, new UserDefinedPartitionStrategy(),
@@ -57,25 +53,18 @@ public class PartitionResolver {
         }
     }
 
-    public String resolvePartition(final EventType eventType, final JSONObject eventAsJson)
+    public String resolvePartition(final EventType eventType, final JSONObject eventAsJson,
+            final List<String> orderedPartitions)
             throws PartitioningException {
-        final PartitionStrategy partitionStrategy = getPartitionStrategy(eventType);
-        final List<String> partitions = getPartitions(eventType);
 
-        return partitionStrategy.calculatePartition(eventType, eventAsJson, partitions);
+        return getPartitionStrategy(eventType).calculatePartition(eventType, eventAsJson, orderedPartitions);
     }
 
-    public String resolvePartition(final EventType eventType, final NakadiMetadata nakadiRecordMetadata)
+    public String resolvePartition(final EventType eventType, final NakadiMetadata nakadiRecordMetadata,
+            final List<String> orderedPartitions)
             throws PartitioningException {
-        final PartitionStrategy partitionStrategy = getPartitionStrategy(eventType);
-        final List<String> partitions = getPartitions(eventType);
 
-        return partitionStrategy.calculatePartition(nakadiRecordMetadata, partitions);
-    }
-
-    private List<String> getPartitions(final EventType eventType) {
-        return timelineService.getTopicRepository(eventType)
-                .listPartitionNames(timelineService.getActiveTimeline(eventType).getTopic());
+        return getPartitionStrategy(eventType).calculatePartition(nakadiRecordMetadata, orderedPartitions);
     }
 
     private PartitionStrategy getPartitionStrategy(final EventType eventType) {
@@ -90,5 +79,3 @@ public class PartitionResolver {
         return partitionStrategy;
     }
 }
-
-

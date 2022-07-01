@@ -33,6 +33,7 @@ import org.zalando.nakadi.exceptions.runtime.InvalidVersionNumberException;
 import org.zalando.nakadi.exceptions.runtime.NoSuchSchemaException;
 import org.zalando.nakadi.exceptions.runtime.SchemaValidationException;
 import org.zalando.nakadi.exceptions.runtime.ServiceTemporarilyUnavailableException;
+import org.zalando.nakadi.exceptions.runtime.UnsupportedSchemaTypeException;
 import org.zalando.nakadi.repository.db.EventTypeRepository;
 import org.zalando.nakadi.repository.db.SchemaRepository;
 import org.zalando.nakadi.service.timeline.TimelineSync;
@@ -181,9 +182,8 @@ public class SchemaService implements SchemaProviderService {
     public void validateSchema(final EventTypeBase eventType) throws SchemaValidationException {
         try {
             final String eventTypeSchema = eventType.getSchema().getSchema();
-
-
             final EventTypeSchemaBase.Type schemaType = eventType.getSchema().getType();
+
             if (schemaType.equals(EventTypeSchemaBase.Type.JSON_SCHEMA)) {
                 isStrictlyValidJson(eventTypeSchema);
                 validateJsonTypeSchema(eventType, eventTypeSchema);
@@ -303,8 +303,7 @@ public class SchemaService implements SchemaProviderService {
             throws NoSuchSchemaException {
         final NameSchema key = new NameSchema(name, schema);
         return schemaVersionCache.computeIfAbsent(key, (nameSchema) ->
-                // assuming there will be no more than 100 schemas for the event type
-                schemaRepository.getSchemas(name, 0, 100).stream()
+                schemaRepository.getAllSchemas(name).stream()
                         .filter(ets -> ets.getType() == EventTypeSchemaBase.Type.AVRO_SCHEMA)
                         .filter(ets -> new Parser().parse(ets.getSchema()).equals(schema))
                         .map(EventTypeSchema::getVersion)
@@ -314,7 +313,28 @@ public class SchemaService implements SchemaProviderService {
         );
     }
 
-    private class SchemaId {
+    @Override
+    public String getSchemaVersion(final String name, final String schema,
+                                   final EventTypeSchemaBase.Type type)
+            throws NoSuchSchemaException, UnsupportedSchemaTypeException {
+        switch (type) {
+            case AVRO_SCHEMA:
+                return getAvroSchemaVersion(name,  new Parser().parse(schema));
+            case JSON_SCHEMA:
+                final JSONObject jsonSchema = new JSONObject(schema);
+                return schemaRepository.getAllSchemas(name).stream()
+                        .filter(ets -> ets.getType() == EventTypeSchemaBase.Type.JSON_SCHEMA)
+                        .filter(ets -> new JSONObject(ets.getSchema()).similar(jsonSchema))
+                        .map(EventTypeSchema::getVersion)
+                        .findFirst()
+                        .orElseThrow(() -> new NoSuchSchemaException(
+                                String.format("schema is not found for %s", name)));
+            default:
+                throw new UnsupportedSchemaTypeException("Unsupported schema type: " + type);
+        }
+    }
+
+    private static class SchemaId {
         private final String name;
         private final String version;
 
@@ -336,7 +356,7 @@ public class SchemaService implements SchemaProviderService {
         }
     }
 
-    private class NameSchema {
+    private static class NameSchema {
         private final String name;
         private final org.apache.avro.Schema schema;
 

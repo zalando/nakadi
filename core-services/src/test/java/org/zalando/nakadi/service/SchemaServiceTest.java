@@ -230,7 +230,7 @@ public class SchemaServiceTest {
 
     @Test
     public void testSchemaVersionFoundInRepository() {
-        Mockito.when(schemaRepository.getSchemas("nakadi.batch.published", 0, 100))
+        Mockito.when(schemaRepository.getAllSchemas("nakadi.batch.published"))
                 .thenReturn(Collections.singletonList(
                         new EventTypeSchema(new EventTypeSchemaBase(
                                 EventTypeSchemaBase.Type.AVRO_SCHEMA,
@@ -246,7 +246,7 @@ public class SchemaServiceTest {
 
     @Test
     public void testSchemaVersionFoundInRepositoryTwoSchemas() {
-        Mockito.when(schemaRepository.getSchemas("nakadi.batch.published", 0, 100))
+        Mockito.when(schemaRepository.getAllSchemas("nakadi.batch.published"))
                 .thenReturn(Arrays.asList(
                         new EventTypeSchema(new EventTypeSchemaBase(
                                 EventTypeSchemaBase.Type.JSON_SCHEMA,
@@ -266,7 +266,7 @@ public class SchemaServiceTest {
 
     @Test(expected = NoSuchSchemaException.class)
     public void testSchemaVersionNotFoundForEventType() {
-        Mockito.when(schemaRepository.getSchemas("nakadi.batch.published", 0, 100))
+        Mockito.when(schemaRepository.getAllSchemas("nakadi.batch.published"))
                 .thenReturn(Collections.emptyList());
 
         schemaService.getAvroSchemaVersion("nakadi.batch.published", NakadiBatchPublished.getClassSchema());

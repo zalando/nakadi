@@ -211,7 +211,7 @@ public class EventPublisherTest {
 
         assertThat(result.getStatus(), equalTo(EventPublishingStatus.ABORTED));
         verify(enrichment, times(0)).enrich(any(), any());
-        verify(partitionResolver, times(0)).resolvePartition(eventType, event);
+        verify(partitionResolver, times(0)).resolvePartition(any(EventType.class), any(JSONObject.class), any());
         verify(topicRepository, times(0)).syncPostBatch(any(), any(), any(), anyBoolean());
     }
 
@@ -260,7 +260,7 @@ public class EventPublisherTest {
 
         assertThat(result.getStatus(), equalTo(EventPublishingStatus.ABORTED));
         verify(enrichment, times(0)).enrich(any(), any());
-        verify(partitionResolver, times(0)).resolvePartition(any(EventType.class), any(JSONObject.class));
+        verify(partitionResolver, times(0)).resolvePartition(any(EventType.class), any(JSONObject.class), any());
         verify(topicRepository, times(0)).syncPostBatch(any(), any(), any(), anyBoolean());
     }
 
@@ -341,7 +341,7 @@ public class EventPublisherTest {
 
         assertThat(result.getStatus(), equalTo(EventPublishingStatus.SUBMITTED));
         verify(enrichment, times(1)).enrich(any(), any());
-        verify(partitionResolver, times(1)).resolvePartition(any(EventType.class), any(JSONObject.class));
+        verify(partitionResolver, times(1)).resolvePartition(any(EventType.class), any(JSONObject.class), any());
         verify(topicRepository, times(1)).syncPostBatch(any(), any(), any(), eq(false));
     }
 
@@ -356,7 +356,7 @@ public class EventPublisherTest {
 
         assertThat(result.getStatus(), equalTo(EventPublishingStatus.ABORTED));
         verify(enrichment, times(0)).enrich(any(), any());
-        verify(partitionResolver, times(0)).resolvePartition(any(EventType.class), any(JSONObject.class));
+        verify(partitionResolver, times(0)).resolvePartition(any(EventType.class), any(JSONObject.class), any());
         verify(topicRepository, times(0)).syncPostBatch(any(), any(), any(), anyBoolean());
     }
 
@@ -371,7 +371,7 @@ public class EventPublisherTest {
 
         assertThat(result.getStatus(), equalTo(EventPublishingStatus.ABORTED));
         verify(enrichment, times(0)).enrich(any(), any());
-        verify(partitionResolver, times(0)).resolvePartition(any(EventType.class), any(JSONObject.class));
+        verify(partitionResolver, times(0)).resolvePartition(any(EventType.class), any(JSONObject.class), any());
         verify(topicRepository, times(0)).syncPostBatch(any(), any(), any(), anyBoolean());
     }
 
@@ -386,7 +386,7 @@ public class EventPublisherTest {
 
         assertThat(result.getStatus(), equalTo(EventPublishingStatus.SUBMITTED));
         verify(enrichment, times(1)).enrich(any(), any());
-        verify(partitionResolver, times(1)).resolvePartition(any(EventType.class), any(JSONObject.class));
+        verify(partitionResolver, times(1)).resolvePartition(any(EventType.class), any(JSONObject.class), any());
         verify(topicRepository, times(1)).syncPostBatch(any(), any(), any(), eq(false));
     }
 
@@ -431,7 +431,7 @@ public class EventPublisherTest {
         assertThat(second.getDetail(), is(isEmptyString()));
 
         verify(cache, times(2)).getValidator(any());
-        verify(partitionResolver, times(1)).resolvePartition(any(EventType.class), any(JSONObject.class));
+        verify(partitionResolver, times(1)).resolvePartition(any(EventType.class), any(JSONObject.class), any());
     }
 
     @Test
@@ -461,7 +461,7 @@ public class EventPublisherTest {
 
         assertThat(result.getStatus(), equalTo(EventPublishingStatus.ABORTED));
         verify(cache, atLeastOnce()).getValidator(eventType.getName());
-        verify(partitionResolver, times(1)).resolvePartition(any(EventType.class), any(JSONObject.class));
+        verify(partitionResolver, times(1)).resolvePartition(any(EventType.class), any(JSONObject.class), any());
         verify(enrichment, times(1)).enrich(any(), any());
         verify(topicRepository, times(0)).syncPostBatch(any(), any(), any(), anyBoolean());
     }
@@ -605,7 +605,7 @@ public class EventPublisherTest {
         Mockito.when(cache.getEventType(eventTypeName)).thenReturn(eventType);
         Mockito.when(timelineService.getActiveTimeline(eventType))
                 .thenReturn(new Timeline(eventTypeName, 0, null, topic, null));
-        Mockito.when(partitionResolver.resolvePartition(any(EventType.class), any(NakadiMetadata.class)))
+        Mockito.when(partitionResolver.resolvePartition(any(EventType.class), any(NakadiMetadata.class), any()))
                 .thenReturn("1");
 
         final Instant now = Instant.now();
@@ -653,7 +653,7 @@ public class EventPublisherTest {
         Mockito
                 .doThrow(new PartitioningException("partition error"))
                 .when(partitionResolver)
-                .resolvePartition(any(EventType.class), any(JSONObject.class));
+                .resolvePartition(any(EventType.class), any(JSONObject.class), any());
     }
 
     private void mockFaultEnrichment() throws EnrichmentException {
