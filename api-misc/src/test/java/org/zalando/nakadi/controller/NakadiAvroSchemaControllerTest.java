@@ -65,8 +65,11 @@ public class NakadiAvroSchemaControllerTest {
         LOG.info("Got response = {}", response);
         final var jsonResponse = objectMapper.readTree(response);
         assertTrue(jsonResponse.isObject());
-        assertEquals("record", jsonResponse.get("type").asText());
-        assertEquals("PublishingBatch", jsonResponse.get("name").asText());
+        assertTrue(jsonResponse.get("version").isTextual());
+        final var schema = jsonResponse.get("avro_schema");
+        assertTrue(schema.isObject());
+        assertEquals("record", schema.get("type").asText());
+        assertEquals("PublishingBatch", schema.get("name").asText());
     }
 
     @Test
