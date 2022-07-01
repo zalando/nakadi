@@ -13,7 +13,7 @@
     "ordering_instance_ids": [],
     "schema": {
       "type": "avro_schema",
-      "schema": "{  \"name\": \"nakadi.batch.published\",  \"type\": \"record\",  \"doc\": \"Stores KPI event of type nakadi.batch.published\",  \"fields\": [    {      \"name\": \"event_type\",      \"type\": \"string\"    },    {      \"name\": \"app\",      \"type\": \"string\"    },    {      \"name\": \"app_hashed\",      \"type\": \"string\"    },    {      \"name\": \"token_realm\",      \"type\": \"string\"    },    {      \"name\": \"number_of_events\",      \"type\": \"int\"    },    {      \"name\": \"ms_spent\",      \"type\": \"long\"    },    {      \"name\": \"batch_size\",      \"type\": \"long\"    }  ]}"
+      "schema": "{  \"name\": \"NakadiBatchPublished\",  \"type\": \"record\",  \"doc\": \"Stores KPI event of type nakadi.batch.published\",  \"fields\": [    {      \"name\": \"event_type\",      \"type\": \"string\"    },    {      \"name\": \"app\",      \"type\": \"string\"    },    {      \"name\": \"app_hashed\",      \"type\": \"string\"    },    {      \"name\": \"token_realm\",      \"type\": \"string\"    },    {      \"name\": \"number_of_events\",      \"type\": \"int\"    },    {      \"name\": \"ms_spent\",      \"type\": \"long\"    },    {      \"name\": \"batch_size\",      \"type\": \"long\"    }  ]}"
     },
     "default_statistic": {
       "messages_per_minute": 100,
@@ -41,7 +41,7 @@
     "ordering_instance_ids": [],
     "schema": {
       "type": "avro_schema",
-      "schema": "{  \"name\": \"nakadi.data.streamed\",  \"type\": \"record\",  \"doc\": \"Stores KPI events of type nakadi.data.streamed\",  \"fields\": [    {      \"name\": \"api\",      \"description\": \"This field indicates if data was streamed through low level api or high level api\",      \"type\": \"string\"    },    {      \"name\": \"subscription\",      \"description\": \"this is optional and is only present when streaming from a subscription\",      \"type\": [        \"null\",        \"string\"      ],      \"default\": null    },    {      \"name\": \"event_type\",      \"type\": \"string\"    },    {      \"name\": \"app\",      \"type\": \"string\"    },    {      \"name\": \"app_hashed\",      \"type\": \"string\"    },    {      \"name\": \"token_realm\",      \"type\": \"string\"    },    {      \"name\": \"number_of_events\",      \"type\": \"long\"    },    {      \"name\": \"bytes_streamed\",      \"description\": \"amount of bytes streamed since last event\",      \"type\": \"long\"    },    {      \"name\": \"batches_streamed\",      \"description\": \"amount of batches streamed since last event\",      \"type\": \"int\"    }  ]}"
+      "schema": "{  \"name\": \"NakadiDataStreamed\",  \"type\": \"record\",  \"doc\": \"Stores KPI events of type nakadi.data.streamed\",  \"fields\": [    {      \"name\": \"api\",      \"description\": \"This field indicates if data was streamed through low level api or high level api\",      \"type\": \"string\"    },    {      \"name\": \"subscription\",      \"description\": \"this is optional and is only present when streaming from a subscription\",      \"type\": [        \"null\",        \"string\"      ],      \"default\": null    },    {      \"name\": \"event_type\",      \"type\": \"string\"    },    {      \"name\": \"app\",      \"type\": \"string\"    },    {      \"name\": \"app_hashed\",      \"type\": \"string\"    },    {      \"name\": \"token_realm\",      \"type\": \"string\"    },    {      \"name\": \"number_of_events\",      \"type\": \"long\"    },    {      \"name\": \"bytes_streamed\",      \"description\": \"amount of bytes streamed since last event\",      \"type\": \"long\"    },    {      \"name\": \"batches_streamed\",      \"description\": \"amount of batches streamed since last event\",      \"type\": \"int\"    }  ]}"
     },
     "default_statistic": {
       "messages_per_minute": 100,
@@ -77,7 +77,7 @@
     "ordering_instance_ids": [],
     "schema": {
       "type": "avro_schema",
-      "schema": "{  \"name\": \"nakadi.access.log\",  \"type\": \"record\",  \"doc\": \"Stores access log of Nakadi endpoints\",  \"fields\": [    {      \"name\": \"method\",      \"type\": \"string\"    },    {      \"name\": \"path\",      \"type\": \"string\"    },    {      \"name\": \"query\",      \"type\": \"string\"    },    {      \"name\": \"user_agent\",      \"type\": \"string\"    },    {      \"name\": \"app\",      \"type\": \"string\"    },    {      \"name\": \"app_hashed\",      \"type\": \"string\"    },    {      \"name\": \"status_code\",      \"type\": \"int\"    },    {      \"name\": \"response_time_ms\",      \"type\": \"long\"    },    {      \"name\": \"accept_encoding\",      \"type\": \"string\"    },    {      \"name\": \"content_encoding\",      \"type\": \"string\"    },    {      \"name\": \"request_length\",      \"type\": \"long\"    },    {      \"name\": \"response_length\",      \"type\": \"long\"    }  ]}"
+      "schema": "{  \"name\": \"NakadiAccessLog\",  \"type\": \"record\",  \"doc\": \"Stores access log of Nakadi endpoints\",  \"fields\": [    {      \"name\": \"method\",      \"type\": \"string\"    },    {      \"name\": \"path\",      \"type\": \"string\"    },    {      \"name\": \"query\",      \"type\": \"string\"    },    {      \"name\": \"user_agent\",      \"type\": \"string\"    },    {      \"name\": \"app\",      \"type\": \"string\"    },    {      \"name\": \"app_hashed\",      \"type\": \"string\"    },    {      \"name\": \"status_code\",      \"type\": \"int\"    },    {      \"name\": \"response_time_ms\",      \"type\": \"long\"    },    {      \"name\": \"accept_encoding\",      \"type\": \"string\"    },    {      \"name\": \"content_encoding\",      \"type\": \"string\"    },    {      \"name\": \"request_length\",      \"type\": \"long\"    },    {      \"name\": \"response_length\",      \"type\": \"long\"    }  ]}"
     },
     "default_statistic": {
       "messages_per_minute": 100,
@@ -112,7 +112,7 @@
     "ordering_instance_ids": [],
     "schema": {
       "type": "avro_schema",
-      "schema": "{  \"name\": \"nakadi.event.type.log\",  \"type\": \"record\",  \"doc\": \"Stores KPI events of type nakadi.event.type.log\",  \"fields\": [    {      \"name\": \"event_type\",      \"type\": \"string\"    },    {      \"name\": \"status\",      \"type\": \"string\"    },    {      \"name\": \"category\",      \"type\": \"string\"    },    {      \"name\": \"authz\",      \"type\": \"string\"    },    {      \"name\": \"compatibility_mode\",      \"type\": \"string\"    }  ]}"
+      "schema": "{  \"name\": \"NakadiEventTypeLog\",  \"type\": \"record\",  \"doc\": \"Stores KPI events of type nakadi.event.type.log\",  \"fields\": [    {      \"name\": \"event_type\",      \"type\": \"string\"    },    {      \"name\": \"status\",      \"type\": \"string\"    },    {      \"name\": \"category\",      \"type\": \"string\"    },    {      \"name\": \"authz\",      \"type\": \"string\"    },    {      \"name\": \"compatibility_mode\",      \"type\": \"string\"    }  ]}"
     },
     "default_statistic": {
       "messages_per_minute": 100,
@@ -148,7 +148,7 @@
     "ordering_instance_ids": [],
     "schema": {
       "type": "avro_schema",
-      "schema": "{  \"name\": \"nakadi.subscription.log\",  \"type\": \"record\",  \"doc\": \"Stores KPI events of type nakadi.subscription.log\",  \"fields\": [    {      \"name\": \"subscription_id\",      \"type\": \"string\"    },    {      \"name\": \"status\",      \"type\": \"string\"    }  ]}"
+      "schema": "{  \"name\": \"NakadiSubscriptionLog\",  \"type\": \"record\",  \"doc\": \"Stores KPI events of type nakadi.subscription.log\",  \"fields\": [    {      \"name\": \"subscription_id\",      \"type\": \"string\"    },    {      \"name\": \"status\",      \"type\": \"string\"    }  ]}"
     },
     "default_statistic": {
       "messages_per_minute": 100,
