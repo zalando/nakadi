@@ -9,6 +9,9 @@ import org.zalando.nakadi.domain.Feature;
 import org.zalando.nakadi.domain.NakadiMetadata;
 import org.zalando.nakadi.domain.NakadiRecord;
 import org.zalando.nakadi.kpi.event.NakadiAccessLog;
+import org.zalando.nakadi.kpi.event.NakadiBatchPublished;
+import org.zalando.nakadi.kpi.event.NakadiDataStreamed;
+import org.zalando.nakadi.kpi.event.NakadiEventTypeLog;
 import org.zalando.nakadi.kpi.event.NakadiSubscriptionLog;
 import org.zalando.nakadi.mapper.NakadiRecordMapper;
 import org.zalando.nakadi.security.UsernameHasher;
@@ -57,6 +60,9 @@ public class NakadiKpiPublisher {
         this.nakadiRecordMapper = nakadiRecordMapper;
         this.classToEventTypeName = Map.of(
                 NakadiAccessLog.class, "nakadi.access.log",
+                NakadiBatchPublished.class, "nakadi.batch.published",
+                NakadiDataStreamed.class, "nakadi.data.streamed",
+                NakadiEventTypeLog.class, "nakadi.event.type.log",
                 NakadiSubscriptionLog.class, "nakadi.subscription.log"
         );
     }
@@ -68,6 +74,7 @@ public class NakadiKpiPublisher {
             }
             final var kpiEvent = kpiEventSupplier.get();
             final var eventTypeName = classToEventTypeName.get(kpiEvent.getClass());
+            // fixme the NPE happens if new event type added, but name mapping forgotten 'classToEventTypeName'
 
             final String eventVersion = schemaService.getAvroSchemaVersion(
                     eventTypeName, kpiEvent.getSchema());
