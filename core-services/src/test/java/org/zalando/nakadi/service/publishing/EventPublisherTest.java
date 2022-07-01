@@ -1,8 +1,7 @@
 package org.zalando.nakadi.service.publishing;
 
 import com.google.common.collect.ImmutableList;
-import org.apache.avro.generic.GenericRecord;
-import org.apache.avro.generic.GenericRecordBuilder;
+import org.apache.avro.specific.SpecificRecord;
 import org.json.JSONArray;
 import org.json.JSONObject;
 import org.junit.Assert;
@@ -30,6 +29,7 @@ import org.zalando.nakadi.exceptions.runtime.EnrichmentException;
 import org.zalando.nakadi.exceptions.runtime.EventPublishingException;
 import org.zalando.nakadi.exceptions.runtime.EventTypeTimeoutException;
 import org.zalando.nakadi.exceptions.runtime.PartitioningException;
+import org.zalando.nakadi.kpi.event.NakadiAccessLog;
 import org.zalando.nakadi.mapper.NakadiRecordMapper;
 import org.zalando.nakadi.partitioning.PartitionResolver;
 import org.zalando.nakadi.partitioning.PartitionStrategy;
@@ -609,10 +609,6 @@ public class EventPublisherTest {
                 .thenReturn("1");
 
         final Instant now = Instant.now();
-
-        final var latestSchema =
-                localSchemaRegistry.getLatestEventTypeSchemaVersion("nakadi.access.log");
-
         final NakadiMetadata metadata = new NakadiMetadata();
         metadata.setOccurredAt(now);
         metadata.setEid("9702cf96-9bdb-48b7-9f4c-92643cb6d9fc");
@@ -620,33 +616,33 @@ public class EventPublisherTest {
         metadata.setEventType("nakadi.access.log");
         metadata.setPartition("0");
         metadata.setReceivedAt(now);
-        metadata.setSchemaVersion(latestSchema.getVersion());
+        metadata.setSchemaVersion("1.0.0");
         metadata.setPublishedBy("adyachkov");
 
-        final GenericRecord event = new GenericRecordBuilder(latestSchema.getSchema())
-                .set("method", "POST")
-                .set("path", "/event-types")
-                .set("query", "")
-                .set("user_agent", "test-user-agent")
-                .set("app", "nakadi")
-                .set("app_hashed", "hashed-app")
-                .set("status_code", 201)
-                .set("response_time_ms", 10)
-                .set("accept_encoding", "-")
-                .set("content_encoding", "--")
-                .set("request_length", 123)
-                .set("response_length", 321)
+        final SpecificRecord event = NakadiAccessLog.newBuilder()
+                .setMethod("POST")
+                .setPath("/event-types")
+                .setQuery("")
+                .setUserAgent("test-user-agent")
+                .setApp("nakadi")
+                .setAppHashed("hashed-app")
+                .setContentEncoding("--")
+                .setAcceptEncoding("-")
+                .setStatusCode(201)
+                .setResponseTimeMs(10)
+                .setRequestLength(123)
+                .setResponseLength(321)
                 .build();
 
         final NakadiRecord nakadiRecord = new NakadiRecordMapper(localSchemaRegistry)
-                .fromAvroGenericRecord(metadata, event);
+                .fromAvroRecord(metadata, event);
 
         final List<NakadiRecord> records = Collections.singletonList(nakadiRecord);
         eventPublisher.publish(eventType, records);
         Mockito.verify(topicRepository).sendEvents(ArgumentMatchers.eq(topic), ArgumentMatchers.eq(records));
     }
 
-    private void mockFailedPublishing() throws Exception {
+    private void mockFailedPublishing() {
         Mockito
                 .doThrow(EventPublishingException.class)
                 .when(topicRepository)

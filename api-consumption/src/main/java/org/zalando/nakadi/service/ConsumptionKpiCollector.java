@@ -1,6 +1,6 @@
 package org.zalando.nakadi.service;
 
-import org.zalando.nakadi.domain.kpi.DataStreamedEvent;
+import org.zalando.nakadi.kpi.event.NakadiDataStreamed;
 import org.zalando.nakadi.security.Client;
 import org.zalando.nakadi.service.publishing.NakadiKpiPublisher;
 
@@ -47,17 +47,18 @@ public abstract class ConsumptionKpiCollector {
         kpiData.batchesCount += 1;
     }
 
-    protected abstract DataStreamedEvent enrich(DataStreamedEvent dataStreamedEvent);
+    protected abstract NakadiDataStreamed enrich(NakadiDataStreamed dataStreamedEvent);
 
-    private DataStreamedEvent convertKpiData(final String eventType, final StreamKpiData data) {
-        return enrich(new DataStreamedEvent()
-                .setEventTypeName(eventType)
-                .setApplicationName(clientId)
-                .setHashedApplicationName(appNameHashed)
+    private NakadiDataStreamed convertKpiData(final String eventType, final StreamKpiData data) {
+        return enrich(NakadiDataStreamed.newBuilder()
+                .setEventType(eventType)
+                .setApp(clientId)
+                .setAppHashed(appNameHashed)
                 .setTokenRealm(clientRealm)
                 .setNumberOfEvents(data.numberOfEventsSent)
                 .setBytesStreamed(data.bytesSent)
-                .setBatchesStreamed(data.batchesCount));
+                .setBatchesStreamed(data.batchesCount)
+                .build());
     }
 
     private void publishKpi(final String eventType, final StreamKpiData data) {

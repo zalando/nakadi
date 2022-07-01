@@ -1,7 +1,9 @@
 package org.zalando.nakadi.controller;
 
 import com.codahale.metrics.MetricRegistry;
+import org.apache.avro.specific.SpecificRecord;
 import org.json.JSONException;
+import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
 import org.junit.runner.RunWith;
@@ -23,11 +25,10 @@ import org.zalando.nakadi.domain.BatchItemResponse;
 import org.zalando.nakadi.domain.EventPublishResult;
 import org.zalando.nakadi.domain.EventPublishingStatus;
 import org.zalando.nakadi.domain.EventPublishingStep;
-import org.zalando.nakadi.domain.kpi.BatchPublishedEvent;
-import org.zalando.nakadi.domain.kpi.KPIEvent;
 import org.zalando.nakadi.exceptions.runtime.EventTypeTimeoutException;
 import org.zalando.nakadi.exceptions.runtime.InternalNakadiException;
 import org.zalando.nakadi.exceptions.runtime.NoSuchEventTypeException;
+import org.zalando.nakadi.kpi.event.NakadiBatchPublished;
 import org.zalando.nakadi.mapper.NakadiRecordMapper;
 import org.zalando.nakadi.metrics.EventTypeMetricRegistry;
 import org.zalando.nakadi.metrics.EventTypeMetrics;
@@ -47,7 +48,6 @@ import java.util.function.Supplier;
 
 import static org.hamcrest.CoreMatchers.equalTo;
 import static org.junit.Assert.assertThat;
-import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.springframework.http.MediaType.APPLICATION_JSON;
@@ -80,7 +80,7 @@ public class EventPublishingControllerTest {
     private AuthorizationService authorizationService;
 
     @Captor
-    private ArgumentCaptor<Supplier<KPIEvent>> kpiEventCaptor;
+    private ArgumentCaptor<Supplier<SpecificRecord>> kpiEventCaptor;
 
     @Before
     public void setUp() {
@@ -218,12 +218,12 @@ public class EventPublishingControllerTest {
 
 
         Mockito.verify(kpiPublisher, Mockito.times(1)).publish(kpiEventCaptor.capture());
-        final BatchPublishedEvent batchPublishedEvent = (BatchPublishedEvent) kpiEventCaptor.getValue().get();
-        assertEquals("my-topic", batchPublishedEvent.getEventTypeName());
-        assertEquals("adminClientId", batchPublishedEvent.getApplicationName());
-        assertEquals("", batchPublishedEvent.getTokenRealm());
-        assertEquals(3, batchPublishedEvent.getEventCount());
-        assertEquals(33, batchPublishedEvent.getTotalSizeBytes());
+        final NakadiBatchPublished batchPublishedEvent = (NakadiBatchPublished) kpiEventCaptor.getValue().get();
+        Assert.assertEquals("my-topic", batchPublishedEvent.getEventType());
+        Assert.assertEquals("adminClientId", batchPublishedEvent.getApp());
+        Assert.assertEquals("", batchPublishedEvent.getTokenRealm());
+        Assert.assertEquals(3, batchPublishedEvent.getNumberOfEvents());
+        Assert.assertEquals(33, batchPublishedEvent.getBatchSize());
     }
 
     private List<BatchItemResponse> responses() {

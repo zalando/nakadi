@@ -16,7 +16,6 @@ import org.zalando.nakadi.domain.EventTypeBase;
 import org.zalando.nakadi.domain.EventTypeSchema;
 import org.zalando.nakadi.domain.EventTypeSchemaBase;
 import org.zalando.nakadi.domain.PaginationWrapper;
-import org.zalando.nakadi.domain.kpi.EventTypeLogEvent;
 import org.zalando.nakadi.exceptions.runtime.InternalNakadiException;
 import org.zalando.nakadi.exceptions.runtime.InvalidLimitException;
 import org.zalando.nakadi.exceptions.runtime.InvalidVersionNumberException;
@@ -24,6 +23,7 @@ import org.zalando.nakadi.exceptions.runtime.NoSuchEventTypeException;
 import org.zalando.nakadi.exceptions.runtime.NoSuchSchemaException;
 import org.zalando.nakadi.exceptions.runtime.SchemaEvolutionException;
 import org.zalando.nakadi.exceptions.runtime.ValidationException;
+import org.zalando.nakadi.kpi.event.NakadiEventTypeLog;
 import org.zalando.nakadi.model.CompatibilityResponse;
 import org.zalando.nakadi.model.CompatibilitySchemaRequest;
 import org.zalando.nakadi.plugin.api.authz.AuthorizationService;
@@ -87,12 +87,13 @@ public class SchemaController {
                             NakadiAuditLogPublisher.ActionType.UPDATED,
                             originalEventType.getName());
 
-                    nakadiKpiPublisher.publish(() -> new EventTypeLogEvent()
+                    nakadiKpiPublisher.publish(() -> NakadiEventTypeLog.newBuilder()
                             .setEventType(name)
                             .setStatus("updated")
                             .setCategory(originalEventType.getCategory().name())
                             .setAuthz(originalEventType.getAuthorization() == null ? "disabled" : "enabled")
-                            .setCompatibilityMode(originalEventType.getCompatibilityMode().name()));
+                            .setCompatibilityMode(originalEventType.getCompatibilityMode().name())
+                            .build());
                 });
 
         // TODO: return different status code when there is no change

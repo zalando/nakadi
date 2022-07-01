@@ -1,5 +1,6 @@
 package org.zalando.nakadi.service;
 
+import org.apache.avro.specific.SpecificRecord;
 import org.junit.Before;
 import org.junit.Test;
 import org.junit.runner.RunWith;
@@ -14,12 +15,11 @@ import org.zalando.nakadi.domain.Feature;
 import org.zalando.nakadi.domain.ResourceImpl;
 import org.zalando.nakadi.domain.Subscription;
 import org.zalando.nakadi.domain.SubscriptionBase;
-import org.zalando.nakadi.domain.kpi.KPIEvent;
-import org.zalando.nakadi.domain.kpi.SubscriptionLogEvent;
 import org.zalando.nakadi.exceptions.runtime.AccessDeniedException;
 import org.zalando.nakadi.exceptions.runtime.AuthorizationNotPresentException;
 import org.zalando.nakadi.exceptions.runtime.NoSuchSubscriptionException;
 import org.zalando.nakadi.exceptions.runtime.UnableProcessException;
+import org.zalando.nakadi.kpi.event.NakadiSubscriptionLog;
 import org.zalando.nakadi.plugin.api.authz.AuthorizationService;
 import org.zalando.nakadi.repository.db.EventTypeRepository;
 import org.zalando.nakadi.repository.db.SubscriptionDbRepository;
@@ -39,8 +39,6 @@ import static org.mockito.ArgumentMatchers.eq;
 @RunWith(MockitoJUnitRunner.class)
 public class SubscriptionServiceTest {
 
-    private static final String SUBSCRIPTION_LOG_ET = "subscription_log_et";
-
     private SubscriptionDbRepository subscriptionRepository;
     private SubscriptionCache subscriptionCache;
     private NakadiKpiPublisher nakadiKpiPublisher;
@@ -52,7 +50,7 @@ public class SubscriptionServiceTest {
     private TransactionTemplate transactionTemplate;
 
     @Captor
-    private ArgumentCaptor<Supplier<KPIEvent>> subscriptionLogEventCaptor;
+    private ArgumentCaptor<Supplier<SpecificRecord>> subscriptionLogEventCaptor;
 
     @Before
     public void setUp() throws Exception {
@@ -121,7 +119,7 @@ public class SubscriptionServiceTest {
         subscriptionService.createSubscription(subscriptionBase);
 
         Mockito.verify(nakadiKpiPublisher).publish(subscriptionLogEventCaptor.capture());
-        final SubscriptionLogEvent event = (SubscriptionLogEvent) subscriptionLogEventCaptor.getValue().get();
+        final NakadiSubscriptionLog event = (NakadiSubscriptionLog) subscriptionLogEventCaptor.getValue().get();
         assertEquals("my_subscription_id1", event.getSubscriptionId());
         assertEquals("created", event.getStatus());
     }
@@ -132,7 +130,7 @@ public class SubscriptionServiceTest {
         subscriptionService.deleteSubscription("my_subscription_id1");
 
         Mockito.verify(nakadiKpiPublisher).publish(subscriptionLogEventCaptor.capture());
-        final SubscriptionLogEvent event = (SubscriptionLogEvent) subscriptionLogEventCaptor.getValue().get();
+        final NakadiSubscriptionLog event = (NakadiSubscriptionLog) subscriptionLogEventCaptor.getValue().get();
         assertEquals("my_subscription_id1", event.getSubscriptionId());
         assertEquals("deleted", event.getStatus());
     }
@@ -151,7 +149,7 @@ public class SubscriptionServiceTest {
     @Test(expected = AccessDeniedException.class)
     public void whenSubscriptionModifiedAuthorizationIsValidated() throws NoSuchSubscriptionException {
         Mockito.doThrow(new AccessDeniedException(AuthorizationService.Operation.ADMIN,
-                        new ResourceImpl<Subscription>("", ResourceImpl.SUBSCRIPTION_RESOURCE, null, null)))
+                new ResourceImpl<Subscription>("", ResourceImpl.SUBSCRIPTION_RESOURCE, null, null)))
                 .when(authorizationValidator).authorizeSubscriptionAdmin(any());
 
         final SubscriptionBase subscriptionBase = RandomSubscriptionBuilder.builder()
@@ -163,7 +161,7 @@ public class SubscriptionServiceTest {
     @Test(expected = AccessDeniedException.class)
     public void whenSubscriptionDeletedAuthorizationIsValidated() {
         Mockito.doThrow(new AccessDeniedException(AuthorizationService.Operation.ADMIN,
-                        new ResourceImpl<Subscription>("", ResourceImpl.SUBSCRIPTION_RESOURCE, null, null)))
+                new ResourceImpl<Subscription>("", ResourceImpl.SUBSCRIPTION_RESOURCE, null, null)))
                 .when(authorizationValidator).authorizeSubscriptionAdmin(any());
 
         subscriptionService.deleteSubscription("test");
