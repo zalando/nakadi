@@ -251,20 +251,25 @@ public class TimelineService {
 
     public Timeline getActiveTimeline(final String eventTypeName) throws TimelineException {
         try {
-            final List<Timeline> timelines = eventTypeCache.getTimelinesOrdered(eventTypeName);
-            final ListIterator<Timeline> rIterator = timelines.listIterator(timelines.size());
-            while (rIterator.hasPrevious()) {
-                final Timeline toCheck = rIterator.previous();
-                if (toCheck.getSwitchedAt() != null) {
-                    return toCheck;
-                }
-            }
-
-            throw new TimelineException(String.format("No timelines for event type %s", eventTypeName));
+            final Optional<Timeline> timeline = getActiveTimeline(eventTypeCache.getTimelinesOrdered(eventTypeName));
+            return timeline.orElseThrow(() -> {
+                        throw new TimelineException(String.format("No timelines for event type %s", eventTypeName));
+                    });
         } catch (final InternalNakadiException e) {
             LOG.error("Failed to get timeline for event type {}", eventTypeName, e);
             throw new TimelineException("Failed to get timeline", e);
         }
+    }
+
+    public static Optional<Timeline> getActiveTimeline(final List<Timeline> timelines) {
+        final ListIterator<Timeline> rIterator = timelines.listIterator(timelines.size());
+        while (rIterator.hasPrevious()) {
+            final Timeline toCheck = rIterator.previous();
+            if (toCheck.getSwitchedAt() != null) {
+                return Optional.of(toCheck);
+            }
+        }
+        return Optional.empty();
     }
 
     public Timeline getActiveTimeline(final EventTypeBase eventType) throws TimelineException {

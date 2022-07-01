@@ -300,14 +300,11 @@ public class CursorOperationsServiceTest {
         Mockito.when(timeline.getStorage()).thenReturn(storage);
 
         if (latestOffset == null) {
-            Mockito.when(timeline.isActive()).thenReturn(false);
             Mockito.when(timeline.getLatestPosition()).thenReturn(null);
         } else {
-            Mockito.when(timeline.isActive()).thenReturn(true);
             Mockito.when(timeline.getLatestPosition()).thenReturn(new Timeline.KafkaStoragePosition(
                     Collections.singletonList(latestOffset)));
         }
-        Mockito.when(timeline.isActive()).thenReturn(null == latestOffset);
 
         final TopicRepository repository = new KafkaTopicRepository.Builder()
                 .setKafkaZookeeper(Mockito.mock(KafkaZookeeper.class))

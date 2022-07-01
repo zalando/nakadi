@@ -16,9 +16,11 @@ import org.zalando.nakadi.domain.EventTypeSchema;
 import org.zalando.nakadi.domain.Timeline;
 import org.zalando.nakadi.exceptions.runtime.InternalNakadiException;
 import org.zalando.nakadi.exceptions.runtime.NoSuchEventTypeException;
+import org.zalando.nakadi.repository.TopicRepositoryHolder;
 import org.zalando.nakadi.repository.db.EventTypeRepository;
 import org.zalando.nakadi.repository.db.TimelineDbRepository;
 import org.zalando.nakadi.service.SchemaService;
+import org.zalando.nakadi.service.timeline.TimelineService;
 import org.zalando.nakadi.service.timeline.TimelineSync;
 import org.zalando.nakadi.validation.EventValidatorBuilder;
 import org.zalando.nakadi.validation.JsonSchemaValidator;
@@ -29,6 +31,7 @@ import javax.annotation.PreDestroy;
 import java.time.Duration;
 import java.util.ArrayList;
 import java.util.Collection;
+import java.util.Collections;
 import java.util.List;
 import java.util.Optional;
 import java.util.concurrent.Executors;
@@ -118,6 +121,7 @@ public class EventTypeCache {
     private final LoadingCache<String, CachedValue> valueCache;
     private final EventTypeRepository eventTypeRepository;
     private final TimelineDbRepository timelineRepository;
+    private final TopicRepositoryHolder topicRepositoryHolder;
     private final ScheduledExecutorService scheduledExecutorService;
     private final AtomicLong lastCheck = new AtomicLong();
     private final AtomicLong watcherCounter = new AtomicLong();
@@ -136,6 +140,7 @@ public class EventTypeCache {
             final ChangesRegistry changesRegistry,
             final EventTypeRepository eventTypeRepository,
             final TimelineDbRepository timelineRepository,
+            final TopicRepositoryHolder topicRepositoryHolder,
             final TimelineSync timelineSync,
             final EventValidatorBuilder eventValidatorBuilder,
             @Lazy final SchemaService schemaService,
@@ -144,6 +149,7 @@ public class EventTypeCache {
         this.changesRegistry = changesRegistry;
         this.eventTypeRepository = eventTypeRepository;
         this.timelineRepository = timelineRepository;
+        this.topicRepositoryHolder = topicRepositoryHolder;
         this.valueCache = CacheBuilder.newBuilder()
                 .expireAfterWrite(Duration.ofHours(2))
                 .build(CacheLoader.from(this::loadValue));
@@ -284,7 +290,11 @@ public class EventTypeCache {
     }
 
     public List<Timeline> getTimelinesOrdered(final String name) throws NoSuchEventTypeException {
-        return getCached(name).getTimelines();
+        return getCached(name).getTimelinesOrdered();
+    }
+
+    public List<String> getOrderedPartitions(final String name) throws NoSuchEventTypeException {
+        return getCached(name).getOrderedPartitions();
     }
 
     private CachedValue getCached(final String name) throws NoSuchEventTypeException {
@@ -302,9 +312,6 @@ public class EventTypeCache {
     private CachedValue loadValue(final String eventTypeName) {
         final long start = System.currentTimeMillis();
         final EventType eventType = eventTypeRepository.findByName(eventTypeName);
-
-        final List<Timeline> timelines =
-                timelineRepository.listTimelinesOrdered(eventTypeName);
 
         final JsonSchemaValidator validator;
         //
@@ -325,9 +332,28 @@ public class EventTypeCache {
             validator = eventValidatorBuilder.build(eventType);
         }
 
+        final List<Timeline> timelines =
+                timelineRepository.listTimelinesOrdered(eventTypeName);
+        //
+        // 1. Historically ordering as strings, even though partition "names" are numeric.
+        // 2. Using ArrayList to get fast access by index for actual partitioning.
+        //
+        final List<String> orderedPartitions =
+                TimelineService.getActiveTimeline(timelines)
+                .map(timeline ->
+                        topicRepositoryHolder.getTopicRepository(timeline.getStorage())
+                        .listPartitionNames(timeline.getTopic())
+                        .stream()
+                        .sorted()
+                        .collect(Collectors.toCollection(ArrayList::new)))
+                .orElseThrow(() -> {
+                            throw new InternalNakadiException("No active timeline found for event type: "
+                                    + eventTypeName);
+                        });
+
         LOG.info("Successfully load event type {}, took: {} ms", eventTypeName, System.currentTimeMillis() - start);
 
-        return new CachedValue(eventType, validator, timelines);
+        return new CachedValue(eventType, validator, timelines, Collections.unmodifiableList(orderedPartitions));
     }
 
     private class NoJsonSchemaValidator implements JsonSchemaValidator {
@@ -352,14 +378,17 @@ public class EventTypeCache {
     private static class CachedValue {
         private final EventType eventType;
         private final JsonSchemaValidator jsonSchemaValidator;
-        private final List<Timeline> timelines;
+        private final List<Timeline> timelinesOrdered;
+        private final List<String> orderedPartitions;
 
         CachedValue(final EventType eventType,
                     final JsonSchemaValidator jsonSchemaValidator,
-                    final List<Timeline> timelines) {
+                    final List<Timeline> timelinesOrdered,
+                    final List<String> orderedPartitions) {
             this.eventType = eventType;
             this.jsonSchemaValidator = jsonSchemaValidator;
-            this.timelines = timelines;
+            this.timelinesOrdered = timelinesOrdered;
+            this.orderedPartitions = orderedPartitions;
         }
 
         public EventType getEventType() {
@@ -370,8 +399,12 @@ public class EventTypeCache {
             return jsonSchemaValidator;
         }
 
-        public List<Timeline> getTimelines() {
-            return timelines;
+        public List<Timeline> getTimelinesOrdered() {
+            return timelinesOrdered;
+        }
+
+        public List<String> getOrderedPartitions() {
+            return orderedPartitions;
         }
     }
 

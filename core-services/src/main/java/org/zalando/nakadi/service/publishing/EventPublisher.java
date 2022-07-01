@@ -198,11 +198,15 @@ public class EventPublisher {
 
     private void partition(final List<BatchItem> batch, final EventType eventType)
             throws PartitioningException {
+
+        final List<String> orderedPartitions = eventTypeCache.getOrderedPartitions(eventType.getName());
+
         for (final BatchItem item : batch) {
             item.setStep(EventPublishingStep.PARTITIONING);
             try {
-                final String partitionId = partitionResolver.resolvePartition(eventType, item.getEvent());
-                item.setPartition(partitionId);
+                final String partition = partitionResolver.resolvePartition(eventType, item.getEvent(),
+                        orderedPartitions);
+                item.setPartition(partition);
             } catch (final PartitioningException e) {
                 item.updateStatusAndDetail(EventPublishingStatus.FAILED, e.getMessage());
                 throw e;

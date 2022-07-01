@@ -5,6 +5,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
+import org.zalando.nakadi.cache.EventTypeCache;
 import org.zalando.nakadi.config.NakadiSettings;
 import org.zalando.nakadi.domain.EventType;
 import org.zalando.nakadi.domain.EventTypeStatistics;
@@ -40,6 +41,7 @@ public class RepartitioningService {
     private static final Logger LOG = LoggerFactory.getLogger(RepartitioningService.class);
 
     private final EventTypeRepository eventTypeRepository;
+    private final EventTypeCache eventTypeCache;
     private final TimelineService timelineService;
     private final SubscriptionDbRepository subscriptionRepository;
     private final SubscriptionClientFactory subscriptionClientFactory;
@@ -50,6 +52,7 @@ public class RepartitioningService {
     @Autowired
     public RepartitioningService(
             final EventTypeRepository eventTypeRepository,
+            final EventTypeCache eventTypeCache,
             final TimelineService timelineService,
             final SubscriptionDbRepository subscriptionRepository,
             final SubscriptionClientFactory subscriptionClientFactory,
@@ -57,6 +60,7 @@ public class RepartitioningService {
             final CursorConverter cursorConverter,
             final TimelineSync timelineSync) {
         this.eventTypeRepository = eventTypeRepository;
+        this.eventTypeCache = eventTypeCache;
         this.timelineService = timelineService;
         this.subscriptionRepository = subscriptionRepository;
         this.subscriptionClientFactory = subscriptionClientFactory;
@@ -100,6 +104,7 @@ public class RepartitioningService {
                 eventType.getDefaultStatistic().setReadParallelism(partitions);
                 eventType.getDefaultStatistic().setWriteParallelism(partitions);
                 eventTypeRepository.update(eventType);
+                eventTypeCache.invalidate(eventTypeName);
             } catch (Exception e) {
                 throw new NakadiBaseException(e.getMessage(), e);
             }

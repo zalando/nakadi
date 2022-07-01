@@ -34,24 +34,24 @@ public class HashPartitionStrategy implements PartitionStrategy {
     @Override
     public String calculatePartition(final EventType eventType,
                                      final JSONObject jsonEvent,
-                                     final List<String> partitions)
+                                     final List<String> orderedPartitions)
             throws PartitioningException {
         final var userDefinedPartitionKeys = getPartitionKeys(eventType, jsonEvent);
 
-        return calculatePartition(userDefinedPartitionKeys, partitions);
+        return calculatePartition(userDefinedPartitionKeys, orderedPartitions);
     }
 
     @Override
     public String calculatePartition(final NakadiMetadata nakadiRecordMetadata,
-                                     final List<String> partitions)
+                                     final List<String> orderedPartitions)
             throws PartitioningException {
         final var userDefinedPartitionKeys = nakadiRecordMetadata.getPartitionKeys();
 
-        return calculatePartition(userDefinedPartitionKeys, partitions);
+        return calculatePartition(userDefinedPartitionKeys, orderedPartitions);
     }
 
     public String calculatePartition(final List<String> partitionKeys,
-                                     final List<String> partitions)
+                                     final List<String> orderedPartitions)
             throws PartitioningException {
         if (partitionKeys == null || partitionKeys.isEmpty()) {
             throw new PartitioningException("Applying " + this.getClass().getSimpleName() + " although event type " +
@@ -65,11 +65,10 @@ public class HashPartitionStrategy implements PartitionStrategy {
                     .mapToInt(hc -> hc)
                     .sum();
 
-            int partitionIndex = abs(hashValue % partitions.size());
-            partitionIndex = hashPartitioningCrutch.adjustPartitionIndex(partitionIndex, partitions.size());
+            int partitionIndex = abs(hashValue % orderedPartitions.size());
+            partitionIndex = hashPartitioningCrutch.adjustPartitionIndex(partitionIndex, orderedPartitions.size());
 
-            final List<String> sortedPartitions = partitions.stream().sorted().collect(Collectors.toList());
-            return sortedPartitions.get(partitionIndex);
+            return orderedPartitions.get(partitionIndex);
 
         } catch (NakadiRuntimeException e) {
             final Exception original = e.getException();
