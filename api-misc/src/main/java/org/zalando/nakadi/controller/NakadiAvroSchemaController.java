@@ -3,6 +3,7 @@ package org.zalando.nakadi.controller;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import org.apache.avro.Schema;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -41,7 +42,7 @@ public class NakadiAvroSchemaController {
     public ResponseEntity<?> getNakadiBatchPublishingAvroSchemaByVersion(
             @PathVariable("version") final String version) {
         final var schema = localSchemaRegistry.getEventTypeSchema(BATCH_PUBLISHING_KEY, version);
-        return ResponseEntity.ok(schema.toString());
+        return ResponseEntity.ok(mapToVersionedAvroSchema(schema, version));
     }
 
     @RequestMapping(value = BATCH_CONSUMPTION_PATH, method = RequestMethod.GET)
@@ -53,22 +54,24 @@ public class NakadiAvroSchemaController {
     public ResponseEntity<?> getNakadiBatchConsumptionAvroSchemaByVersion(
             @PathVariable("version") final String version) {
         final var schema = localSchemaRegistry.getEventTypeSchema(BATCH_CONSUMPTION_KEY, version);
-        return ResponseEntity.ok(schema.toString());
+        return ResponseEntity.ok(mapToVersionedAvroSchema(schema, version));
     }
 
     private List<VersionedAvroSchema> getNakadiAvroSchemas(final String schemaName) {
         final var schemas = localSchemaRegistry.getEventTypeSchemaVersions(schemaName);
         return schemas.entrySet().stream()
-                .map(entry -> {
-                    try {
-                        final JsonNode schema = objectMapper.readTree(entry.getValue().toString());
-                        return new VersionedAvroSchema(schema, entry.getKey());
-                    } catch (JsonProcessingException e) {
-                        throw new NakadiRuntimeException("Unable to map avro schema " + schemaName
-                                + ", version " + entry.getKey() + " to Json", e);
-                    }
-                })
+                .map(entry -> mapToVersionedAvroSchema(entry.getValue(), entry.getKey()))
                 .collect(Collectors.toList());
+    }
+
+    private VersionedAvroSchema mapToVersionedAvroSchema(final Schema avroSchema, final String version) {
+        try {
+            final JsonNode schema = objectMapper.readTree(avroSchema.toString());
+            return new VersionedAvroSchema(schema, version);
+        } catch (JsonProcessingException e) {
+            throw new NakadiRuntimeException("Unable to map avro schema " + avroSchema.getName()
+                    + ", version " + version + " to Json", e);
+        }
     }
 
     public static final class VersionedAvroSchema {
