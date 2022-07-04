@@ -25,7 +25,7 @@ public class RepositoriesConfig {
 
     private static final Logger LOG = LoggerFactory.getLogger(RepositoriesConfig.class);
 
-    @Profile({"acceptanceTest", "local"})
+    @Profile({"acceptanceTest", "local", "sidecar"})
     @Bean
     public FeatureToggleService featureToggleServiceLocal(final ZooKeeperHolder zooKeeperHolder,
                                                           final FeaturesConfig featuresConfig) {
