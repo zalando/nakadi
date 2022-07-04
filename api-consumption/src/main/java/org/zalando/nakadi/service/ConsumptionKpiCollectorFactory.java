@@ -3,7 +3,7 @@ package org.zalando.nakadi.service;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
-import org.zalando.nakadi.domain.kpi.DataStreamedEvent;
+import org.zalando.nakadi.kpi.event.NakadiDataStreamed;
 import org.zalando.nakadi.security.Client;
 import org.zalando.nakadi.service.publishing.NakadiKpiPublisher;
 
@@ -24,8 +24,9 @@ public class ConsumptionKpiCollectorFactory {
     public ConsumptionKpiCollector createForLoLA(final Client client) {
         return new ConsumptionKpiCollector(client, kpiPublisher, kpiCollectionIntervalMs) {
             @Override
-            protected DataStreamedEvent enrich(final DataStreamedEvent dataStreamedEvent) {
-                return dataStreamedEvent.setApi("lola");
+            protected NakadiDataStreamed.Builder enrich(final NakadiDataStreamed.Builder builder) {
+                builder.setApi("lola");
+                return builder;
             }
         };
     }
@@ -37,9 +38,10 @@ public class ConsumptionKpiCollectorFactory {
                 kpiPublisher,
                 kpiCollectionIntervalMs) {
             @Override
-            protected DataStreamedEvent enrich(final DataStreamedEvent dataStreamedEvent) {
-                return dataStreamedEvent.setApi("hila")
-                        .setSubscriptionId(subscriptionId);
+            protected NakadiDataStreamed.Builder enrich(final NakadiDataStreamed.Builder builder) {
+                builder.setApi("hila");
+                builder.setSubscription(subscriptionId);
+                return builder;
             }
         };
     }

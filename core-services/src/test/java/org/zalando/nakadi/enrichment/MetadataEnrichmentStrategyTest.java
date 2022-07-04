@@ -1,7 +1,6 @@
 package org.zalando.nakadi.enrichment;
 
-import org.apache.avro.generic.GenericRecord;
-import org.apache.avro.generic.GenericRecordBuilder;
+import org.apache.avro.specific.SpecificRecord;
 import org.joda.time.DateTimeUtils;
 import org.json.JSONObject;
 import org.junit.Test;
@@ -11,6 +10,7 @@ import org.zalando.nakadi.domain.EventType;
 import org.zalando.nakadi.domain.NakadiMetadata;
 import org.zalando.nakadi.domain.NakadiRecord;
 import org.zalando.nakadi.exceptions.runtime.EnrichmentException;
+import org.zalando.nakadi.kpi.event.NakadiAccessLog;
 import org.zalando.nakadi.mapper.NakadiRecordMapper;
 import org.zalando.nakadi.plugin.api.authz.AuthorizationService;
 import org.zalando.nakadi.service.LocalSchemaRegistry;
@@ -196,37 +196,33 @@ public class MetadataEnrichmentStrategyTest {
     }
 
     private NakadiRecord getTestNakadiRecord() throws IOException {
-
         final Instant now = Instant.now();
-        final var nakadiAccessLog = "nakadi.access.log";
-        final var latestSchema = localSchemaRegistry.getLatestEventTypeSchemaVersion(nakadiAccessLog);
-
         final var nakadiAvroMetadata = new NakadiMetadata();
         nakadiAvroMetadata.setOccurredAt(now);
         nakadiAvroMetadata.setEid(UUID.randomUUID().toString());
         nakadiAvroMetadata.setFlowId("test-flow");
         nakadiAvroMetadata.setEventType("nakadi.test-2022-05-06.et");
-        nakadiAvroMetadata.setSchemaVersion(latestSchema.getVersion());
+        nakadiAvroMetadata.setSchemaVersion("1.0.0");
         nakadiAvroMetadata.setPublishedBy("test-user");
 
 
-        final GenericRecord event = new GenericRecordBuilder(latestSchema.getSchema())
-                .set("method", "POST")
-                .set("path", "/event-types")
-                .set("query", "")
-                .set("user_agent", "test-user-agent")
-                .set("app", "nakadi")
-                .set("app_hashed", "hashed-app")
-                .set("status_code", 201)
-                .set("response_time_ms", 10)
-                .set("accept_encoding", "-")
-                .set("content_encoding", "--")
-                .set("request_length", 123)
-                .set("response_length", 321)
+        final SpecificRecord event = NakadiAccessLog.newBuilder()
+                .setMethod("POST")
+                .setPath("/event-types")
+                .setQuery("")
+                .setUserAgent("test-user-agent")
+                .setApp("nakadi")
+                .setAppHashed("hashed-app")
+                .setContentEncoding("--")
+                .setAcceptEncoding("-")
+                .setStatusCode(201)
+                .setResponseTimeMs(10)
+                .setRequestLength(123)
+                .setResponseLength(321)
                 .build();
 
         return new NakadiRecordMapper(localSchemaRegistry)
-                .fromAvroGenericRecord(nakadiAvroMetadata, event);
+                .fromAvroRecord(nakadiAvroMetadata, event);
 
     }
 }

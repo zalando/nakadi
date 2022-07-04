@@ -17,7 +17,6 @@ import org.zalando.nakadi.domain.EventPublishingStatus;
 import org.zalando.nakadi.domain.EventType;
 import org.zalando.nakadi.domain.NakadiRecord;
 import org.zalando.nakadi.domain.NakadiRecordResult;
-import org.zalando.nakadi.domain.kpi.BatchPublishedEvent;
 import org.zalando.nakadi.exceptions.runtime.AccessDeniedException;
 import org.zalando.nakadi.exceptions.runtime.BlockedException;
 import org.zalando.nakadi.exceptions.runtime.EventTypeTimeoutException;
@@ -25,6 +24,7 @@ import org.zalando.nakadi.exceptions.runtime.InternalNakadiException;
 import org.zalando.nakadi.exceptions.runtime.InvalidEventTypeException;
 import org.zalando.nakadi.exceptions.runtime.NoSuchEventTypeException;
 import org.zalando.nakadi.exceptions.runtime.ServiceTemporarilyUnavailableException;
+import org.zalando.nakadi.kpi.event.NakadiBatchPublished;
 import org.zalando.nakadi.mapper.NakadiRecordMapper;
 import org.zalando.nakadi.metrics.EventTypeMetricRegistry;
 import org.zalando.nakadi.metrics.EventTypeMetrics;
@@ -274,14 +274,15 @@ public class EventPublishingController {
             final long msSpent = TimeUnit.NANOSECONDS.toMillis(System.nanoTime() - startingNanos);
             final String applicationName = client.getClientId();
 
-            nakadiKpiPublisher.publish(() -> new BatchPublishedEvent()
-                    .setEventTypeName(eventTypeName)
-                    .setApplicationName(applicationName)
-                    .setHashedApplicationName(nakadiKpiPublisher.hash(applicationName))
+            nakadiKpiPublisher.publish(() -> NakadiBatchPublished.newBuilder()
+                    .setEventType(eventTypeName)
+                    .setApp(applicationName)
+                    .setAppHashed(nakadiKpiPublisher.hash(applicationName))
                     .setTokenRealm(client.getRealm())
-                    .setEventCount(eventCount)
+                    .setNumberOfEvents(eventCount)
                     .setMsSpent(msSpent)
-                    .setTotalSizeBytes(totalSizeBytes));
+                    .setBatchSize(totalSizeBytes)
+                    .build());
         }
     }
 
