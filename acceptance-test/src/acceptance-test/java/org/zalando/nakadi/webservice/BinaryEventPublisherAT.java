@@ -4,9 +4,7 @@ import org.apache.http.HttpStatus;
 import org.hamcrest.MatcherAssert;
 import org.hamcrest.Matchers;
 import org.junit.Assert;
-import org.junit.Before;
 import org.junit.Test;
-import org.zalando.nakadi.domain.Feature;
 import org.zalando.nakadi.domain.Subscription;
 import org.zalando.nakadi.utils.TestUtils;
 import org.zalando.nakadi.webservice.utils.NakadiTestUtils;
@@ -25,11 +23,6 @@ public class BinaryEventPublisherAT extends BaseAT {
     private static final String NAKADI_EVENT_TYPE_LOG = "nakadi.event.type.log";
     private static final String NAKADI_BATCH_PUBLISHED = "nakadi.batch.published";
     private static final String NAKADI_DATA_STREAMED = "nakadi.data.streamed";
-
-    @Before
-    public void setupAvroForKPIEvents() {
-        NakadiTestUtils.switchFeature(Feature.AVRO_FOR_KPI_EVENTS, true);
-    }
 
     @Test
     public void testNakadiAccessLogInAvro() throws Exception {

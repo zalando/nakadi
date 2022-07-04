@@ -19,7 +19,6 @@ import org.zalando.nakadi.domain.EventTypeOptions;
 import org.zalando.nakadi.domain.Feature;
 import org.zalando.nakadi.domain.Subscription;
 import org.zalando.nakadi.domain.Timeline;
-import org.zalando.nakadi.domain.kpi.EventTypeLogEvent;
 import org.zalando.nakadi.enrichment.Enrichment;
 import org.zalando.nakadi.exceptions.runtime.AccessDeniedException;
 import org.zalando.nakadi.exceptions.runtime.AuthorizationSectionException;
@@ -48,6 +47,7 @@ import org.zalando.nakadi.exceptions.runtime.TopicConfigException;
 import org.zalando.nakadi.exceptions.runtime.TopicCreationException;
 import org.zalando.nakadi.exceptions.runtime.TopicDeletionException;
 import org.zalando.nakadi.exceptions.runtime.UnableProcessException;
+import org.zalando.nakadi.kpi.event.NakadiEventTypeLog;
 import org.zalando.nakadi.partitioning.PartitionResolver;
 import org.zalando.nakadi.plugin.api.ApplicationService;
 import org.zalando.nakadi.plugin.api.authz.AuthorizationAttribute;
@@ -148,7 +148,7 @@ public class EventTypeService {
     }
 
     public List<EventType> list(
-            @Nullable  final AuthorizationAttribute writer,
+            @Nullable final AuthorizationAttribute writer,
             @Nullable final String owningApplication) {
         return eventTypeRepository.list(Optional.ofNullable(writer), Optional.ofNullable(owningApplication));
     }
@@ -227,12 +227,13 @@ public class EventTypeService {
                 throw new InternalNakadiException("Failed to create event type: " + ex.getMessage(), ex);
             }
         }
-        nakadiKpiPublisher.publish(() -> new EventTypeLogEvent()
+        nakadiKpiPublisher.publish(() -> NakadiEventTypeLog.newBuilder()
                 .setEventType(eventType.getName())
                 .setStatus("created")
                 .setCategory(eventType.getCategory().name())
                 .setAuthz(identifyAuthzState(eventType))
-                .setCompatibilityMode(eventType.getCompatibilityMode().name()));
+                .setCompatibilityMode(eventType.getCompatibilityMode().name())
+                .build());
 
         nakadiAuditLogPublisher.publish(Optional.empty(), Optional.of(eventType),
                 NakadiAuditLogPublisher.ResourceType.EVENT_TYPE, NakadiAuditLogPublisher.ActionType.CREATED,
@@ -374,12 +375,13 @@ public class EventTypeService {
                 }
             }
         }
-        nakadiKpiPublisher.publish(() -> new EventTypeLogEvent()
+        nakadiKpiPublisher.publish(() -> NakadiEventTypeLog.newBuilder()
                 .setEventType(eventTypeName)
                 .setStatus("deleted")
                 .setCategory(eventType.getCategory().name())
                 .setAuthz(identifyAuthzState(eventType))
-                .setCompatibilityMode(eventType.getCompatibilityMode().name()));
+                .setCompatibilityMode(eventType.getCompatibilityMode().name())
+                .build());
 
         nakadiAuditLogPublisher.publish(Optional.of(eventType), Optional.empty(),
                 NakadiAuditLogPublisher.ResourceType.EVENT_TYPE, NakadiAuditLogPublisher.ActionType.DELETED,
@@ -495,12 +497,13 @@ public class EventTypeService {
                 LOG.error("Exception occurred when releasing usage of event-type", e);
             }
         }
-        nakadiKpiPublisher.publish(() -> new EventTypeLogEvent()
+        nakadiKpiPublisher.publish(() -> NakadiEventTypeLog.newBuilder()
                 .setEventType(eventTypeName)
                 .setStatus("updated")
                 .setCategory(eventTypeBase.getCategory().name())
                 .setAuthz(identifyAuthzState(eventTypeBase))
-                .setCompatibilityMode(eventTypeBase.getCompatibilityMode().name()));
+                .setCompatibilityMode(eventTypeBase.getCompatibilityMode().name())
+                .build());
 
         nakadiAuditLogPublisher.publish(Optional.of(original), Optional.of(eventType),
                 NakadiAuditLogPublisher.ResourceType.EVENT_TYPE, NakadiAuditLogPublisher.ActionType.UPDATED,

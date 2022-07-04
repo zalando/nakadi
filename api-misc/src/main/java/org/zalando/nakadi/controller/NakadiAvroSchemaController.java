@@ -41,7 +41,7 @@ public class NakadiAvroSchemaController {
     @RequestMapping(value = BATCH_PUBLISHING_PATH + "/{version}", method = RequestMethod.GET)
     public ResponseEntity<?> getNakadiBatchPublishingAvroSchemaByVersion(
             @PathVariable("version") final String version) {
-        final var schema = localSchemaRegistry.getEventTypeSchema(BATCH_PUBLISHING_KEY, version);
+        final var schema = localSchemaRegistry.getAvroSchema(BATCH_PUBLISHING_KEY, version);
         return ResponseEntity.ok(mapToVersionedAvroSchema(schema, version));
     }
 
@@ -53,12 +53,12 @@ public class NakadiAvroSchemaController {
     @RequestMapping(value = BATCH_CONSUMPTION_PATH + "/{version}", method = RequestMethod.GET)
     public ResponseEntity<?> getNakadiBatchConsumptionAvroSchemaByVersion(
             @PathVariable("version") final String version) {
-        final var schema = localSchemaRegistry.getEventTypeSchema(BATCH_CONSUMPTION_KEY, version);
+        final var schema = localSchemaRegistry.getAvroSchema(BATCH_CONSUMPTION_KEY, version);
         return ResponseEntity.ok(mapToVersionedAvroSchema(schema, version));
     }
 
     private List<VersionedAvroSchema> getNakadiAvroSchemas(final String schemaName) {
-        final var schemas = localSchemaRegistry.getEventTypeSchemaVersions(schemaName);
+        final var schemas = localSchemaRegistry.getAvroSchemaVersions(schemaName);
         return schemas.entrySet().stream()
                 .map(entry -> mapToVersionedAvroSchema(entry.getValue(), entry.getKey()))
                 .collect(Collectors.toList());

@@ -1,5 +1,6 @@
 {
-  "name": "nakadi.access.log",
+  "name": "NakadiAccessLog",
+  "namespace": "org.zalando.nakadi.kpi.event",
   "type": "record",
   "doc": "Stores access log of Nakadi endpoints",
   "fields": [
@@ -13,6 +14,10 @@
     },
     {
       "name": "query",
+      "type": "string"
+    },
+    {
+      "name": "user_agent",
       "type": "string"
     },
     {
@@ -38,6 +43,14 @@
     {
       "name": "content_encoding",
       "type": "string"
+    },
+    {
+      "name": "request_length",
+      "type": "long"
+    },
+    {
+      "name": "response_length",
+      "type": "long"
     }
   ]
 }

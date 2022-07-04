@@ -1,5 +1,6 @@
 {
-  "name": "nakadi.event.type.log",
+  "name": "NakadiEventTypeLog",
+  "namespace": "org.zalando.nakadi.kpi.event",
   "type": "record",
   "doc": "Stores KPI events of type nakadi.event.type.log",
   "fields": [

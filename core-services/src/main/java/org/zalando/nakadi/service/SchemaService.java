@@ -6,6 +6,7 @@ import com.google.common.cache.LoadingCache;
 import com.google.common.util.concurrent.UncheckedExecutionException;
 import org.apache.avro.AvroRuntimeException;
 import org.apache.avro.Schema.Parser;
+import org.apache.avro.SchemaNormalization;
 import org.everit.json.schema.Schema;
 import org.everit.json.schema.SchemaException;
 import org.everit.json.schema.loader.SchemaClient;
@@ -51,6 +52,7 @@ import java.util.Optional;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeoutException;
+import java.util.function.Predicate;
 import java.util.stream.Collectors;
 
 @Component
@@ -302,14 +304,13 @@ public class SchemaService implements SchemaProviderService {
     public String getAvroSchemaVersion(final String name, final org.apache.avro.Schema schema)
             throws NoSuchSchemaException {
         final NameSchema key = new NameSchema(name, schema);
-        return schemaVersionCache.computeIfAbsent(key, (nameSchema) ->
-                schemaRepository.getAllSchemas(name).stream()
-                        .filter(ets -> ets.getType() == EventTypeSchemaBase.Type.AVRO_SCHEMA)
-                        .filter(ets -> new Parser().parse(ets.getSchema()).equals(schema))
-                        .map(EventTypeSchema::getVersion)
-                        .findFirst()
-                        .orElseThrow(() -> new NoSuchSchemaException(
-                                String.format("schema is not found for %s", name)))
+        return schemaVersionCache.computeIfAbsent(key, (nameSchema) -> {
+                    final long schemaFingerprint = SchemaNormalization.parsingFingerprint64(schema);
+                    return findLatestSchemaVersion(name,
+                            (ets) -> ets.getType() == EventTypeSchemaBase.Type.AVRO_SCHEMA &&
+                                    SchemaNormalization.parsingFingerprint64(
+                                            new Parser().parse(ets.getSchema())) == schemaFingerprint);
+                }
         );
     }
 
@@ -319,19 +320,25 @@ public class SchemaService implements SchemaProviderService {
             throws NoSuchSchemaException, UnsupportedSchemaTypeException {
         switch (type) {
             case AVRO_SCHEMA:
-                return getAvroSchemaVersion(name,  new Parser().parse(schema));
+                return getAvroSchemaVersion(name, new Parser().parse(schema));
             case JSON_SCHEMA:
                 final JSONObject jsonSchema = new JSONObject(schema);
-                return schemaRepository.getAllSchemas(name).stream()
-                        .filter(ets -> ets.getType() == EventTypeSchemaBase.Type.JSON_SCHEMA)
-                        .filter(ets -> new JSONObject(ets.getSchema()).similar(jsonSchema))
-                        .map(EventTypeSchema::getVersion)
-                        .findFirst()
-                        .orElseThrow(() -> new NoSuchSchemaException(
-                                String.format("schema is not found for %s", name)));
+                return findLatestSchemaVersion(name,
+                        (ets) -> ets.getType() == EventTypeSchemaBase.Type.JSON_SCHEMA &&
+                                new JSONObject(ets.getSchema()).similar(jsonSchema));
             default:
                 throw new UnsupportedSchemaTypeException("Unsupported schema type: " + type);
         }
+    }
+
+    private String findLatestSchemaVersion(final String name,
+                                           final Predicate<EventTypeSchema> predicate) {
+        return schemaRepository.getAllSchemas(name).stream()
+                .filter(predicate)
+                .map(EventTypeSchema::getVersion)
+                .findFirst()
+                .orElseThrow(() -> new NoSuchSchemaException(
+                        String.format("schema is not found for %s", name)));
     }
 
     private static class SchemaId {
