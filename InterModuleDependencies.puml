@@ -1,0 +1,33 @@
+@startuml
+[Nakadi App]-->[api-consumption]
+[Nakadi App]-->[api-cursors]
+[Nakadi App]-->[api-metastore]
+[Nakadi App]-->[api-misc]
+[Nakadi App]-->[api-publishing]
+[Nakadi App]-->[core-common]
+[Nakadi App]-->[core-metastore]
+[Nakadi App]-->[core-services]
+
+[api-consumption] /' no dependencies '/
+
+[api-cursors] --> [core-common]
+[api-cursors] --> [core-services]
+[api-cursors] --> [core-metastore]
+
+[api-metastore] --> [core-common]
+[api-metastore] --> [core-services]
+[api-metastore] --> [core-metastore]
+
+[api-misc] --> [core-common]
+[api-misc] --> [core-services]
+
+[api-publishing] --> [core-common]
+[api-publishing] --> [core-services]
+
+[core-common] /' no dependencies '/
+
+[core-services] --> [core-common]
+[core-services] --> [core-metastore]
+
+[core-metastore] --> [core-common]
+@enduml
