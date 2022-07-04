@@ -6,6 +6,7 @@ import com.google.common.cache.LoadingCache;
 import com.google.common.util.concurrent.UncheckedExecutionException;
 import org.apache.avro.AvroRuntimeException;
 import org.apache.avro.Schema.Parser;
+import org.apache.avro.SchemaNormalization;
 import org.everit.json.schema.Schema;
 import org.everit.json.schema.SchemaException;
 import org.everit.json.schema.loader.SchemaClient;
@@ -305,12 +306,19 @@ public class SchemaService implements SchemaProviderService {
         return schemaVersionCache.computeIfAbsent(key, (nameSchema) ->
                 schemaRepository.getAllSchemas(name).stream()
                         .filter(ets -> ets.getType() == EventTypeSchemaBase.Type.AVRO_SCHEMA)
-                        .filter(ets -> new Parser().parse(ets.getSchema()).equals(schema))
+                        .filter(ets -> compareSchemas(new Parser().parse(ets.getSchema()), schema))
                         .map(EventTypeSchema::getVersion)
                         .findFirst()
                         .orElseThrow(() -> new NoSuchSchemaException(
                                 String.format("schema is not found for %s", name)))
         );
+    }
+
+    private boolean compareSchemas(final org.apache.avro.Schema schemaToCompare,
+                                   final org.apache.avro.Schema schema) {
+        final long currentSchemaFp = SchemaNormalization.parsingFingerprint64(schemaToCompare);
+        final long requestedSchemaFp = SchemaNormalization.parsingFingerprint64(schema);
+        return currentSchemaFp == requestedSchemaFp;
     }
 
     @Override
@@ -319,7 +327,7 @@ public class SchemaService implements SchemaProviderService {
             throws NoSuchSchemaException, UnsupportedSchemaTypeException {
         switch (type) {
             case AVRO_SCHEMA:
-                return getAvroSchemaVersion(name,  new Parser().parse(schema));
+                return getAvroSchemaVersion(name, new Parser().parse(schema));
             case JSON_SCHEMA:
                 final JSONObject jsonSchema = new JSONObject(schema);
                 return schemaRepository.getAllSchemas(name).stream()

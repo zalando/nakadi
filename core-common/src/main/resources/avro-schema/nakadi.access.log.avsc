@@ -1,7 +1,6 @@
 {
   "name": "NakadiAccessLog",
   "namespace": "org.zalando.nakadi.kpi.event",
-  "aliases": [],
   "type": "record",
   "doc": "Stores access log of Nakadi endpoints",
   "fields": [

@@ -24,9 +24,9 @@ public class ConsumptionKpiCollectorFactory {
     public ConsumptionKpiCollector createForLoLA(final Client client) {
         return new ConsumptionKpiCollector(client, kpiPublisher, kpiCollectionIntervalMs) {
             @Override
-            protected NakadiDataStreamed enrich(final NakadiDataStreamed dataStreamedEvent) {
-                dataStreamedEvent.setApi("lola");
-                return dataStreamedEvent;
+            protected NakadiDataStreamed.Builder enrich(final NakadiDataStreamed.Builder builder) {
+                builder.setApi("lola");
+                return builder;
             }
         };
     }
@@ -38,10 +38,10 @@ public class ConsumptionKpiCollectorFactory {
                 kpiPublisher,
                 kpiCollectionIntervalMs) {
             @Override
-            protected NakadiDataStreamed enrich(final NakadiDataStreamed dataStreamedEvent) {
-                dataStreamedEvent.setApi("hila");
-                dataStreamedEvent.setSubscription(subscriptionId);
-                return dataStreamedEvent;
+            protected NakadiDataStreamed.Builder enrich(final NakadiDataStreamed.Builder builder) {
+                builder.setApi("hila");
+                builder.setSubscription(subscriptionId);
+                return builder;
             }
         };
     }
