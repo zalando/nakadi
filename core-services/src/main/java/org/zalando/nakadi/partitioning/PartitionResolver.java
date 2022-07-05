@@ -4,10 +4,13 @@ import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableMap;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
+import org.zalando.nakadi.domain.BatchItem;
 import org.zalando.nakadi.domain.EventType;
 import org.zalando.nakadi.domain.EventTypeBase;
+import org.zalando.nakadi.domain.NakadiMetadata;
 import org.zalando.nakadi.exceptions.runtime.InvalidEventTypeException;
 import org.zalando.nakadi.exceptions.runtime.NoSuchPartitionStrategyException;
+import org.zalando.nakadi.exceptions.runtime.PartitioningException;
 
 import java.util.List;
 import java.util.Map;
@@ -50,8 +53,22 @@ public class PartitionResolver {
         }
     }
 
-    public PartitionStrategy getPartitionStrategy(final EventType eventType)
-            throws NoSuchPartitionStrategyException{
+    public String resolvePartition(final EventType eventType, final BatchItem item,
+            final List<String> orderedPartitions)
+            throws NoSuchPartitionStrategyException, PartitioningException {
+
+        return getPartitionStrategy(eventType).calculatePartition(item, orderedPartitions);
+    }
+
+    public String resolvePartition(final EventType eventType, final NakadiMetadata recordMetadata,
+            final List<String> orderedPartitions)
+            throws NoSuchPartitionStrategyException, PartitioningException {
+
+        return getPartitionStrategy(eventType).calculatePartition(recordMetadata, orderedPartitions);
+    }
+
+    private PartitionStrategy getPartitionStrategy(final EventType eventType)
+            throws NoSuchPartitionStrategyException {
 
         final String eventTypeStrategy = eventType.getPartitionStrategy();
         final PartitionStrategy partitionStrategy = partitionStrategies.get(eventTypeStrategy);

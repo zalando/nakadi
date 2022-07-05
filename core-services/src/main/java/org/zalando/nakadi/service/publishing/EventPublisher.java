@@ -198,7 +198,7 @@ public class EventPublisher {
     private void partition(final List<BatchItem> batch, final EventType eventType)
             throws PartitioningException {
 
-        final PartitionStrategy partitionStrategy = partitionResolver.getPartitionStrategy(eventType);
+        //final PartitionStrategy partitionStrategy = partitionResolver.getPartitionStrategy(eventType);
 
         final Optional<List<String>> partitionKeyFields =
                 PartitionStrategy.HASH_STRATEGY.equals(eventType.getPartitionStrategy())
@@ -215,7 +215,7 @@ public class EventPublisher {
                             item.setPartitionKeys(partitionKeys);
                         });
 
-                final String partition = partitionStrategy.calculatePartition(item, orderedPartitions);
+                final String partition = partitionResolver.resolvePartition(eventType, item, orderedPartitions);
                 item.setPartition(partition);
 
             } catch (final PartitioningException e) {

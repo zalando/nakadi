@@ -31,7 +31,7 @@ import org.zalando.nakadi.exceptions.runtime.EventTypeTimeoutException;
 import org.zalando.nakadi.exceptions.runtime.PartitioningException;
 import org.zalando.nakadi.mapper.NakadiRecordMapper;
 import org.zalando.nakadi.partitioning.PartitionResolver;
-import org.zalando.nakadi.partitioning.PartitionStrategy;
+//import org.zalando.nakadi.partitioning.PartitionStrategy;
 import org.zalando.nakadi.plugin.api.authz.Resource;
 import org.zalando.nakadi.repository.TopicRepository;
 import org.zalando.nakadi.service.AuthorizationValidator;
@@ -210,7 +210,7 @@ public class EventPublisherTest {
 
         assertThat(result.getStatus(), equalTo(EventPublishingStatus.ABORTED));
         verify(enrichment, times(0)).enrich(any(), any());
-        verify(partitionResolver, times(0)).getPartitionStrategy(any(EventType.class));
+        verify(partitionResolver, times(0)).resolvePartition(any(EventType.class), any(BatchItem.class), any());
         verify(topicRepository, times(0)).syncPostBatch(any(), any(), any(), anyBoolean());
     }
 
@@ -259,6 +259,7 @@ public class EventPublisherTest {
 
         assertThat(result.getStatus(), equalTo(EventPublishingStatus.ABORTED));
         verify(enrichment, times(0)).enrich(any(), any());
+        verify(partitionResolver, times(0)).resolvePartition(any(EventType.class), any(BatchItem.class), any());
         verify(topicRepository, times(0)).syncPostBatch(any(), any(), any(), anyBoolean());
     }
 
@@ -339,6 +340,7 @@ public class EventPublisherTest {
 
         assertThat(result.getStatus(), equalTo(EventPublishingStatus.SUBMITTED));
         verify(enrichment, times(1)).enrich(any(), any());
+        verify(partitionResolver, times(1)).resolvePartition(any(EventType.class), any(BatchItem.class), any());
         verify(topicRepository, times(1)).syncPostBatch(any(), any(), any(), eq(false));
     }
 
@@ -353,6 +355,7 @@ public class EventPublisherTest {
 
         assertThat(result.getStatus(), equalTo(EventPublishingStatus.ABORTED));
         verify(enrichment, times(0)).enrich(any(), any());
+        verify(partitionResolver, times(0)).resolvePartition(any(EventType.class), any(BatchItem.class), any());
         verify(topicRepository, times(0)).syncPostBatch(any(), any(), any(), anyBoolean());
     }
 
@@ -367,6 +370,7 @@ public class EventPublisherTest {
 
         assertThat(result.getStatus(), equalTo(EventPublishingStatus.ABORTED));
         verify(enrichment, times(0)).enrich(any(), any());
+        verify(partitionResolver, times(0)).resolvePartition(any(EventType.class), any(BatchItem.class), any());
         verify(topicRepository, times(0)).syncPostBatch(any(), any(), any(), anyBoolean());
     }
 
@@ -381,6 +385,7 @@ public class EventPublisherTest {
 
         assertThat(result.getStatus(), equalTo(EventPublishingStatus.SUBMITTED));
         verify(enrichment, times(1)).enrich(any(), any());
+        verify(partitionResolver, times(1)).resolvePartition(any(EventType.class), any(BatchItem.class), any());
         verify(topicRepository, times(1)).syncPostBatch(any(), any(), any(), eq(false));
     }
 
@@ -425,7 +430,7 @@ public class EventPublisherTest {
         assertThat(second.getDetail(), is(isEmptyString()));
 
         verify(cache, times(2)).getValidator(any());
-        verify(partitionResolver, times(1)).getPartitionStrategy(any(EventType.class));
+        verify(partitionResolver, times(1)).resolvePartition(any(EventType.class), any(BatchItem.class), any());
     }
 
     @Test
@@ -455,7 +460,7 @@ public class EventPublisherTest {
 
         assertThat(result.getStatus(), equalTo(EventPublishingStatus.ABORTED));
         verify(cache, atLeastOnce()).getValidator(eventType.getName());
-        verify(partitionResolver, times(1)).getPartitionStrategy(any(EventType.class));
+        verify(partitionResolver, times(1)).resolvePartition(any(EventType.class), any(BatchItem.class), any());
         verify(enrichment, times(1)).enrich(any(), any());
         verify(topicRepository, times(0)).syncPostBatch(any(), any(), any(), anyBoolean());
     }
@@ -593,8 +598,8 @@ public class EventPublisherTest {
         Mockito.when(cache.getEventType(eventTypeName)).thenReturn(eventType);
         Mockito.when(timelineService.getActiveTimeline(eventType))
                 .thenReturn(new Timeline(eventTypeName, 0, null, topic, null));
-        // Mockito.when(partitionResolver.resolvePartition(any(EventType.class), any(NakadiMetadata.class), any()))
-        //         .thenReturn("1");
+        Mockito.when(partitionResolver.resolvePartition(any(EventType.class), any(NakadiMetadata.class), any()))
+                .thenReturn("1");
 
         final Instant now = Instant.now();
 
@@ -642,19 +647,10 @@ public class EventPublisherTest {
     }
 
     private void mockFaultPartition() throws PartitioningException {
-        final PartitionStrategy faultyStrategy = Mockito.mock(PartitionStrategy.class);
         Mockito
                 .doThrow(new PartitioningException("partition error"))
-                .when(faultyStrategy)
-                .calculatePartition(any(BatchItem.class), any(List.class));
-        Mockito
-                .doThrow(new PartitioningException("partition error"))
-                .when(faultyStrategy)
-                .calculatePartition(any(NakadiMetadata.class), any(List.class));
-
-        Mockito
-                .when(partitionResolver.getPartitionStrategy(any(EventType.class)))
-                .thenReturn(faultyStrategy);
+                .when(partitionResolver)
+                .resolvePartition(any(EventType.class), any(BatchItem.class), any());
     }
 
     private void mockFaultEnrichment() throws EnrichmentException {

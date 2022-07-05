@@ -1,16 +1,20 @@
 package org.zalando.nakadi.partitioning;
 
+import org.json.JSONObject;
 import org.junit.Before;
 import org.junit.Test;
+import org.zalando.nakadi.domain.BatchItem;
 import org.zalando.nakadi.domain.EventType;
 import org.zalando.nakadi.exceptions.runtime.InvalidEventTypeException;
 import org.zalando.nakadi.exceptions.runtime.NoSuchPartitionStrategyException;
+import org.zalando.nakadi.exceptions.runtime.PartitioningException;
 
 import java.util.List;
 
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.notNullValue;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.when;
 import static org.zalando.nakadi.domain.EventCategory.UNDEFINED;
 import static org.zalando.nakadi.partitioning.PartitionStrategy.HASH_STRATEGY;
 import static org.zalando.nakadi.partitioning.PartitionStrategy.RANDOM_STRATEGY;
@@ -28,20 +32,27 @@ public class PartitionResolverTest {
     }
 
     @Test
-    public void whenGetWithKnownStrategyThenOk() {
+    public void whenResolvePartitionWithKnownStrategyThenOk() {
+
         final EventType eventType = new EventType();
         eventType.setPartitionStrategy(RANDOM_STRATEGY);
 
-        final PartitionStrategy strategy = partitionResolver.getPartitionStrategy(eventType);
-        assertThat(strategy, notNullValue());
+        final JSONObject event = new JSONObject();
+        event.put("abc", "blah");
+
+        final BatchItem item = mock(BatchItem.class);
+        when(item.getEvent()).thenReturn(event);
+
+        final String partition = partitionResolver.resolvePartition(eventType, item, partitions);
+        assertThat(partition, notNullValue());
     }
 
-    @Test(expected = NoSuchPartitionStrategyException.class)
-    public void whenGetWithUnknownStrategyThenException() {
+    @Test(expected = PartitioningException.class)
+    public void whenResolvePartitionWithUnknownStrategyThenPartitioningException() {
         final EventType eventType = new EventType();
         eventType.setPartitionStrategy("blah_strategy");
 
-        partitionResolver.getPartitionStrategy(eventType);
+        partitionResolver.resolvePartition(eventType, mock(BatchItem.class), partitions);
     }
 
     @Test(expected = NoSuchPartitionStrategyException.class)
