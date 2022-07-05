@@ -3,11 +3,9 @@ package org.zalando.nakadi.service;
 import com.google.common.collect.ImmutableMap;
 import com.google.common.collect.ImmutableSet;
 import org.apache.commons.lang.StringUtils;
-import org.json.JSONObject;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.TransactionException;
 import org.springframework.transaction.support.TransactionTemplate;
@@ -28,6 +26,7 @@ import org.zalando.nakadi.domain.Subscription;
 import org.zalando.nakadi.domain.SubscriptionBase;
 import org.zalando.nakadi.domain.SubscriptionEventTypeStats;
 import org.zalando.nakadi.domain.Timeline;
+import org.zalando.nakadi.domain.kpi.SubscriptionLogEvent;
 import org.zalando.nakadi.exceptions.Try;
 import org.zalando.nakadi.exceptions.runtime.AuthorizationNotPresentException;
 import org.zalando.nakadi.exceptions.runtime.DbWriteOperationsBlockedException;
@@ -50,7 +49,6 @@ import org.zalando.nakadi.plugin.api.authz.AuthorizationAttribute;
 import org.zalando.nakadi.repository.TopicRepository;
 import org.zalando.nakadi.repository.db.EventTypeRepository;
 import org.zalando.nakadi.repository.db.SubscriptionDbRepository;
-import org.zalando.nakadi.repository.db.SubscriptionTokenLister;
 import org.zalando.nakadi.service.publishing.NakadiAuditLogPublisher;
 import org.zalando.nakadi.service.publishing.NakadiKpiPublisher;
 import org.zalando.nakadi.service.subscription.LogPathBuilder;
@@ -92,12 +90,10 @@ public class SubscriptionService {
     private final CursorOperationsService cursorOperationsService;
     private final NakadiKpiPublisher nakadiKpiPublisher;
     private final FeatureToggleService featureToggleService;
-    private final String subLogEventType;
     private final SubscriptionTimeLagService subscriptionTimeLagService;
     private final AuthorizationValidator authorizationValidator;
     private final NakadiAuditLogPublisher nakadiAuditLogPublisher;
     private final EventTypeCache eventTypeCache;
-    private final SubscriptionTokenLister subscriptionTokenLister;
     private final TransactionTemplate transactionTemplate;
     private final EventTypeRepository eventTypeRepository;
 
@@ -112,11 +108,9 @@ public class SubscriptionService {
                                final NakadiKpiPublisher nakadiKpiPublisher,
                                final FeatureToggleService featureToggleService,
                                final SubscriptionTimeLagService subscriptionTimeLagService,
-                               @Value("${nakadi.kpi.event-types.nakadiSubscriptionLog}") final String subLogEventType,
                                final NakadiAuditLogPublisher nakadiAuditLogPublisher,
                                final AuthorizationValidator authorizationValidator,
                                final EventTypeCache eventTypeCache,
-                               final SubscriptionTokenLister subscriptionTokenLister,
                                final TransactionTemplate transactionTemplate,
                                final EventTypeRepository eventTypeRepository) {
         this.subscriptionDbRepository = subscriptionDbRepository;
@@ -129,11 +123,9 @@ public class SubscriptionService {
         this.nakadiKpiPublisher = nakadiKpiPublisher;
         this.featureToggleService = featureToggleService;
         this.subscriptionTimeLagService = subscriptionTimeLagService;
-        this.subLogEventType = subLogEventType;
         this.nakadiAuditLogPublisher = nakadiAuditLogPublisher;
         this.authorizationValidator = authorizationValidator;
         this.eventTypeCache = eventTypeCache;
-        this.subscriptionTokenLister = subscriptionTokenLister;
         this.transactionTemplate = transactionTemplate;
         this.eventTypeRepository = eventTypeRepository;
     }
@@ -158,9 +150,9 @@ public class SubscriptionService {
         final Subscription subscription = createSubscriptionWithEventTypeLock(subscriptionBase);
         authorizationValidator.authorizeSubscriptionView(subscription);
 
-        nakadiKpiPublisher.publish(subLogEventType, () -> new JSONObject()
-                .put("subscription_id", subscription.getId())
-                .put("status", "created"));
+        nakadiKpiPublisher.publish(() -> new SubscriptionLogEvent()
+                .setSubscriptionId(subscription.getId())
+                .setStatus("created"));
 
         nakadiAuditLogPublisher.publish(Optional.empty(), Optional.of(subscription),
                 NakadiAuditLogPublisher.ResourceType.SUBSCRIPTION, NakadiAuditLogPublisher.ActionType.CREATED,
@@ -264,7 +256,7 @@ public class SubscriptionService {
         final Optional<AuthorizationAttribute> readersFilter = Optional.ofNullable(reader);
         final Set<String> eventTypesFilter = eventTypes == null ? ImmutableSet.of() : eventTypes;
         final Optional<String> owningAppOption = Optional.ofNullable(owningApplication);
-        SubscriptionTokenLister.Token tokenObj = null;
+        SubscriptionDbRepository.Token tokenObj = null;
         // Here we are basically trying to support 3 situations
         // - In case if feature is not enabled, but token is provided - use token
         // - In case if feature is enabled but service is handcrafting offset - use offset instead of token
@@ -274,9 +266,9 @@ public class SubscriptionService {
                 (0 == offset && featureToggleService.isFeatureEnabled(Feature.TOKEN_SUBSCRIPTIONS_ITERATION))) {
             if ("new".equalsIgnoreCase(token)) { // in order to test without feature toggle
                 // TODO: remove handling of "new"
-                tokenObj = SubscriptionTokenLister.Token.createEmpty();
+                tokenObj = SubscriptionDbRepository.Token.createEmpty();
             } else {
-                tokenObj = SubscriptionTokenLister.Token.parse(token);
+                tokenObj = SubscriptionDbRepository.Token.parse(token);
             }
         }
         final PaginationWrapper<Subscription> paginationWrapper;
@@ -299,7 +291,7 @@ public class SubscriptionService {
 
             paginationWrapper = new PaginationWrapper<>(subscriptions, new PaginationLinks(prev, next));
         } else {
-            final SubscriptionTokenLister.ListResult listResult = subscriptionTokenLister.listSubscriptions(
+            final SubscriptionDbRepository.ListResult listResult = subscriptionDbRepository.listSubscriptions(
                     eventTypesFilter, owningAppOption, readersFilter, tokenObj, limit);
             final Optional<PaginationLinks.Link> prev = Optional.ofNullable(listResult.getPrev())
                     .map(t -> createSubscriptionListLink(
@@ -345,9 +337,9 @@ public class SubscriptionService {
             throw new ServiceTemporarilyUnavailableException(io.getMessage(), io);
         }
 
-        nakadiKpiPublisher.publish(subLogEventType, () -> new JSONObject()
-                .put("subscription_id", subscriptionId)
-                .put("status", "deleted"));
+        nakadiKpiPublisher.publish(() -> new SubscriptionLogEvent()
+                .setSubscriptionId(subscriptionId)
+                .setStatus("deleted"));
 
         nakadiAuditLogPublisher.publish(Optional.of(subscription), Optional.empty(),
                 NakadiAuditLogPublisher.ResourceType.SUBSCRIPTION, NakadiAuditLogPublisher.ActionType.DELETED,
@@ -482,9 +474,9 @@ public class SubscriptionService {
         final List<SubscriptionEventTypeStats.Partition> resultPartitions = new ArrayList<>();
 
         final List<String> partitionsList = subscriptionNode.map(
-                node -> node.getPartitions().stream()
-                        .map(Partition::getPartition)
-                        .collect(Collectors.toList()))
+                        node -> node.getPartitions().stream()
+                                .map(Partition::getPartition)
+                                .collect(Collectors.toList()))
                 .orElseGet(() -> getPartitionsList(eventType));
 
         for (final String partition : partitionsList) {

@@ -18,6 +18,7 @@ import org.zalando.nakadi.domain.EnrichmentStrategyDescriptor;
 import org.zalando.nakadi.domain.EventCategory;
 import org.zalando.nakadi.domain.EventType;
 import org.zalando.nakadi.domain.EventTypeStatistics;
+import org.zalando.nakadi.domain.Feature;
 import org.zalando.nakadi.domain.ItemsWrapper;
 import org.zalando.nakadi.domain.Subscription;
 import org.zalando.nakadi.domain.SubscriptionBase;
@@ -307,5 +308,18 @@ public class NakadiTestUtils {
                 .distinct()
                 .count();
         return (int) assignedUniqueStreamsCount;
+    }
+
+    public static void switchFeature(final Feature feature, final boolean enabled) {
+        final JSONObject payload = new JSONObject();
+        payload.put("feature", feature.getId());
+        payload.put("enabled", enabled);
+        given()
+                .header("accept", "application/json")
+                .contentType(JSON)
+                .body(payload.toString())
+                .post("/settings/features")
+                .then()
+                .statusCode(HttpStatus.SC_NO_CONTENT);
     }
 }

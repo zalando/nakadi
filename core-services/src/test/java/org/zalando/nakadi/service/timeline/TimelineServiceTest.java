@@ -27,11 +27,13 @@ import org.zalando.nakadi.repository.TopicRepositoryHolder;
 import org.zalando.nakadi.repository.db.StorageDbRepository;
 import org.zalando.nakadi.repository.db.TimelineDbRepository;
 import org.zalando.nakadi.service.AdminService;
-import org.zalando.nakadi.service.AvroSchema;
 import org.zalando.nakadi.service.FeatureToggleService;
-import org.zalando.nakadi.service.publishing.NakadiAuditLogPublisher;
+import org.zalando.nakadi.service.LocalSchemaRegistry;
+import org.zalando.nakadi.service.TestSchemaProviderService;
 import org.zalando.nakadi.utils.EventTypeTestBuilder;
+import org.zalando.nakadi.utils.TestUtils;
 
+import java.io.IOException;
 import java.util.Collections;
 import java.util.Date;
 import java.util.List;
@@ -61,18 +63,17 @@ public class TimelineServiceTest {
     @Mock
     private FeatureToggleService featureToggleService;
     @Mock
-    private NakadiAuditLogPublisher auditLogPublisher;
-    @Mock
-    private AvroSchema avroSchema;
+    private LocalSchemaRegistry localSchemaRegistry;
     private TimelineService timelineService;
 
     @Before
-    public void setupService() {
+    public void setupService() throws IOException {
         timelineService = new TimelineService(eventTypeCache,
                 storageDbRepository, mock(TimelineSync.class), mock(NakadiSettings.class), timelineDbRepository,
                 topicRepositoryHolder, new TransactionTemplate(mock(PlatformTransactionManager.class)),
-                adminService, featureToggleService, "compacted-storage", auditLogPublisher,
-                avroSchema);
+                adminService, featureToggleService, "compacted-storage",
+                new TestSchemaProviderService(localSchemaRegistry), localSchemaRegistry,
+                TestUtils.getNakadiRecordMapper());
     }
 
     @Test(expected = NotFoundException.class)

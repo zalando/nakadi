@@ -4,11 +4,8 @@ import org.apache.kafka.clients.consumer.Consumer;
 import org.apache.kafka.clients.consumer.ConsumerRecord;
 import org.apache.kafka.clients.consumer.ConsumerRecords;
 import org.apache.kafka.common.TopicPartition;
-import org.apache.kafka.common.header.Header;
-import org.apache.kafka.common.header.Headers;
 import org.zalando.nakadi.domain.ConsumedEvent;
 import org.zalando.nakadi.domain.EventOwnerHeader;
-import org.zalando.nakadi.domain.NakadiRecord;
 import org.zalando.nakadi.domain.Timeline;
 import org.zalando.nakadi.repository.EventConsumer;
 
@@ -24,18 +21,15 @@ public class NakadiKafkaConsumer implements EventConsumer.LowLevelConsumer {
     private final Consumer<byte[], byte[]> kafkaConsumer;
     private final long pollTimeout;
     private final Map<TopicPartition, Timeline> timelineMap;
-    private final RecordDeserializer recordDeserializer;
 
     public NakadiKafkaConsumer(
             final Consumer<byte[], byte[]> kafkaConsumer,
             final List<KafkaCursor> kafkaCursors,
             final Map<TopicPartition, Timeline> timelineMap,
-            final RecordDeserializer recordDeserializer,
             final long pollTimeout) {
         this.kafkaConsumer = kafkaConsumer;
         this.pollTimeout = pollTimeout;
         this.timelineMap = timelineMap;
-        this.recordDeserializer = recordDeserializer;
         // define topic/partitions to consume from
         final Map<TopicPartition, KafkaCursor> topicCursors = kafkaCursors.stream().collect(
                 Collectors.toMap(
@@ -68,23 +62,12 @@ public class NakadiKafkaConsumer implements EventConsumer.LowLevelConsumer {
             final Timeline timeline = timelineMap.get(new TopicPartition(record.topic(), record.partition()));
 
             result.add(new ConsumedEvent(
-                    recordDeserializer.deserialize(
-                            getHeaderValue(record.headers(), NakadiRecord.HEADER_FORMAT),
-                            record.value()),
+                    record.value(),
                     cursor.toNakadiCursor(timeline),
                     record.timestamp(),
                     EventOwnerHeader.deserialize(record)));
         }
         return result;
-    }
-
-    private byte[] getHeaderValue(final Headers headers, final String headerKey) {
-        final Header header = headers.lastHeader(headerKey);
-        if (header == null) {
-            return null;
-        }
-
-        return header.value();
     }
 
     @Override

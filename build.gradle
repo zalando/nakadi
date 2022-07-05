@@ -1,7 +1,7 @@
 subprojects {
     buildscript {
         ext {
-            springBootVersion = '2.3.1.RELEASE'
+            springBootVersion = '2.5.12'
         }
         repositories {
             mavenCentral()
@@ -81,15 +81,11 @@ task startStorages(type: Exec) {
     commandLine "bash", "-c", "./nakadi.sh start-storages"
 }
 
-task stopStorages(type: Exec) {
-    commandLine "bash", "-c", "./nakadi.sh stop-storages"
-}
-
 task checkstyle {
     subprojects.each { dependsOn(":${it.name}:checkstyleMain") }
     subprojects.each { dependsOn(":${it.name}:checkstyleTest") }
     dependsOn(":acceptance-test:checkstyleMain")
-    dependsOn(":acceptance-test:checkstyleTest")
+    dependsOn(":acceptance-test:checkstyleAcceptanceTest")
 }
 
 task test {

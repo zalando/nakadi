@@ -55,6 +55,7 @@ nakadi:
     maxConnections: 5
     maxStreamMemoryBytes: 50000000 # ~50 MB
   kafka:
+    retries: 0
     request.timeout.ms: 30000
     instanceType: t2.large
     poll.timeoutMs: 100
@@ -144,11 +145,17 @@ nakadi:
 twintip:
   mapping: /api
   yaml: "file:api/nakadi-event-bus-api.yaml"
----
 
+---
 spring:
-  profiles: acceptanceTest
+  config:
+    activate:
+      on-profile: acceptanceTest
+
 nakadi:
+  eventType.deletableSubscription:
+    owningApplication: "deletable_owning_app"
+    consumerGroup: "deletable_consumer_group"
   stream:
     maxStreamMemoryBytes: 10_000 # ~10 Kb
     max.commitTimeout: 5 # seconds
@@ -170,14 +177,17 @@ kpi:
     stream-data-collection-frequency-ms: 100
 
 ---
-
 spring:
-  profiles: test
+  config:
+    activate:
+      on-profile: test
 
 ---
-
 spring:
-  profiles: local
+  config:
+    activate:
+      on-profile: local
+
 nakadi.features.defaultFeatures:
   DISABLE_EVENT_TYPE_CREATION: false
   DISABLE_EVENT_TYPE_DELETION: false

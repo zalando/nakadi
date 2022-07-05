@@ -3,7 +3,9 @@ package org.zalando.nakadi.domain;
 import org.joda.time.DateTime;
 
 public class EventTypeSchema extends EventTypeSchemaBase {
-    private Version version;
+
+    private String version;
+
     private DateTime createdAt;
 
     public EventTypeSchema() {
@@ -12,11 +14,11 @@ public class EventTypeSchema extends EventTypeSchemaBase {
 
     public EventTypeSchema(final EventTypeSchemaBase schemaBase, final String version, final DateTime createdAt) {
         super(schemaBase);
-        this.version = new Version(version);
+        this.version = version;
         this.createdAt = createdAt;
     }
 
-    public Version getVersion() {
+    public String getVersion() {
         return version;
     }
 
@@ -24,7 +26,7 @@ public class EventTypeSchema extends EventTypeSchemaBase {
         return createdAt;
     }
 
-    public void setVersion(final Version version) {
+    public void setVersion(final String version) {
         this.version = version;
     }
 

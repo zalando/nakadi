@@ -1,5 +1,6 @@
 package org.zalando.nakadi.repository.kafka;
 
+import org.apache.commons.lang3.StringUtils;
 import org.zalando.nakadi.domain.NakadiCursor;
 import org.zalando.nakadi.domain.Timeline;
 import org.zalando.nakadi.exceptions.runtime.InvalidCursorException;
@@ -10,6 +11,7 @@ import static org.zalando.nakadi.domain.CursorError.INVALID_FORMAT;
 import static org.zalando.nakadi.domain.CursorError.PARTITION_NOT_FOUND;
 
 public class KafkaCursor implements Comparable<KafkaCursor> {
+    private static final int CURSOR_OFFSET_LENGTH = 18;
     private final String topic;
     private final int partition;
     private final long offset;
@@ -43,7 +45,8 @@ public class KafkaCursor implements Comparable<KafkaCursor> {
     }
 
     public static String toNakadiOffset(final long offset) {
-        return offset >= 0 ? String.format("%018d", offset) : String.valueOf(offset);
+        return offset >= 0 ? StringUtils.leftPad(String.valueOf(offset), CURSOR_OFFSET_LENGTH, '0')
+                : String.valueOf(offset);
     }
 
     public static String toNakadiPartition(final int partition) {

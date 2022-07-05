@@ -135,10 +135,6 @@ public class Timeline {
         this.cleanedUpAt = cleanedUpAt;
     }
 
-    public boolean isActive() {
-        return getSwitchedAt() == null;
-    }
-
     public boolean isDeleted() {
         return deleted;
     }

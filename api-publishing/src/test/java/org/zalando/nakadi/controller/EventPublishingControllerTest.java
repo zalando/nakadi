@@ -1,33 +1,41 @@
 package org.zalando.nakadi.controller;
 
 import com.codahale.metrics.MetricRegistry;
-import org.hamcrest.CoreMatchers;
 import org.json.JSONException;
-import org.json.JSONObject;
 import org.junit.Before;
 import org.junit.Test;
+import org.junit.runner.RunWith;
 import org.mockito.ArgumentCaptor;
+import org.mockito.Captor;
 import org.mockito.Mockito;
+import org.mockito.junit.MockitoJUnitRunner;
 import org.springframework.http.converter.StringHttpMessageConverter;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.ResultActions;
 import org.springframework.test.web.servlet.request.MockHttpServletRequestBuilder;
 import org.zalando.nakadi.EventPublishingController;
 import org.zalando.nakadi.EventPublishingExceptionHandler;
+import org.zalando.nakadi.PublishingResultConverter;
+import org.zalando.nakadi.cache.EventTypeCache;
 import org.zalando.nakadi.config.SecuritySettings;
 import org.zalando.nakadi.controller.advice.NakadiProblemExceptionHandler;
 import org.zalando.nakadi.domain.BatchItemResponse;
 import org.zalando.nakadi.domain.EventPublishResult;
 import org.zalando.nakadi.domain.EventPublishingStatus;
 import org.zalando.nakadi.domain.EventPublishingStep;
+import org.zalando.nakadi.domain.kpi.BatchPublishedEvent;
+import org.zalando.nakadi.domain.kpi.KPIEvent;
 import org.zalando.nakadi.exceptions.runtime.EventTypeTimeoutException;
 import org.zalando.nakadi.exceptions.runtime.InternalNakadiException;
 import org.zalando.nakadi.exceptions.runtime.NoSuchEventTypeException;
+import org.zalando.nakadi.mapper.NakadiRecordMapper;
 import org.zalando.nakadi.metrics.EventTypeMetricRegistry;
 import org.zalando.nakadi.metrics.EventTypeMetrics;
 import org.zalando.nakadi.plugin.api.authz.AuthorizationService;
 import org.zalando.nakadi.security.ClientResolver;
+import org.zalando.nakadi.service.AuthorizationValidator;
 import org.zalando.nakadi.service.BlacklistService;
+import org.zalando.nakadi.service.publishing.BinaryEventPublisher;
 import org.zalando.nakadi.service.publishing.EventPublisher;
 import org.zalando.nakadi.service.publishing.NakadiKpiPublisher;
 import org.zalando.nakadi.utils.TestUtils;
@@ -39,6 +47,7 @@ import java.util.function.Supplier;
 
 import static org.hamcrest.CoreMatchers.equalTo;
 import static org.junit.Assert.assertThat;
+import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.springframework.http.MediaType.APPLICATION_JSON;
@@ -53,8 +62,8 @@ import static org.zalando.nakadi.domain.EventPublishingStatus.SUBMITTED;
 import static org.zalando.nakadi.domain.EventPublishingStep.PARTITIONING;
 import static org.zalando.nakadi.domain.EventPublishingStep.PUBLISHING;
 import static org.zalando.nakadi.domain.EventPublishingStep.VALIDATING;
-import static uk.co.datumedge.hamcrest.json.SameJSONAs.sameJSONObjectAs;
 
+@RunWith(MockitoJUnitRunner.class)
 public class EventPublishingControllerTest {
 
     public static final String TOPIC = "my-topic";
@@ -70,6 +79,9 @@ public class EventPublishingControllerTest {
     private BlacklistService blacklistService;
     private AuthorizationService authorizationService;
 
+    @Captor
+    private ArgumentCaptor<Supplier<KPIEvent>> kpiEventCaptor;
+
     @Before
     public void setUp() {
         metricRegistry = new MetricRegistry();
@@ -80,14 +92,15 @@ public class EventPublishingControllerTest {
         authorizationService = Mockito.mock(AuthorizationService.class);
         Mockito.when(authorizationService.getSubject()).thenReturn(Optional.of(() -> "adminClientId"));
         Mockito.when(settings.getAuthMode()).thenReturn(OFF);
-        Mockito.when(settings.getAdminClientId()).thenReturn("adminClientId");
 
         blacklistService = Mockito.mock(BlacklistService.class);
         Mockito.when(blacklistService.isProductionBlocked(any(), any())).thenReturn(false);
 
         final EventPublishingController controller =
-                new EventPublishingController(publisher, eventTypeMetricRegistry, blacklistService, kpiPublisher,
-                        "kpiEventTypeName");
+                new EventPublishingController(publisher, Mockito.mock(BinaryEventPublisher.class),
+                        eventTypeMetricRegistry, blacklistService, kpiPublisher,
+                        Mockito.mock(NakadiRecordMapper.class), Mockito.mock(PublishingResultConverter.class),
+                        Mockito.mock(EventTypeCache.class), Mockito.mock(AuthorizationValidator.class));
 
         mockMvc = standaloneSetup(controller)
                 .setMessageConverters(new StringHttpMessageConverter(), TestUtils.JACKSON_2_HTTP_MESSAGE_CONVERTER)
@@ -203,23 +216,14 @@ public class EventPublishingControllerTest {
 
         postBatch(TOPIC, EVENT_BATCH);
 
-        final ArgumentCaptor<String> etNameCaptor = ArgumentCaptor.forClass(String.class);
-        final ArgumentCaptor<Supplier> eventGeneratorCaptor = ArgumentCaptor.forClass(Supplier.class);
 
-        Mockito.verify(kpiPublisher, Mockito.times(1)).publish(etNameCaptor.capture(),
-                eventGeneratorCaptor.capture());
-
-        assertThat(etNameCaptor.getValue(), CoreMatchers.equalTo("kpiEventTypeName"));
-
-        final JSONObject kpi = (JSONObject) eventGeneratorCaptor.getValue().get();
-        assertThat(kpi,
-                CoreMatchers.is(sameJSONObjectAs(new JSONObject().put("app", "adminClientId")
-                        .put("app_hashed", "hashed-application-name")
-                        .put("event_type", "my-topic")
-                        .put("batch_size", 33)
-                        .put("number_of_events", 3)).allowingExtraUnexpectedFields()));
-
-        assertThat(kpi.getInt("ms_spent"), CoreMatchers.is(CoreMatchers.notNullValue()));
+        Mockito.verify(kpiPublisher, Mockito.times(1)).publish(kpiEventCaptor.capture());
+        final BatchPublishedEvent batchPublishedEvent = (BatchPublishedEvent) kpiEventCaptor.getValue().get();
+        assertEquals("my-topic", batchPublishedEvent.getEventTypeName());
+        assertEquals("adminClientId", batchPublishedEvent.getApplicationName());
+        assertEquals("", batchPublishedEvent.getTokenRealm());
+        assertEquals(3, batchPublishedEvent.getEventCount());
+        assertEquals(33, batchPublishedEvent.getTotalSizeBytes());
     }
 
     private List<BatchItemResponse> responses() {

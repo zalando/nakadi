@@ -11,8 +11,10 @@ import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.MediaType;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestHeader;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestMethod;
 import org.springframework.web.bind.annotation.RequestParam;
@@ -34,6 +36,7 @@ import org.zalando.nakadi.security.Client;
 import org.zalando.nakadi.service.EventStreamChecks;
 import org.zalando.nakadi.service.SubscriptionValidationService;
 import org.zalando.nakadi.service.TracingService;
+import org.zalando.nakadi.service.subscription.StreamContentType;
 import org.zalando.nakadi.service.subscription.StreamParameters;
 import org.zalando.nakadi.service.subscription.SubscriptionOutput;
 import org.zalando.nakadi.service.subscription.SubscriptionStreamer;
@@ -50,6 +53,7 @@ import java.io.Closeable;
 import java.io.IOException;
 import java.io.OutputStream;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.function.Function;
 
@@ -66,6 +70,7 @@ import static org.zalando.problem.Status.UNPROCESSABLE_ENTITY;
 public class SubscriptionStreamController {
     public static final String CONSUMERS_COUNT_METRIC_NAME = "consumers";
     private static final Logger LOG = LoggerFactory.getLogger(SubscriptionStreamController.class);
+    public static final MediaType BINARY_MEDIA_TYPE = new MediaType("application", "avro-binary");
 
     private final SubscriptionStreamerFactory subscriptionStreamerFactory;
     private final ObjectMapper jsonMapper;
@@ -141,7 +146,13 @@ public class SubscriptionStreamController {
 
         @Override
         public void onException(final Exception ex) {
-            LOG.warn("Exception occurred while streaming: {}", ex.getMessage());
+            //
+            // Here we are trying to avoid spamming the logs with stacktraces for very common errors like "no free
+            // slots" or "access denied".
+            //
+            // FIXME: maybe these should not be exceptions in the first place?..
+            //
+            LOG.warn("Exception occurred while streaming: {}: {}", ex.getClass().getName(), ex.getMessage());
             if (!headersSent) {
                 headersSent = true;
                 try {
@@ -152,7 +163,7 @@ public class SubscriptionStreamController {
                     LOG.error("Failed to write exception to response", e);
                 }
             } else {
-                LOG.warn("Exception found while streaming, but no data could be provided to client", ex);
+                LOG.warn("Response was already sent, cannot report error to the client");
             }
         }
 
@@ -167,12 +178,14 @@ public class SubscriptionStreamController {
     public StreamingResponseBody streamEvents(
             @PathVariable("subscription_id") final String subscriptionId,
             @Valid @RequestBody final UserStreamParameters userParameters,
+            @RequestHeader(name = "Accept", required = false,
+                    defaultValue = "application/x-json-stream") final String acceptHeader,
             final HttpServletResponse response,
             final Client client) {
 
         final StreamParameters streamParameters = StreamParameters.of(userParameters,
                 nakadiSettings.getMaxCommitTimeout(), client);
-        return stream(subscriptionId, response, client, streamParameters);
+        return stream(subscriptionId, response, client, streamParameters, mapToStreamContentType(acceptHeader));
     }
 
     @RequestMapping(value = "/subscriptions/{subscription_id}/events", method = RequestMethod.GET)
@@ -188,6 +201,8 @@ public class SubscriptionStreamController {
             @Nullable @RequestParam(value = "stream_keep_alive_limit", required = false) final Integer
                     streamKeepAliveLimit,
             @Nullable @RequestParam(value = "commit_timeout", required = false) final Long commitTimeout,
+            @RequestHeader(name = "Accept", required = false,
+                    defaultValue = "application/x-json-stream") final String acceptHeader,
             final HttpServletResponse response, final Client client) {
 
         final UserStreamParameters userParameters = new UserStreamParameters(batchLimit, streamLimit, batchTimespan,
@@ -197,13 +212,24 @@ public class SubscriptionStreamController {
         final StreamParameters streamParameters = StreamParameters.of(userParameters,
                 nakadiSettings.getMaxCommitTimeout(), client);
 
-        return stream(subscriptionId, response, client, streamParameters);
+        return stream(subscriptionId, response, client, streamParameters, mapToStreamContentType(acceptHeader));
+    }
+
+    private StreamContentType mapToStreamContentType(final String acceptHeader) {
+        final List<MediaType> mediaTypes = MediaType.parseMediaTypes(acceptHeader);
+        if (mediaTypes.size() == 1 &&
+                BINARY_MEDIA_TYPE.equalsTypeAndSubtype(mediaTypes.get(0))) {
+            return StreamContentType.BINARY;
+        } else {
+            return StreamContentType.JSON;
+        }
     }
 
     private StreamingResponseBody stream(final String subscriptionId,
                                          final HttpServletResponse response,
                                          final Client client,
-                                         final StreamParameters streamParameters) {
+                                         final StreamParameters streamParameters,
+                                         final StreamContentType streamContentType) {
 
         TracingService.setOperationName("stream_events")
                 .setTag("subscription.id", subscriptionId);
@@ -232,16 +258,17 @@ public class SubscriptionStreamController {
 
                 final Session session = Session.generate(1, streamParameters.getPartitions());
 
-                streamer = subscriptionStreamerFactory.build(subscription, streamParameters, session, output);
+                streamer = subscriptionStreamerFactory.build(subscription, streamParameters,
+                        session, output, streamContentType);
 
                 final Tracer.SpanBuilder spanBuilder =
                         TracingService.buildNewFollowerSpan("streaming_async", requestSpan.context())
-                        .withTag("client", client.getClientId())
-                        .withTag("session.id", session.getId())
-                        .withTag("subscription.id", subscriptionId);
+                                .withTag("client", client.getClientId())
+                                .withTag("session.id", session.getId())
+                                .withTag("subscription.id", subscriptionId);
                 try (
-                    Closeable ignore1 = TracingService.withActiveSpan(spanBuilder);
-                    Closeable ignore2 = shutdownHooks.addHook(streamer::terminateStream) // bugfix ARUHA-485
+                        Closeable ignore1 = TracingService.withActiveSpan(spanBuilder);
+                        Closeable ignore2 = shutdownHooks.addHook(streamer::terminateStream) // bugfix ARUHA-485
                 ) {
                     streamer.stream();
                 }

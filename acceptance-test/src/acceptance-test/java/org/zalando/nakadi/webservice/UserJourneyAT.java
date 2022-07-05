@@ -13,6 +13,7 @@ import com.jayway.restassured.response.Header;
 import com.jayway.restassured.specification.RequestSpecification;
 import org.echocat.jomon.runtime.concurrent.RetryForSpecifiedTimeStrategy;
 import org.hamcrest.Matchers;
+import org.json.JSONObject;
 import org.junit.Before;
 import org.junit.Test;
 import org.zalando.nakadi.config.JsonConfig;
@@ -29,6 +30,7 @@ import org.zalando.nakadi.webservice.utils.TestStreamingClient;
 
 import java.io.IOException;
 import java.util.List;
+import java.util.Map;
 import java.util.stream.Collectors;
 
 import static java.util.stream.LongStream.rangeClosed;
@@ -39,8 +41,11 @@ import static org.springframework.http.HttpStatus.CREATED;
 import static org.springframework.http.HttpStatus.NOT_FOUND;
 import static org.springframework.http.HttpStatus.NO_CONTENT;
 import static org.springframework.http.HttpStatus.OK;
+import static org.springframework.http.HttpStatus.UNPROCESSABLE_ENTITY;
 import static org.zalando.nakadi.domain.SubscriptionBase.InitialPosition.BEGIN;
+import static org.zalando.nakadi.utils.TestUtils.randomDate;
 import static org.zalando.nakadi.utils.TestUtils.randomTextString;
+import static org.zalando.nakadi.utils.TestUtils.randomUUID;
 import static org.zalando.nakadi.utils.TestUtils.randomValidEventTypeName;
 import static org.zalando.nakadi.utils.TestUtils.waitFor;
 import static org.zalando.nakadi.webservice.hila.StreamBatch.MatcherIgnoringToken.equalToBatchIgnoringToken;
@@ -55,9 +60,11 @@ public class UserJourneyAT extends RealEnvironmentAT {
     private static final String ENDPOINT = "/event-types";
 
     private String eventTypeName;
-
     private String eventTypeBody;
     private String eventTypeBodyUpdate;
+
+    private String eventTypeNameBusiness;
+    private String eventTypeBodyBusiness;
 
     public static String getEventTypeJsonFromFile(final String resourceName, final String eventTypeName,
                                                   final String owningApp)
@@ -73,7 +80,12 @@ public class UserJourneyAT extends RealEnvironmentAT {
         eventTypeName = randomValidEventTypeName();
         eventTypeBody = getEventTypeJsonFromFile("sample-event-type.json", eventTypeName, owningApp);
         eventTypeBodyUpdate = getEventTypeJsonFromFile("sample-event-type-update.json", eventTypeName, owningApp);
-        createEventType();
+        createEventType(eventTypeBody);
+
+        eventTypeNameBusiness = eventTypeName + ".business";
+        eventTypeBodyBusiness = getEventTypeJsonFromFile(
+                "sample-event-type-business.json", eventTypeNameBusiness, owningApp);
+        createEventType(eventTypeBodyBusiness);
     }
 
     @SuppressWarnings("unchecked")
@@ -328,8 +340,8 @@ public class UserJourneyAT extends RealEnvironmentAT {
         // create client and wait till we receive all events
         final TestStreamingClient client = new TestStreamingClient(
                 RestAssured.baseURI + ":" + RestAssured.port, subscription.getId(), "", oauthToken).start();
-        waitFor(() -> assertThat(client.getBatches(), Matchers.hasSize(4)));
-        final List<StreamBatch> batches = client.getBatches();
+        waitFor(() -> assertThat(client.getJsonBatches(), Matchers.hasSize(4)));
+        final List<StreamBatch> batches = client.getJsonBatches();
 
         // validate the content of events
         for (int i = 0; i < batches.size(); i++) {
@@ -380,9 +392,75 @@ public class UserJourneyAT extends RealEnvironmentAT {
                 .statusCode(NO_CONTENT.value());
     }
 
-    private void createEventType() {
+    @Test(timeout = 15000)
+    public void userJourneyAvroTransition() throws InterruptedException, IOException {
+
+        final EventType eventType = MAPPER.readValue(jsonRequestSpec()
+                    .header("accept", "application/json")
+                    .get(ENDPOINT + "/" + eventTypeNameBusiness)
+                    .getBody()
+                    .asString(),
+                EventType.class);
+
+        final String validatedWithJsonSchemaVersion = eventType.getSchema().getVersion();
+
+        final String event1 = newEvent().put("foo", randomTextString()).toString();
+        final String event2 = newEvent().put("foo", randomTextString()).toString();
+        final String eventInvalid = newEvent().put("bar", randomTextString()).toString();
+
+        // push two JSON events to event-type
+        postEventsInternal(eventTypeNameBusiness, new String[]{event1, event2});
+
+        // try to push some invalid event
+        tryPostInvalidEvents(eventTypeNameBusiness, new String[]{eventInvalid});
+
+        // update schema => change to Avro
         jsonRequestSpec()
-                .body(eventTypeBody)
+                .body("{\"type\": \"avro_schema\", " +
+                      "\"schema\": \"{\\\"type\\\": \\\"record\\\", \\\"name\\\": \\\"Foo\\\", " +
+                      "\\\"fields\\\": [{\\\"name\\\": \\\"foo\\\", \\\"type\\\": \\\"string\\\"}]}\"}")
+                .post("/event-types/" + eventTypeNameBusiness + "/schemas")
+                .then()
+                .body(equalTo(""))
+                .statusCode(OK.value());
+
+        // push two more JSON events to Avro event-type
+        postEventsInternal(eventTypeNameBusiness, new String[]{event1, event2});
+
+        // test that JSON validation still works
+        tryPostInvalidEvents(eventTypeNameBusiness, new String[]{eventInvalid});
+
+        // create subscription
+        final SubscriptionBase subscriptionToCreate = RandomSubscriptionBuilder.builder()
+                .withOwningApplication("stups_aruha-test-end2end-nakadi")
+                .withEventType(eventTypeNameBusiness)
+                .withStartFrom(BEGIN)
+                .buildSubscriptionBase();
+        final Subscription subscription = createSubscription(jsonRequestSpec(), subscriptionToCreate);
+
+        // create client and wait till we receive 4 events
+        final TestStreamingClient client = new TestStreamingClient(
+                RestAssured.baseURI + ":" + RestAssured.port, subscription.getId(), "", oauthToken).start();
+
+        waitFor(() -> assertThat(client.getJsonBatches(), Matchers.hasSize(4)));
+        final List<StreamBatch> batches = client.getJsonBatches();
+
+        // validate the events metadata
+        for (final StreamBatch batch : batches) {
+            final Map<String, String> metadata = (Map<String, String>) batch.getEvents().get(0).get("metadata");
+            assertThat(metadata.get("version"), equalTo(validatedWithJsonSchemaVersion));
+        }
+
+        // delete subscription
+        jsonRequestSpec()
+                .delete("/subscriptions/{sid}", subscription.getId())
+                .then()
+                .statusCode(NO_CONTENT.value());
+    }
+
+    private void createEventType(final String body) {
+        jsonRequestSpec()
+                .body(body)
                 .when()
                 .post("/event-types")
                 .then()
@@ -391,13 +469,28 @@ public class UserJourneyAT extends RealEnvironmentAT {
     }
 
     private void postEvents(final String... events) {
+        postEventsInternal(eventTypeName, events);
+    }
+
+    private void postEventsInternal(final String name, final String[] events) {
         final String batch = "[" + String.join(",", events) + "]";
         jsonRequestSpec()
                 .body(batch)
                 .when()
-                .post("/event-types/" + eventTypeName + "/events")
+                .post("/event-types/" + name + "/events")
                 .then()
+                .body(equalTo(""))
                 .statusCode(OK.value());
+    }
+
+    private void tryPostInvalidEvents(final String name, final String[] events) {
+        final String batch = "[" + String.join(",", events) + "]";
+        jsonRequestSpec()
+                .body(batch)
+                .when()
+                .post("/event-types/" + name + "/events")
+                .then()
+                .statusCode(UNPROCESSABLE_ENTITY.value());
     }
 
     private RequestSpecification jsonRequestSpec() {
@@ -406,4 +499,10 @@ public class UserJourneyAT extends RealEnvironmentAT {
                 .contentType(ContentType.JSON);
     }
 
+    private JSONObject newEvent() {
+        return new JSONObject()
+                .put("metadata", new JSONObject()
+                         .put("eid", randomUUID())
+                         .put("occurred_at", randomDate().toString()));
+    }
 }

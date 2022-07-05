@@ -1,6 +1,5 @@
 package org.zalando.nakadi.service.publishing;
 
-import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableMap;
 import io.opentracing.Span;
 import io.opentracing.Tracer;
@@ -24,12 +23,15 @@ import org.zalando.nakadi.domain.EventPublishingStep;
 import org.zalando.nakadi.domain.EventType;
 import org.zalando.nakadi.domain.Timeline;
 import org.zalando.nakadi.enrichment.Enrichment;
+import org.zalando.nakadi.exceptions.Try;
 import org.zalando.nakadi.exceptions.runtime.AccessDeniedException;
 import org.zalando.nakadi.exceptions.runtime.EnrichmentException;
 import org.zalando.nakadi.exceptions.runtime.EventPublishingException;
 import org.zalando.nakadi.exceptions.runtime.EventTypeTimeoutException;
 import org.zalando.nakadi.exceptions.runtime.EventValidationException;
 import org.zalando.nakadi.exceptions.runtime.InternalNakadiException;
+import org.zalando.nakadi.exceptions.runtime.InvalidPartitionKeyFieldsException;
+import org.zalando.nakadi.exceptions.runtime.JsonPathAccessException;
 import org.zalando.nakadi.exceptions.runtime.NoSuchEventTypeException;
 import org.zalando.nakadi.exceptions.runtime.PartitioningException;
 import org.zalando.nakadi.exceptions.runtime.PublishEventOwnershipException;
@@ -40,7 +42,8 @@ import org.zalando.nakadi.service.AuthorizationValidator;
 import org.zalando.nakadi.service.TracingService;
 import org.zalando.nakadi.service.timeline.TimelineService;
 import org.zalando.nakadi.service.timeline.TimelineSync;
-import org.zalando.nakadi.validation.EventTypeValidator;
+import org.zalando.nakadi.util.JsonPathAccess;
+import org.zalando.nakadi.validation.JsonSchemaValidator;
 import org.zalando.nakadi.validation.ValidationError;
 
 import java.io.Closeable;
@@ -48,7 +51,6 @@ import java.io.IOException;
 import java.util.List;
 import java.util.Optional;
 import java.util.concurrent.TimeoutException;
-import java.util.function.Function;
 import java.util.stream.Collectors;
 
 @Component
@@ -128,8 +130,8 @@ public class EventPublisher {
             }
             validateEventOwnership(eventType, batch);
             validate(batch, eventType, delete);
-            assignKeys(batch, eventType);
             partition(batch, eventType);
+            assignKey(batch, eventType);
             if (!delete) {
                 enrich(batch, eventType);
             }
@@ -175,6 +177,7 @@ public class EventPublisher {
 
     private void enrich(final List<BatchItem> batch, final EventType eventType)
             throws EnrichmentException {
+
         for (final BatchItem batchItem : batch) {
             try {
                 batchItem.setStep(EventPublishingStep.ENRICHING);
@@ -194,12 +197,27 @@ public class EventPublisher {
 
     private void partition(final List<BatchItem> batch, final EventType eventType)
             throws PartitioningException {
+
+        final PartitionStrategy partitionStrategy = partitionResolver.getPartitionStrategy(eventType);
+
+        final Optional<List<String>> partitionKeyFields =
+                PartitionStrategy.HASH_STRATEGY.equals(eventType.getPartitionStrategy())
+                ? Optional.of(getPartitionKeyFields(eventType))
+                : Optional.empty();
+
+        final List<String> orderedPartitions = eventTypeCache.getOrderedPartitions(eventType.getName());
+
         for (final BatchItem item : batch) {
             item.setStep(EventPublishingStep.PARTITIONING);
             try {
-                final String partitionId =
-                        partitionResolver.resolvePartition(eventType, item.getEvent(), item.getEventKeys());
-                item.setPartition(partitionId);
+                partitionKeyFields.ifPresent(pkfs -> {
+                            final List<String> partitionKeys = extractPartitionKeys(pkfs, item.getEvent());
+                            item.setPartitionKeys(partitionKeys);
+                        });
+
+                final String partition = partitionStrategy.calculatePartition(item, orderedPartitions);
+                item.setPartition(partition);
+
             } catch (final PartitioningException e) {
                 item.updateStatusAndDetail(EventPublishingStatus.FAILED, e.getMessage());
                 throw e;
@@ -207,38 +225,80 @@ public class EventPublisher {
         }
     }
 
-    private void assignKeys(final List<BatchItem> batch, final EventType eventType) {
+    private static List<String> getPartitionKeyFields(final EventType eventType) {
+
+        final List<String> partitionKeyFields = eventType.getPartitionKeyFields();
+        if (partitionKeyFields == null || partitionKeyFields.isEmpty()) {
+            throw new PartitioningException("Cannot extract partition keys: partition key fields not set!");
+        }
+
+        return partitionKeyFields.stream()
+                .map(pkf -> EventCategory.DATA.equals(eventType.getCategory())
+                        ? EventType.DATA_PATH_PREFIX + pkf
+                        : pkf)
+                .collect(Collectors.toList());
+    }
+
+    private static List<String> extractPartitionKeys(final List<String> partitionKeyFields, final JSONObject jsonEvent)
+            throws PartitioningException {
+
+        final JsonPathAccess traversableJsonEvent = new JsonPathAccess(jsonEvent);
+        final var partitionKeys = partitionKeyFields
+                .stream()
+                .map(Try.wrap(pkf -> {
+                                    try {
+                                        return traversableJsonEvent.get(pkf).toString();
+                                    } catch (final JsonPathAccessException e) {
+                                        throw new InvalidPartitionKeyFieldsException(e.getMessage());
+                                    }
+                                }))
+                .map(Try::getOrThrow)
+                .collect(Collectors.toList());
+
+        return partitionKeys;
+    }
+
+    private static void assignKey(final List<BatchItem> batch, final EventType eventType) {
         for (final BatchItem item : batch) {
-            item.setEventKeys(getEventKeys(eventType, item.getEvent()));
+            final String key = getEventKey(eventType, item);
+            if (key != null) {
+                item.setEventKey(key);
+            }
         }
     }
 
-    List<String> getEventKeys(final EventType eventType, final JSONObject event) {
+    static String getEventKey(final EventType eventType, final BatchItem item) {
+
         if (eventType.getCleanupPolicy() == CleanupPolicy.COMPACT ||
-                 eventType.getCleanupPolicy() == CleanupPolicy.COMPACT_AND_DELETE) {
+                eventType.getCleanupPolicy() == CleanupPolicy.COMPACT_AND_DELETE) {
 
-            return ImmutableList.of(
-                    event
+            return item.getEvent()
                     .getJSONObject("metadata")
-                    .getString("partition_compaction_key"));
-
-        } else if (PartitionStrategy.HASH_STRATEGY.equals(eventType.getPartitionStrategy())) {
-
-            return partitionResolver.extractEventPartitionKeys(eventType, event);
+                    .getString("partition_compaction_key");
+        } else {
+            final List<String> partitionKeys = item.getPartitionKeys();
+            if (partitionKeys != null) {
+                return String.join(",", partitionKeys);
+            }
         }
+
+        // that's fine, not all events get a key assigned to them
         return null;
     }
 
     private void validateEventOwnership(final EventType eventType, final List<BatchItem> batchItems) {
-        final Function<JSONObject, EventOwnerHeader> extractor = eventOwnerExtractorFactory.createExtractor(eventType);
+        final EventOwnerExtractor extractor = eventOwnerExtractorFactory.createExtractor(eventType);
         if (null == extractor) {
             return;
         }
+
         for (final BatchItem item : batchItems) {
             item.setStep(EventPublishingStep.VALIDATING);
+
+            final EventOwnerHeader owner = extractor.extractEventOwner(item.getEvent());
+            item.setOwner(owner);
+
             try {
-                final EventOwnerHeader owner = extractor.apply(item.getEvent());
-                item.setOwner(owner);
                 authValidator.authorizeEventWrite(item);
             } catch (AccessDeniedException e) {
                 item.updateStatusAndDetail(EventPublishingStatus.FAILED, e.explain());
@@ -306,7 +366,7 @@ public class EventPublisher {
     private void validateSchema(final JSONObject event, final EventType eventType)
             throws EventValidationException, InternalNakadiException, NoSuchEventTypeException {
 
-        final EventTypeValidator validator = eventTypeCache.getValidator(eventType.getName());
+        final JsonSchemaValidator validator = eventTypeCache.getValidator(eventType.getName());
         final Optional<ValidationError> validationError = validator.validate(event);
         if (validationError.isPresent()) {
             throw new EventValidationException(validationError.get().getMessage());

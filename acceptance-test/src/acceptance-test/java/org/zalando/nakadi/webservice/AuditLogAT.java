@@ -47,6 +47,6 @@ public class AuditLogAT extends BaseAT {
         createEventType();
 
         // expect event to be posted to audit log as a reaction to event type creation
-        waitFor(() -> assertThat(client.getBatches().size(), greaterThan(0)));
+        waitFor(() -> assertThat(client.getJsonBatches().size(), greaterThan(0)));
     }
 }

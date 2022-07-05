@@ -18,8 +18,10 @@ import org.zalando.nakadi.plugin.api.authz.AuthorizationService;
 import org.zalando.nakadi.service.AdminService;
 import org.zalando.nakadi.service.BlacklistService;
 import org.zalando.nakadi.service.FeatureToggleService;
+import org.zalando.nakadi.service.publishing.NakadiAuditLogPublisher;
 
 import javax.validation.Valid;
+import java.util.Optional;
 
 import static org.zalando.nakadi.domain.ResourceImpl.ADMIN_RESOURCE;
 
@@ -30,14 +32,17 @@ public class SettingsController {
     private final BlacklistService blacklistService;
     private final FeatureToggleService featureToggleService;
     private final AdminService adminService;
+    private final NakadiAuditLogPublisher auditLogPublisher;
 
     @Autowired
     public SettingsController(final BlacklistService blacklistService,
                               final FeatureToggleService featureToggleService,
-                              final AdminService adminService) {
+                              final AdminService adminService,
+                              final NakadiAuditLogPublisher auditLogPublisher) {
         this.blacklistService = blacklistService;
         this.featureToggleService = featureToggleService;
         this.adminService = adminService;
+        this.auditLogPublisher = auditLogPublisher;
     }
 
     @RequestMapping(path = "/blacklist", method = RequestMethod.GET)
@@ -111,7 +116,14 @@ public class SettingsController {
         if (errors.hasErrors()) {
             throw new ValidationException(errors);
         }
-        adminService.updateAdmins(authz.toPermissionsList(ADMIN_RESOURCE));
+        final var newAdmins = authz.toPermissionsList(ADMIN_RESOURCE);
+        final var oldAdmins = adminService.updateAdmins(newAdmins);
+        auditLogPublisher.publish(
+                Optional.of(ResourceAuthorization.fromPermissionsList(oldAdmins)),
+                Optional.of(ResourceAuthorization.fromPermissionsList(newAdmins)),
+                NakadiAuditLogPublisher.ResourceType.ADMINS,
+                NakadiAuditLogPublisher.ActionType.UPDATED,
+                "-");
         return ResponseEntity.ok().build();
     }
 }

@@ -66,7 +66,8 @@ public class BatchItem implements Resource<BatchItem> {
     private final List<Integer> skipCharacters;
     private String partition;
     private String brokerId;
-    private List<String> eventKeys;
+    private String eventKey;
+    private List<String> partitionKeys;
     private int eventSize;
     private EventOwnerHeader owner;
 
@@ -134,30 +135,30 @@ public class BatchItem implements Resource<BatchItem> {
     }
 
     @Nullable
-    public List<String> getEventKeys() {
-        return eventKeys;
-    }
-
-    @Nullable
-    public String getEventKeyString() {
-        if (eventKeys == null) {
-            return null;
-        }
-
-        return String.join(", ", eventKeys);
+    public String getEventKey() {
+        return eventKey;
     }
 
     @Nullable
     public byte[] getEventKeyBytes() {
-        if (eventKeys == null) {
+        if (eventKey == null) {
             return null;
         }
 
-        return getEventKeyString().getBytes(StandardCharsets.UTF_8);
+        return eventKey.getBytes(StandardCharsets.UTF_8);
     }
 
-    public void setEventKeys(@Nullable final List<String> keys) {
-        this.eventKeys = keys;
+    public void setEventKey(@Nullable final String key) {
+        this.eventKey = key;
+    }
+
+    @Nullable
+    public List<String> getPartitionKeys() {
+        return partitionKeys;
+    }
+
+    public void setPartitionKeys(@Nullable final List<String> keys) {
+        this.partitionKeys = keys;
     }
 
     @Override

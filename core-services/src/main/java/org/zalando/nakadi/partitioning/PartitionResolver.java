@@ -2,15 +2,12 @@ package org.zalando.nakadi.partitioning;
 
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableMap;
-import org.json.JSONObject;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 import org.zalando.nakadi.domain.EventType;
 import org.zalando.nakadi.domain.EventTypeBase;
 import org.zalando.nakadi.exceptions.runtime.InvalidEventTypeException;
 import org.zalando.nakadi.exceptions.runtime.NoSuchPartitionStrategyException;
-import org.zalando.nakadi.exceptions.runtime.PartitioningException;
-import org.zalando.nakadi.service.timeline.TimelineService;
 
 import java.util.List;
 import java.util.Map;
@@ -28,12 +25,9 @@ public class PartitionResolver {
             HASH_STRATEGY, USER_DEFINED_STRATEGY, RANDOM_STRATEGY);
 
     private final Map<String, PartitionStrategy> partitionStrategies;
-    private final TimelineService timelineService;
 
     @Autowired
-    public PartitionResolver(final TimelineService timelineService, final HashPartitionStrategy hashPartitionStrategy) {
-        this.timelineService = timelineService;
-
+    public PartitionResolver(final HashPartitionStrategy hashPartitionStrategy) {
         partitionStrategies = ImmutableMap.of(
                 HASH_STRATEGY, hashPartitionStrategy,
                 USER_DEFINED_STRATEGY, new UserDefinedPartitionStrategy(),
@@ -56,31 +50,13 @@ public class PartitionResolver {
         }
     }
 
-    public List<String> extractEventPartitionKeys(final EventType eventType, final JSONObject eventAsJson)
-            throws PartitioningException {
-
-        return resolveStrategy(eventType).extractEventKeys(eventType, eventAsJson);
-    }
-
-    public String resolvePartition(
-            final EventType eventType, final JSONObject eventAsJson, final List<String> eventKeys)
-            throws PartitioningException {
-
-        final PartitionStrategy partitionStrategy = resolveStrategy(eventType);
-
-        // TODO: cache and pre-sort
-        final List<String> partitions = timelineService.getTopicRepository(eventType)
-                .listPartitionNames(timelineService.getActiveTimeline(eventType).getTopic());
-
-        return partitionStrategy.calculatePartition(eventAsJson, eventKeys, partitions);
-    }
-
-    private PartitionStrategy resolveStrategy(final EventType eventType) {
+    public PartitionStrategy getPartitionStrategy(final EventType eventType)
+            throws NoSuchPartitionStrategyException{
 
         final String eventTypeStrategy = eventType.getPartitionStrategy();
         final PartitionStrategy partitionStrategy = partitionStrategies.get(eventTypeStrategy);
         if (partitionStrategy == null) {
-            throw new PartitioningException("Partition Strategy defined for this EventType is not found: " +
+            throw new NoSuchPartitionStrategyException("Partition Strategy defined for this EventType is not found: " +
                     eventTypeStrategy);
         }
         return partitionStrategy;

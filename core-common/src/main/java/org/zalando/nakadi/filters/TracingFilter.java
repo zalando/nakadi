@@ -3,6 +3,7 @@ package org.zalando.nakadi.filters;
 import io.opentracing.Span;
 import io.opentracing.SpanContext;
 import io.opentracing.Tracer;
+import org.springframework.http.HttpHeaders;
 import org.springframework.web.filter.OncePerRequestFilter;
 import org.zalando.nakadi.service.TracingService;
 
@@ -90,12 +91,15 @@ public class TracingFilter extends OncePerRequestFilter {
         spanBuilder
                 .withTag("http.url", request.getRequestURI() +
                          Optional.ofNullable(request.getQueryString()).map(q -> "?" + q).orElse(""))
+
                 .withTag("http.header.content_encoding",
-                         Optional.ofNullable(request.getQueryString()).map(q -> "?" + q).orElse(""))
+                         Optional.ofNullable(request.getHeader(HttpHeaders.CONTENT_ENCODING)).orElse("-"))
+
                 .withTag("http.header.accept_encoding",
-                         Optional.ofNullable(request.getQueryString()).map(q -> "?" + q).orElse(""))
+                         Optional.ofNullable(request.getHeader(HttpHeaders.ACCEPT_ENCODING)).orElse("-"))
+
                 .withTag("http.header.user_agent",
-                         Optional.ofNullable(request.getHeader("User-Agent")).orElse("-"));
+                         Optional.ofNullable(request.getHeader(HttpHeaders.USER_AGENT)).orElse("-"));
 
         final Span span = spanBuilder.start();
         try (Closeable ignored = TracingService.activateSpan(span)) {

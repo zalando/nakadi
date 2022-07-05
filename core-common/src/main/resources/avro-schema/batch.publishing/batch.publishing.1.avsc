@@ -1,0 +1,16 @@
+{
+  "name": "PublishingBatch",
+  "namespace": "org.zalando.nakadi.generated.avro",
+  "type": "record",
+  "fields": [
+    {
+      "name": "events",
+      "type": {
+        "type": "array",
+        "items": {
+          "type": "Envelope"
+        }
+      }
+    }
+  ]
+}

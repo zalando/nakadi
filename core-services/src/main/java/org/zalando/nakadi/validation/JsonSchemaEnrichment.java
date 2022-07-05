@@ -2,7 +2,6 @@ package org.zalando.nakadi.validation;
 
 import com.google.common.collect.ImmutableList;
 import org.json.JSONArray;
-import org.json.JSONException;
 import org.json.JSONObject;
 import org.json.JSONTokener;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -28,8 +27,6 @@ import java.util.Set;
 
 @Component
 public class JsonSchemaEnrichment {
-    public static final String DATA_CHANGE_WRAP_FIELD = "data";
-    public static final String DATA_PATH_PREFIX = JsonSchemaEnrichment.DATA_CHANGE_WRAP_FIELD + ".";
 
     private static final String ADDITIONAL_PROPERTIES = "additionalProperties";
     private static final String ADDITIONAL_ITEMS = "additionalItems";
@@ -56,9 +53,8 @@ public class JsonSchemaEnrichment {
         }
     }
 
-    public JSONObject effectiveSchema(final EventTypeBase eventType) throws JSONException {
-        final JSONObject schema = new JSONObject(eventType.getSchema().getSchema());
-
+    public JSONObject effectiveSchema(final EventTypeBase eventType, final String schemaString) {
+        final JSONObject schema = new JSONObject(schemaString);
         if (eventType.getCompatibilityMode().equals(CompatibilityMode.COMPATIBLE)) {
             this.enforceStrictValidation(schema);
         }
@@ -155,7 +151,7 @@ public class JsonSchemaEnrichment {
         properties.put("data_type", new JSONObject().put("type", "string"));
         properties.put("data_op", new JSONObject().put("type", "string")
                 .put("enum", Arrays.asList("C", "U", "D", "S")));
-        properties.put(DATA_CHANGE_WRAP_FIELD, schema);
+        properties.put(EventTypeBase.DATA_CHANGE_WRAP_FIELD, schema);
 
         wrapper.put(ADDITIONAL_PROPERTIES, false);
 

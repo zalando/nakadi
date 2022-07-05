@@ -4,11 +4,16 @@ import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonValue;
 
 public class Version {
-    public enum Level { MAJOR, MINOR, PATCH, NO_CHANGES }
 
     private final int major;
     private final int minor;
     private final int patch;
+
+    public Version() {
+        this.major = 1;
+        this.minor = 0;
+        this.patch = 0;
+    }
 
     public Version(final int major, final int minor, final int patch) {
         this.major = major;
@@ -66,4 +71,10 @@ public class Version {
             default: return new Version(this.major, this.minor, this.patch);
         }
     }
+
+
+    public enum Level {
+        MAJOR, MINOR, PATCH, NO_CHANGES
+    }
+
 }

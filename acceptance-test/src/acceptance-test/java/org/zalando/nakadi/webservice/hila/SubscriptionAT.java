@@ -15,6 +15,7 @@ import org.zalando.nakadi.config.JsonConfig;
 import org.zalando.nakadi.domain.EventType;
 import org.zalando.nakadi.domain.EventTypeBase;
 import org.zalando.nakadi.domain.EventTypePartition;
+import org.zalando.nakadi.domain.Feature;
 import org.zalando.nakadi.domain.ItemsWrapper;
 import org.zalando.nakadi.domain.PaginationLinks;
 import org.zalando.nakadi.domain.PaginationWrapper;
@@ -69,6 +70,10 @@ public class SubscriptionAT extends BaseAT {
     static final String SUBSCRIPTIONS_URL = "/subscriptions";
     private static final String SUBSCRIPTION_URL = "/subscriptions/{0}";
     private static final String CURSORS_URL = "/subscriptions/{0}/cursors";
+
+    // see application.yml, acceptanceTest profile
+    public static final String DELETABLE_OWNING_APP = "deletable_owning_app";
+    public static final String DELETABLE_CONSUMER_GROUP = "deletable_consumer_group";
 
     private static final ObjectMapper MAPPER = (new JsonConfig()).jacksonObjectMapper();
     private static final JsonTestHelper JSON_HELPER = new JsonTestHelper(MAPPER);
@@ -323,8 +328,8 @@ public class SubscriptionAT extends BaseAT {
         final TestStreamingClient client = TestStreamingClient
                 .create(URL, subscription.getId(), "max_uncommitted_events=100")
                 .start();
-        waitFor(() -> assertThat(client.getBatches(), hasSize(19))); // we should read 19 events in total
-        final List<StreamBatch> batches = client.getBatches();
+        waitFor(() -> assertThat(client.getJsonBatches(), hasSize(19))); // we should read 19 events in total
+        final List<StreamBatch> batches = client.getJsonBatches();
 
         // check that first events of each partition have correct offsets
         assertThat(getFirstBatchOffsetFor(batches, new EventTypePartition(et1.getName(), "0")),
@@ -420,9 +425,41 @@ public class SubscriptionAT extends BaseAT {
         final String etName = createEventType().getName();
         createSubscriptionForEventType(etName);
 
+        NakadiTestUtils.switchFeature(Feature.DELETE_EVENT_TYPE_WITH_SUBSCRIPTIONS, false);
+
         when().delete("/event-types/{event-type}", etName)
                 .then()
                 .statusCode(HttpStatus.SC_CONFLICT);
+    }
+
+    @Test
+    public void testDeleteEventTypeRestrictionFeatureToggle() throws Exception {
+        final String etName = createEventType().getName();
+        createSubscriptionForEventType(etName);
+
+        NakadiTestUtils.switchFeature(Feature.DELETE_EVENT_TYPE_WITH_SUBSCRIPTIONS, true);
+
+        when().delete("/event-types/{event-type}", etName)
+                .then()
+                .statusCode(HttpStatus.SC_OK);
+    }
+
+    @Test
+    public void testDeleteEventTypeRestrictionDeletable() throws Exception {
+        final String etName = createEventType().getName();
+
+        final SubscriptionBase subscriptionBase = RandomSubscriptionBuilder.builder()
+                .withEventType(etName)
+                .withOwningApplication(DELETABLE_OWNING_APP)
+                .withConsumerGroup(DELETABLE_CONSUMER_GROUP)
+                .buildSubscriptionBase();
+        NakadiTestUtils.createSubscription(subscriptionBase);
+
+        NakadiTestUtils.switchFeature(Feature.DELETE_EVENT_TYPE_WITH_SUBSCRIPTIONS, false);
+
+        when().delete("/event-types/{event-type}", etName)
+                .then()
+                .statusCode(HttpStatus.SC_OK);
     }
 
     @Test
@@ -481,7 +518,7 @@ public class SubscriptionAT extends BaseAT {
         final TestStreamingClient client = TestStreamingClient
                 .create(URL, s.getId(), "max_uncommitted_events=20")
                 .start();
-        waitFor(() -> assertThat(client.getBatches(), hasSize(15)));
+        waitFor(() -> assertThat(client.getJsonBatches(), hasSize(15)));
 
         final Response response = when()
                 .get("/subscriptions?show_status=true&owning_application=" + owningApplication)
