@@ -484,7 +484,9 @@ public class EventPublisherTest {
         publisher.publish(batch.toString(), eventType.getName());
 
         final List<BatchItem> publishedBatch = capturePublishedBatch();
-        assertThat(publishedBatch.get(0).getEventKey(), equalTo("my_key"));
+        final BatchItem publishedItem = publishedBatch.get(0);
+        assertThat(publishedItem.getEventKey(), equalTo("my_key"));
+        assertThat(publishedItem.getPartitionKeys(), equalTo(List.of("my_key")));
     }
 
     @Test
@@ -501,12 +503,13 @@ public class EventPublisherTest {
         publisher.publish(batch.toString(), eventType.getName());
 
         final List<BatchItem> publishedBatch = capturePublishedBatch();
-        assertThat(publishedBatch.get(0).getEventKey(), equalTo("my_key,other_value"));
+        final BatchItem publishedItem = publishedBatch.get(0);
+        assertThat(publishedItem.getEventKey(), equalTo("my_key,other_value"));
+        assertThat(publishedItem.getPartitionKeys(), equalTo(List.of("my_key", "other_value")));
     }
 
     @Test
     public void whenCompactedThenUsesPartitionCompactionKey() throws Exception {
-        // TODO: this we want to change in the future, but have to enforce for now
         final EventType eventType = EventTypeTestBuilder.builder()
                 .partitionStrategy(PartitionStrategy.HASH_STRATEGY)
                 .partitionKeyFields(List.of("my_field"))
@@ -522,7 +525,11 @@ public class EventPublisherTest {
         publisher.publish(batch.toString(), eventType.getName());
 
         final List<BatchItem> publishedBatch = capturePublishedBatch();
-        assertThat(publishedBatch.get(0).getEventKey(), equalTo("compaction_key"));
+        final BatchItem publishedItem = publishedBatch.get(0);
+        assertThat(publishedItem.getEventKey(), equalTo("compaction_key"));
+
+        // TODO: in the future we want these to be exactly the same, but have to enforce for now
+        assertThat(publishedItem.getPartitionKeys(), equalTo(List.of("my_key")));
     }
 
     @Test
@@ -537,7 +544,9 @@ public class EventPublisherTest {
         publisher.publish(batch.toString(), eventType.getName());
 
         final List<BatchItem> publishedBatch = capturePublishedBatch();
-        assertThat(publishedBatch.get(0).getEventKey(), equalTo(null));
+        final BatchItem publishedItem = publishedBatch.get(0);
+        assertThat(publishedItem.getEventKey(), equalTo(null));
+        assertThat(publishedItem.getPartitionKeys(), equalTo(null));
     }
 
     @SuppressWarnings("unchecked")
