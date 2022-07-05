@@ -37,7 +37,7 @@ public class HashPartitionStrategy implements PartitionStrategy {
         return calculatePartition(recordMetadata.getPartitionKeys(), orderedPartitions);
     }
 
-    private String calculatePartition(final List<String> partitionKeys, final List<String> orderedPartitions)
+    String calculatePartition(final List<String> partitionKeys, final List<String> orderedPartitions)
             throws PartitioningException {
 
         if (partitionKeys == null || partitionKeys.isEmpty()) {

@@ -8,8 +8,6 @@ import org.mockito.Mockito;
 import org.zalando.nakadi.domain.BatchItem;
 import org.zalando.nakadi.domain.EventType;
 import org.zalando.nakadi.domain.NakadiMetadata;
-import org.zalando.nakadi.exceptions.Try;
-//import org.zalando.nakadi.exceptions.runtime.InvalidPartitionKeyFieldsException;
 import org.zalando.nakadi.exceptions.runtime.PartitioningException;
 
 import java.io.BufferedReader;
@@ -61,11 +59,10 @@ public class HashPartitionStrategyTest {
     private static List<JSONObject> eventSamplesA = null;
     private static List<JSONObject> eventSamplesB = null;
     private static List<JSONObject> eventSamplesC = null;
+    private final EventType simpleEventType;
 
     private final HashPartitionStrategyCrutch hashPartitioningCrutch;
     private final HashPartitionStrategy strategy;
-    private final EventType simpleEventType;
-    private final ArrayList<List<JSONObject>> partitions = createEmptyPartitions(PARTITIONS.length);
 
     public HashPartitionStrategyTest() {
         simpleEventType = new EventType();
@@ -100,6 +97,7 @@ public class HashPartitionStrategyTest {
 
     @Test
     public void calculatesSamePartitionForSamePartitionKeyFields() throws Exception {
+        final ArrayList<List<JSONObject>> partitions = createEmptyPartitions(PARTITIONS.length);
         fillPartitionsWithRandomEvents(simpleEventType, partitions, 1000);
 
         checkThatEventsWithSameKeysAreInSamePartition(partitions);
@@ -118,6 +116,7 @@ public class HashPartitionStrategyTest {
     }
 
     private double varianceForEvents(final List<JSONObject> events) {
+        final ArrayList<List<JSONObject>> partitions = createEmptyPartitions(PARTITIONS.length);
         fillPartitionsWithEvents(simpleEventType, partitions, events);
 
         final double[] eventDistribution = partitions.stream().map(List::size).mapToDouble(value -> value * 1.0)
@@ -125,7 +124,6 @@ public class HashPartitionStrategyTest {
         return calculateVarianceOfUniformDistribution(eventDistribution);
     }
 
-    // TODO: move to a different class
     @Test
     public void canHandleComplexKeys() throws Exception {
         final JSONObject event = new JSONObject(resourceAsString("../complex-event.json", this.getClass()));
@@ -278,19 +276,18 @@ public class HashPartitionStrategyTest {
     }
 
     private void fillPartitionsWithEvents(final EventType eventType, final ArrayList<List<JSONObject>> partitions,
-                                          final List<JSONObject> events) {
+            final List<JSONObject> events) {
+
         final List<String> partitionNames = asList(PARTITIONS);
-        events.stream()
-                .map(Try.<JSONObject, Void>wrap(event -> {
-                                    final BatchItem item = mock(BatchItem.class);
-                                    //final List<String> keys = strategy.extractEventKeys(eventType, event);
-                                    /// set keys
-                    final String partition = strategy.calculatePartition(item, partitionNames);
-                    final int partitionNo = parseInt(partition);
-                    partitions.get(partitionNo).add(event);
-                    return null;
-                }).andThen(Try::getOrThrow))
-                .collect(Collectors.toSet());
+
+        for (final JSONObject event : events) {
+            final List<String> keys = List.of(event.getString("sku"), event.getString("name"));
+
+            final String partition = strategy.calculatePartition(keys, partitionNames);
+            final int partitionNo = parseInt(partition);
+
+            partitions.get(partitionNo).add(event);
+        }
     }
 
     private JSONObject randomArticleEvent() {

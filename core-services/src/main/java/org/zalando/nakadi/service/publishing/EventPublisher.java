@@ -225,7 +225,7 @@ public class EventPublisher {
         }
     }
 
-    private static List<String> getPartitionKeyFields(final EventType eventType) {
+    static List<String> getPartitionKeyFields(final EventType eventType) {
 
         final List<String> partitionKeyFields = eventType.getPartitionKeyFields();
         if (partitionKeyFields == null || partitionKeyFields.isEmpty()) {
@@ -239,7 +239,7 @@ public class EventPublisher {
                 .collect(Collectors.toList());
     }
 
-    private static List<String> extractPartitionKeys(final List<String> partitionKeyFields, final JSONObject jsonEvent)
+    static List<String> extractPartitionKeys(final List<String> partitionKeyFields, final JSONObject jsonEvent)
             throws PartitioningException {
 
         final JsonPathAccess traversableJsonEvent = new JsonPathAccess(jsonEvent);
