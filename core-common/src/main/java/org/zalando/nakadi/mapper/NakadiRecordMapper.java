@@ -1,9 +1,9 @@
 package org.zalando.nakadi.mapper;
 
 import org.apache.avro.AvroRuntimeException;
-import org.apache.avro.generic.GenericDatumWriter;
-import org.apache.avro.generic.GenericRecord;
 import org.apache.avro.io.EncoderFactory;
+import org.apache.avro.specific.SpecificDatumWriter;
+import org.apache.avro.specific.SpecificRecord;
 import org.apache.kafka.clients.producer.ProducerRecord;
 import org.springframework.stereotype.Service;
 import org.zalando.nakadi.domain.NakadiMetadata;
@@ -26,10 +26,10 @@ import java.util.List;
 public class NakadiRecordMapper {
 
     public NakadiRecordMapper(final LocalSchemaRegistry localSchemaRegistry) {
-        localSchemaRegistry.getEventTypeSchemaVersions(LocalSchemaRegistry.BATCH_PUBLISHING_KEY)
+        localSchemaRegistry.getAvroSchemaVersions(LocalSchemaRegistry.BATCH_PUBLISHING_KEY)
                 .entrySet().forEach(entry -> PublishingBatch.getDecoder().addSchema(entry.getValue()));
 
-        localSchemaRegistry.getEventTypeSchemaVersions(LocalSchemaRegistry.ENVELOPE_KEY)
+        localSchemaRegistry.getAvroSchemaVersions(LocalSchemaRegistry.ENVELOPE_KEY)
                 .entrySet().forEach(entry -> Envelope.getDecoder().addSchema(entry.getValue()));
     }
 
@@ -118,11 +118,10 @@ public class NakadiRecordMapper {
                 .build();
     }
 
-    public NakadiRecord fromAvroGenericRecord(final NakadiMetadata metadata,
-                                              final GenericRecord event) throws IOException {
-
+    public NakadiRecord fromAvroRecord(final NakadiMetadata metadata,
+                                       final SpecificRecord event) throws IOException {
         final var payloadOutputStream = new ByteArrayOutputStream();
-        final var eventWriter = new GenericDatumWriter(event.getSchema());
+        final var eventWriter = new SpecificDatumWriter<>(event.getSchema());
         eventWriter.write(event, EncoderFactory.get()
                 .directBinaryEncoder(payloadOutputStream, null));
 

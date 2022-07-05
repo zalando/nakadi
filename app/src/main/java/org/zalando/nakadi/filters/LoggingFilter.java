@@ -8,7 +8,7 @@ import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
 import org.springframework.web.filter.OncePerRequestFilter;
 import org.zalando.nakadi.domain.Feature;
-import org.zalando.nakadi.domain.kpi.AccessLogEvent;
+import org.zalando.nakadi.kpi.event.NakadiAccessLog;
 import org.zalando.nakadi.plugin.api.authz.AuthorizationService;
 import org.zalando.nakadi.plugin.api.authz.Subject;
 import org.zalando.nakadi.service.FeatureToggleService;
@@ -27,7 +27,6 @@ import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletRequestWrapper;
 import javax.servlet.http.HttpServletResponse;
 import javax.servlet.http.HttpServletResponseWrapper;
-
 import java.io.IOException;
 import java.util.Optional;
 
@@ -62,7 +61,7 @@ public class LoggingFilter extends OncePerRequestFilter {
         private final long requestStartedAt;
 
         private RequestLogInfo(final RequestWrapper requestWrapper, final ResponseWrapper responseWrapper,
-                final long requestStartedAt) {
+                               final long requestStartedAt) {
 
             this.requestWrapper = requestWrapper;
             this.responseWrapper = responseWrapper;
@@ -176,19 +175,20 @@ public class LoggingFilter extends OncePerRequestFilter {
 
     private void logToKpiPublisher(final RequestLogInfo requestLogInfo, final int statusCode, final Long timeSpentMs) {
 
-        nakadiKpiPublisher.publish(() -> new AccessLogEvent()
+        nakadiKpiPublisher.publish(() -> NakadiAccessLog.newBuilder()
                 .setMethod(requestLogInfo.method)
                 .setPath(requestLogInfo.path)
                 .setQuery(requestLogInfo.query)
                 .setUserAgent(requestLogInfo.userAgent)
-                .setApplicationName(requestLogInfo.user)
-                .setHashedApplicationName(nakadiKpiPublisher.hash(requestLogInfo.user))
+                .setApp(requestLogInfo.user)
+                .setAppHashed(nakadiKpiPublisher.hash(requestLogInfo.user))
                 .setContentEncoding(requestLogInfo.contentEncoding)
                 .setAcceptEncoding(requestLogInfo.acceptEncoding)
                 .setStatusCode(statusCode)
-                .setTimeSpentMs(timeSpentMs)
+                .setResponseTimeMs(timeSpentMs)
                 .setRequestLength(requestLogInfo.getRequestLength())
-                .setResponseLength(requestLogInfo.getResponseLength()));
+                .setResponseLength(requestLogInfo.getResponseLength())
+                .build());
     }
 
     private void logToAccessLog(final RequestLogInfo requestLogInfo, final int statusCode, final Long timeSpentMs) {

@@ -26,7 +26,6 @@ import org.zalando.nakadi.domain.Subscription;
 import org.zalando.nakadi.domain.SubscriptionBase;
 import org.zalando.nakadi.domain.SubscriptionEventTypeStats;
 import org.zalando.nakadi.domain.Timeline;
-import org.zalando.nakadi.domain.kpi.SubscriptionLogEvent;
 import org.zalando.nakadi.exceptions.Try;
 import org.zalando.nakadi.exceptions.runtime.AuthorizationNotPresentException;
 import org.zalando.nakadi.exceptions.runtime.DbWriteOperationsBlockedException;
@@ -45,6 +44,7 @@ import org.zalando.nakadi.exceptions.runtime.ServiceTemporarilyUnavailableExcept
 import org.zalando.nakadi.exceptions.runtime.SubscriptionUpdateConflictException;
 import org.zalando.nakadi.exceptions.runtime.TooManyPartitionsException;
 import org.zalando.nakadi.exceptions.runtime.UnableProcessException;
+import org.zalando.nakadi.kpi.event.NakadiSubscriptionLog;
 import org.zalando.nakadi.plugin.api.authz.AuthorizationAttribute;
 import org.zalando.nakadi.repository.TopicRepository;
 import org.zalando.nakadi.repository.db.EventTypeRepository;
@@ -150,9 +150,10 @@ public class SubscriptionService {
         final Subscription subscription = createSubscriptionWithEventTypeLock(subscriptionBase);
         authorizationValidator.authorizeSubscriptionView(subscription);
 
-        nakadiKpiPublisher.publish(() -> new SubscriptionLogEvent()
+        nakadiKpiPublisher.publish(() -> NakadiSubscriptionLog.newBuilder()
                 .setSubscriptionId(subscription.getId())
-                .setStatus("created"));
+                .setStatus("created")
+                .build());
 
         nakadiAuditLogPublisher.publish(Optional.empty(), Optional.of(subscription),
                 NakadiAuditLogPublisher.ResourceType.SUBSCRIPTION, NakadiAuditLogPublisher.ActionType.CREATED,
@@ -337,9 +338,10 @@ public class SubscriptionService {
             throw new ServiceTemporarilyUnavailableException(io.getMessage(), io);
         }
 
-        nakadiKpiPublisher.publish(() -> new SubscriptionLogEvent()
+        nakadiKpiPublisher.publish(() -> NakadiSubscriptionLog.newBuilder()
                 .setSubscriptionId(subscriptionId)
-                .setStatus("deleted"));
+                .setStatus("deleted")
+                .build());
 
         nakadiAuditLogPublisher.publish(Optional.of(subscription), Optional.empty(),
                 NakadiAuditLogPublisher.ResourceType.SUBSCRIPTION, NakadiAuditLogPublisher.ActionType.DELETED,
@@ -474,9 +476,9 @@ public class SubscriptionService {
         final List<SubscriptionEventTypeStats.Partition> resultPartitions = new ArrayList<>();
 
         final List<String> partitionsList = subscriptionNode.map(
-                        node -> node.getPartitions().stream()
-                                .map(Partition::getPartition)
-                                .collect(Collectors.toList()))
+                node -> node.getPartitions().stream()
+                        .map(Partition::getPartition)
+                        .collect(Collectors.toList()))
                 .orElseGet(() -> getPartitionsList(eventType));
 
         for (final String partition : partitionsList) {

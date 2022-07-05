@@ -13,7 +13,7 @@ public class TestSchemaProviderService implements SchemaProviderService {
 
     @Override
     public Schema getAvroSchema(final String etName, final String version) {
-        return localSchemaRegistry.getEventTypeSchema(etName, version);
+        return localSchemaRegistry.getAvroSchema(etName, version);
     }
 
     @Override

@@ -16,11 +16,11 @@ import org.zalando.nakadi.domain.EventTypeSchema;
 import org.zalando.nakadi.domain.EventTypeSchemaBase;
 import org.zalando.nakadi.domain.PaginationWrapper;
 import org.zalando.nakadi.domain.Version;
-import org.zalando.nakadi.domain.kpi.BatchPublishedEvent;
 import org.zalando.nakadi.exceptions.runtime.InvalidLimitException;
 import org.zalando.nakadi.exceptions.runtime.NoSuchSchemaException;
 import org.zalando.nakadi.exceptions.runtime.SchemaEvolutionException;
 import org.zalando.nakadi.exceptions.runtime.SchemaValidationException;
+import org.zalando.nakadi.kpi.event.NakadiBatchPublished;
 import org.zalando.nakadi.repository.db.EventTypeRepository;
 import org.zalando.nakadi.repository.db.SchemaRepository;
 import org.zalando.nakadi.service.timeline.TimelineSync;
@@ -41,7 +41,6 @@ public class SchemaServiceTest {
     private SchemaRepository schemaRepository;
     private PaginationService paginationService;
     private SchemaService schemaService;
-    private JsonSchemaEnrichment jsonSchemaEnrichment;
     private SchemaEvolutionService schemaEvolutionService;
     private EventTypeRepository eventTypeRepository;
     private EventTypeCache eventTypeCache;
@@ -53,7 +52,6 @@ public class SchemaServiceTest {
     public void setUp() throws IOException {
         schemaRepository = Mockito.mock(SchemaRepository.class);
         paginationService = Mockito.mock(PaginationService.class);
-        jsonSchemaEnrichment = new JsonSchemaEnrichment(new DefaultResourceLoader(), "classpath:schema_metadata.json");
         schemaEvolutionService = Mockito.mock(SchemaEvolutionService.class);
         eventTypeRepository = Mockito.mock(EventTypeRepository.class);
         eventTypeCache = Mockito.mock(EventTypeCache.class);
@@ -91,7 +89,7 @@ public class SchemaServiceTest {
     @Test(expected = NoSuchSchemaException.class)
     public void testIllegalVersionNumber() throws Exception {
         Mockito.when(schemaRepository.getSchemaVersion(eventType.getName() + "wrong",
-                        eventType.getSchema().getVersion().toString()))
+                eventType.getSchema().getVersion().toString()))
                 .thenThrow(NoSuchSchemaException.class);
         final EventTypeSchema result = schemaService.getSchemaVersion(eventType.getName() + "wrong",
                 eventType.getSchema().getVersion().toString());
@@ -109,7 +107,7 @@ public class SchemaServiceTest {
     @Test
     public void testGetSchemaSuccess() throws Exception {
         Mockito.when(schemaRepository.getSchemaVersion(eventType.getName(),
-                        eventType.getSchema().getVersion().toString()))
+                eventType.getSchema().getVersion().toString()))
                 .thenReturn(eventType.getSchema());
         final EventTypeSchema result =
                 schemaService.getSchemaVersion(eventType.getName(), eventType.getSchema().getVersion().toString());
@@ -236,10 +234,10 @@ public class SchemaServiceTest {
                 .thenReturn(Collections.singletonList(
                         new EventTypeSchema(new EventTypeSchemaBase(
                                 EventTypeSchemaBase.Type.AVRO_SCHEMA,
-                                new BatchPublishedEvent().getSchema().toString()), "1.0.0", new DateTime())));
+                                NakadiBatchPublished.getClassSchema().toString()), "1.0.0", new DateTime())));
 
         final String avroSchemaVersion = schemaService.getAvroSchemaVersion(
-                "nakadi.batch.published", new BatchPublishedEvent().getSchema());
+                "nakadi.batch.published", NakadiBatchPublished.getClassSchema());
 
         Assert.assertEquals("1.0.0", avroSchemaVersion);
 
@@ -255,11 +253,11 @@ public class SchemaServiceTest {
                                 "{}"), "1.0.0", new DateTime()),
                         new EventTypeSchema(new EventTypeSchemaBase(
                                 EventTypeSchemaBase.Type.AVRO_SCHEMA,
-                                new BatchPublishedEvent().getSchema().toString()), "2.0.0", new DateTime()))
+                                NakadiBatchPublished.getClassSchema().toString()), "2.0.0", new DateTime()))
                 );
 
         final String avroSchemaVersion = schemaService.getAvroSchemaVersion(
-                "nakadi.batch.published", new BatchPublishedEvent().getSchema());
+                "nakadi.batch.published", NakadiBatchPublished.getClassSchema());
 
         Assert.assertEquals("2.0.0", avroSchemaVersion);
 
@@ -271,7 +269,7 @@ public class SchemaServiceTest {
         Mockito.when(schemaRepository.getAllSchemas("nakadi.batch.published"))
                 .thenReturn(Collections.emptyList());
 
-        schemaService.getAvroSchemaVersion("nakadi.batch.published", new BatchPublishedEvent().getSchema());
+        schemaService.getAvroSchemaVersion("nakadi.batch.published", NakadiBatchPublished.getClassSchema());
 
         Mockito.reset(schemaRepository);
     }

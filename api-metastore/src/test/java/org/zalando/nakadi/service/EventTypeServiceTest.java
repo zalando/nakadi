@@ -1,6 +1,7 @@
 package org.zalando.nakadi.service;
 
 import com.google.common.collect.Multimap;
+import org.apache.avro.specific.SpecificRecord;
 import org.junit.Before;
 import org.junit.Test;
 import org.junit.runner.RunWith;
@@ -15,15 +16,14 @@ import org.zalando.nakadi.config.NakadiSettings;
 import org.zalando.nakadi.domain.EventCategory;
 import org.zalando.nakadi.domain.EventType;
 import org.zalando.nakadi.domain.Feature;
-import org.zalando.nakadi.domain.kpi.EventTypeLogEvent;
-import org.zalando.nakadi.domain.kpi.KPIEvent;
 import org.zalando.nakadi.enrichment.Enrichment;
 import org.zalando.nakadi.exceptions.runtime.AccessDeniedException;
 import org.zalando.nakadi.exceptions.runtime.EventTypeDeletionException;
-import org.zalando.nakadi.exceptions.runtime.InvalidEventTypeException;
 import org.zalando.nakadi.exceptions.runtime.InternalNakadiException;
+import org.zalando.nakadi.exceptions.runtime.InvalidEventTypeException;
 import org.zalando.nakadi.exceptions.runtime.InvalidOwningApplicationException;
 import org.zalando.nakadi.exceptions.runtime.TopicCreationException;
+import org.zalando.nakadi.kpi.event.NakadiEventTypeLog;
 import org.zalando.nakadi.partitioning.PartitionResolver;
 import org.zalando.nakadi.plugin.api.ApplicationService;
 import org.zalando.nakadi.repository.TopicRepository;
@@ -103,7 +103,7 @@ public class EventTypeServiceTest {
     private EventTypeService eventTypeService;
 
     @Captor
-    private ArgumentCaptor<Supplier<KPIEvent>> kpiEventCaptor;
+    private ArgumentCaptor<Supplier<SpecificRecord>> kpiEventCaptor;
 
     @Before
     public void setUp() {
@@ -214,7 +214,7 @@ public class EventTypeServiceTest {
         final EventType et = TestUtils.buildDefaultEventType();
         eventTypeService.create(et, true);
         verify(nakadiKpiPublisher).publish(kpiEventCaptor.capture());
-        final EventTypeLogEvent kpiEvent = (EventTypeLogEvent) kpiEventCaptor.getValue().get();
+        final NakadiEventTypeLog kpiEvent = (NakadiEventTypeLog) kpiEventCaptor.getValue().get();
         assertEquals(et.getName(), kpiEvent.getEventType());
         assertEquals("created", kpiEvent.getStatus());
         assertEquals(et.getCategory().toString(), kpiEvent.getCategory());
@@ -229,7 +229,7 @@ public class EventTypeServiceTest {
         when(schemaEvolutionService.evolve(any(), any())).thenReturn(et);
         eventTypeService.update(et.getName(), et);
         verify(nakadiKpiPublisher).publish(kpiEventCaptor.capture());
-        final EventTypeLogEvent kpiEvent = (EventTypeLogEvent) kpiEventCaptor.getValue().get();
+        final NakadiEventTypeLog kpiEvent = (NakadiEventTypeLog) kpiEventCaptor.getValue().get();
         assertEquals(et.getName(), kpiEvent.getEventType());
         assertEquals("updated", kpiEvent.getStatus());
         assertEquals(et.getCategory().toString(), kpiEvent.getCategory());
@@ -291,7 +291,7 @@ public class EventTypeServiceTest {
 
         eventTypeService.delete(et.getName());
         verify(nakadiKpiPublisher).publish(kpiEventCaptor.capture());
-        final EventTypeLogEvent kpiEvent = (EventTypeLogEvent) kpiEventCaptor.getValue().get();
+        final NakadiEventTypeLog kpiEvent = (NakadiEventTypeLog) kpiEventCaptor.getValue().get();
         assertEquals(et.getName(), kpiEvent.getEventType());
         assertEquals("deleted", kpiEvent.getStatus());
         assertEquals(et.getCategory().toString(), kpiEvent.getCategory());
