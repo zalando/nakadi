@@ -55,25 +55,24 @@ public class PartitionResolver {
 
     public String resolvePartition(final EventType eventType, final BatchItem item,
             final List<String> orderedPartitions)
-            throws NoSuchPartitionStrategyException, PartitioningException {
+            throws PartitioningException {
 
         return getPartitionStrategy(eventType).calculatePartition(item, orderedPartitions);
     }
 
     public String resolvePartition(final EventType eventType, final NakadiMetadata recordMetadata,
             final List<String> orderedPartitions)
-            throws NoSuchPartitionStrategyException, PartitioningException {
+            throws PartitioningException {
 
         return getPartitionStrategy(eventType).calculatePartition(recordMetadata, orderedPartitions);
     }
 
-    private PartitionStrategy getPartitionStrategy(final EventType eventType)
-            throws NoSuchPartitionStrategyException {
+    private PartitionStrategy getPartitionStrategy(final EventType eventType) throws PartitioningException {
 
         final String eventTypeStrategy = eventType.getPartitionStrategy();
         final PartitionStrategy partitionStrategy = partitionStrategies.get(eventTypeStrategy);
         if (partitionStrategy == null) {
-            throw new NoSuchPartitionStrategyException("Partition Strategy defined for this EventType is not found: " +
+            throw new PartitioningException("Partition Strategy defined for this EventType is not found: " +
                     eventTypeStrategy);
         }
         return partitionStrategy;
