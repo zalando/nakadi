@@ -18,8 +18,8 @@ import java.io.InputStream;
 import java.util.Collection;
 import java.util.Comparator;
 import java.util.HashMap;
-import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.TreeMap;
 import java.util.stream.Collectors;
 
@@ -33,12 +33,16 @@ public class LocalSchemaRegistry implements SchemaProviderService {
 
     private static final Comparator<String> SCHEMA_VERSION_COMPARATOR = Comparator.comparingInt(Integer::parseInt);
     // envelope must be first
-    private static final Collection<String> NAKADI_API_SCHEMA_NAMES = List.of(
+    private static final Collection<String> NAKADI_API_SCHEMA_NAMES = Set.of(
             ENVELOPE_KEY,
             BATCH_PUBLISHING_KEY,
             BATCH_CONSUMPTION_KEY);
 
     private final Map<String, TreeMap<String, Schema>> schemaVersionsByName;
+
+    public boolean isLocalSchema(final String name) {
+        return NAKADI_API_SCHEMA_NAMES.contains(name);
+    }
 
     @Autowired
     public LocalSchemaRegistry(
