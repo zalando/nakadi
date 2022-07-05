@@ -15,6 +15,7 @@ import org.zalando.nakadi.cache.EventTypeCache;
 import org.zalando.nakadi.config.NakadiSettings;
 import org.zalando.nakadi.domain.BatchItem;
 import org.zalando.nakadi.domain.BatchItemResponse;
+import org.zalando.nakadi.domain.CleanupPolicy;
 import org.zalando.nakadi.domain.EventPublishResult;
 import org.zalando.nakadi.domain.EventPublishingStatus;
 import org.zalando.nakadi.domain.EventPublishingStep;
@@ -28,10 +29,11 @@ import org.zalando.nakadi.exceptions.runtime.AccessDeniedException;
 import org.zalando.nakadi.exceptions.runtime.EnrichmentException;
 import org.zalando.nakadi.exceptions.runtime.EventPublishingException;
 import org.zalando.nakadi.exceptions.runtime.EventTypeTimeoutException;
+import org.zalando.nakadi.exceptions.runtime.InvalidPartitionKeyFieldsException;
 import org.zalando.nakadi.exceptions.runtime.PartitioningException;
 import org.zalando.nakadi.mapper.NakadiRecordMapper;
 import org.zalando.nakadi.partitioning.PartitionResolver;
-//import org.zalando.nakadi.partitioning.PartitionStrategy;
+import org.zalando.nakadi.partitioning.PartitionStrategy;
 import org.zalando.nakadi.plugin.api.authz.Resource;
 import org.zalando.nakadi.repository.TopicRepository;
 import org.zalando.nakadi.service.AuthorizationValidator;
@@ -67,12 +69,15 @@ import static org.mockito.Mockito.atLeastOnce;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
+import static org.zalando.nakadi.partitioning.PartitionStrategy.HASH_STRATEGY;
 import static org.zalando.nakadi.utils.TestUtils.buildBusinessEvent;
 import static org.zalando.nakadi.utils.TestUtils.buildDefaultEventType;
 import static org.zalando.nakadi.utils.TestUtils.createBatchItem;
+import static org.zalando.nakadi.utils.TestUtils.loadEventType;
 import static org.zalando.nakadi.utils.TestUtils.randomString;
 import static org.zalando.nakadi.utils.TestUtils.randomStringOfLength;
 import static org.zalando.nakadi.utils.TestUtils.randomValidStringOfLength;
+import static org.zalando.nakadi.utils.TestUtils.readFile;
 
 public class EventPublisherTest {
 
@@ -465,52 +470,75 @@ public class EventPublisherTest {
         verify(topicRepository, times(0)).syncPostBatch(any(), any(), any(), anyBoolean());
     }
 
-    // @Test
-    // public void whenSinglePartitioningKeyThenEventKeyIsSet() throws Exception {
-    //     final EventType eventType = EventTypeTestBuilder.builder()
-    //             .partitionStrategy(PartitionStrategy.HASH_STRATEGY)
-    //             .partitionKeyFields(ImmutableList.of("my_field"))
-    //             .build();
+    @Test
+    public void whenSinglePartitioningKeyThenEventKeyIsSet() throws Exception {
+        final EventType eventType = EventTypeTestBuilder.builder()
+                .partitionStrategy(PartitionStrategy.HASH_STRATEGY)
+                .partitionKeyFields(List.of("my_field"))
+                .build();
+        mockSuccessfulValidation(eventType);
 
-    //     Mockito
-    //             .doReturn(ImmutableList.of("my_key"))
-    //             .when(partitionResolver)
-    //             .extractEventPartitionKeys(any(), any());
+        final JSONObject event = new JSONObject("{\"my_field\": \"my_key\"}");
+        final JSONArray batch = new JSONArray(List.of(event));
 
-    //     assertThat(publisher.getEventKeys(eventType, new JSONObject()),
-    //             equalTo(ImmutableList.of("my_key")));
-    // }
+        publisher.publish(batch.toString(), eventType.getName());
 
-    // @Test
-    // public void whenMultiplePartitioningKeyThenEventKeyIsComposite() throws Exception {
-    //     final EventType eventType = EventTypeTestBuilder.builder()
-    //             .partitionStrategy(PartitionStrategy.HASH_STRATEGY)
-    //             .partitionKeyFields(ImmutableList.of("my_field", "other_field"))
-    //             .build();
+        final List<BatchItem> publishedBatch = capturePublishedBatch();
+        assertThat(publishedBatch.get(0).getEventKey(), equalTo("my_key"));
+    }
 
-    //     Mockito
-    //             .doReturn(ImmutableList.of("my_key", "other_value"))
-    //             .when(partitionResolver)
-    //             .extractEventPartitionKeys(any(), any());
+    @Test
+    public void whenMultiplePartitioningKeyThenEventKeyIsComposite() throws Exception {
+        final EventType eventType = EventTypeTestBuilder.builder()
+                .partitionStrategy(PartitionStrategy.HASH_STRATEGY)
+                .partitionKeyFields(List.of("my_field", "other_field"))
+                .build();
+        mockSuccessfulValidation(eventType);
 
-    //     assertThat(publisher.getEventKeys(eventType, new JSONObject()),
-    //             equalTo(ImmutableList.of("my_key", "other_value")));
-    // }
+        final JSONObject event = new JSONObject("{\"my_field\": \"my_key\", \"other_field\": \"other_value\"}");
+        final JSONArray batch = new JSONArray(List.of(event));
 
-    // @Test
-    // public void whenNotAHashPartitioningStrategyThenEventKeyIsNotSet() throws Exception {
-    //     final EventType eventType = EventTypeTestBuilder.builder()
-    //             .partitionStrategy(PartitionStrategy.RANDOM_STRATEGY)
-    //             .build();
-    //     final JSONArray batch = buildDefaultBatch(1);
+        publisher.publish(batch.toString(), eventType.getName());
 
-    //     mockSuccessfulValidation(eventType);
+        final List<BatchItem> publishedBatch = capturePublishedBatch();
+        assertThat(publishedBatch.get(0).getEventKey(), equalTo("my_key,other_value"));
+    }
 
-    //     publisher.publish(batch.toString(), eventType.getName());
+    @Test
+    public void whenCompactedThenUsesPartitionCompactionKey() throws Exception {
+        // TODO: this we want to change in the future, but have to enforce for now
+        final EventType eventType = EventTypeTestBuilder.builder()
+                .partitionStrategy(PartitionStrategy.HASH_STRATEGY)
+                .partitionKeyFields(List.of("my_field"))
+                .cleanupPolicy(CleanupPolicy.COMPACT)
+                .build();
+        mockSuccessfulValidation(eventType);
 
-    //     final List<BatchItem> publishedBatch = capturePublishedBatch();
-    //     assertThat(publishedBatch.get(0).getEventKeys(), equalTo(null));
-    // }
+        final JSONObject event = new JSONObject(
+                "{\"metadata\": {\"partition_compaction_key\": \"compaction_key\"}," +
+                " \"my_field\": \"my_key\"}");
+        final JSONArray batch = new JSONArray(List.of(event));
+
+        publisher.publish(batch.toString(), eventType.getName());
+
+        final List<BatchItem> publishedBatch = capturePublishedBatch();
+        assertThat(publishedBatch.get(0).getEventKey(), equalTo("compaction_key"));
+    }
+
+    @Test
+    public void whenNotAHashPartitioningStrategyThenEventKeyIsNotSet() throws Exception {
+        final EventType eventType = EventTypeTestBuilder.builder()
+                .partitionStrategy(PartitionStrategy.RANDOM_STRATEGY)
+                .build();
+        mockSuccessfulValidation(eventType);
+
+        final JSONArray batch = buildDefaultBatch(1);
+
+        publisher.publish(batch.toString(), eventType.getName());
+
+        final List<BatchItem> publishedBatch = capturePublishedBatch();
+        assertThat(publishedBatch.get(0).getEventKey(), equalTo(null));
+    }
 
     @SuppressWarnings("unchecked")
     private List<BatchItem> capturePublishedBatch() {
@@ -781,5 +809,23 @@ public class EventPublisherTest {
         }
         sb.setCharAt(sb.length() - 1, ']');
         return sb.toString();
+    }
+
+    @Test
+    public void whenValidateWithHashPartitionStrategyAndDataChangeEventLookupIntoDataField() throws Exception {
+        final EventType eventType = loadEventType(
+                "org/zalando/nakadi/domain/event-type.with.partition-key-fields.json");
+        eventType.setPartitionStrategy(HASH_STRATEGY);
+
+        final List<String> partitionKeyFields = EventPublisher.getPartitionKeyFields(eventType);
+        final JSONObject event = new JSONObject(readFile("sample-data-event.json"));
+
+        assertThat(EventPublisher.extractPartitionKeys(partitionKeyFields, event),
+                equalTo(List.of("A1", "Super Shirt")));
+    }
+
+    @Test(expected = InvalidPartitionKeyFieldsException.class)
+    public void whenPayloadIsMissingPartitionKeysThenItThrows() {
+        EventPublisher.extractPartitionKeys(List.of("body.sku"), new JSONObject());
     }
 }

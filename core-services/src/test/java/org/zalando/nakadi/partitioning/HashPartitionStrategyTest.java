@@ -1,6 +1,5 @@
 package org.zalando.nakadi.partitioning;
 
-import com.google.common.collect.ImmutableList;
 import org.apache.commons.lang3.StringUtils;
 import org.json.JSONObject;
 import org.junit.Test;
@@ -45,10 +44,6 @@ import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
-//import static org.zalando.nakadi.partitioning.PartitionStrategy.HASH_STRATEGY;
-//import static org.zalando.nakadi.utils.TestUtils.loadEventType;
-//import static org.zalando.nakadi.utils.TestUtils.readFile;
-import static org.zalando.nakadi.utils.TestUtils.resourceAsString;
 
 public class HashPartitionStrategyTest {
 
@@ -78,9 +73,9 @@ public class HashPartitionStrategyTest {
     @Test
     public void whenCorrectPartitionFieldsKeysThenOk() {
         final var metadata = Mockito.mock(NakadiMetadata.class);
-        when(metadata.getPartitionKeys()).thenReturn(ImmutableList.of("sku=123", "price=512$"));
+        when(metadata.getPartitionKeys()).thenReturn(List.of("sku=123", "price=512$"));
 
-        final var partitions = ImmutableList.of("0", "1", "2");
+        final var partitions = List.of("0", "1", "2");
 
         assertEquals("2", strategy.calculatePartition(metadata, partitions));
     }
@@ -90,7 +85,7 @@ public class HashPartitionStrategyTest {
         final var metadata = Mockito.mock(NakadiMetadata.class);
         when(metadata.getPartitionKeys()).thenReturn(Collections.emptyList());
 
-        final var partitions = ImmutableList.of("0", "1", "2");
+        final var partitions = List.of("0", "1", "2");
 
         strategy.calculatePartition(metadata, partitions);
     }
@@ -126,17 +121,7 @@ public class HashPartitionStrategyTest {
 
     @Test
     public void canHandleComplexKeys() throws Exception {
-        final JSONObject event = new JSONObject(resourceAsString("../complex-event.json", this.getClass()));
-
-        final EventType eventType = new EventType();
-        eventType.setPartitionKeyFields(asList("sku", "brand", "category_id", "details.detail_a.detail_a_a"));
-
-        //final List<String> keys = strategy.extractEventKeys(eventType, event);
-        final BatchItem item = mock(BatchItem.class);
-        when(item.getPartitionKeys()).thenReturn(List.of("a", "b", "c", "d"));
-
-        final String partition = strategy.calculatePartition(item, asList(PARTITIONS));
-        assertThat(partition, isIn(PARTITIONS));
+        assertThat(strategy.calculatePartition(List.of("a", "b", "c", "d"), asList(PARTITIONS)), isIn(PARTITIONS));
     }
 
     @Test
@@ -148,68 +133,38 @@ public class HashPartitionStrategyTest {
         final HashPartitionStrategy strategy = new HashPartitionStrategy(hashPartitioningCrutch, stringHash);
         when(stringHash.hashCode(anyString())).thenReturn(Integer.MIN_VALUE);
 
-        final BatchItem item = mock(BatchItem.class);
-        when(item.getPartitionKeys()).thenReturn(partitionKeys);
-
-        final String partition = strategy.calculatePartition(item, asList(partitions));
-        assertEquals("2", partition);
+        assertEquals("2", strategy.calculatePartition(partitionKeys, asList(partitions)));
     }
-
-    // @Test
-    // public void whenValidateWithHashPartitionStrategyAndDataChangeEventLookupIntoDataField() throws Exception {
-    //     final EventType eventType = loadEventType(
-    //             "org/zalando/nakadi/domain/event-type.with.partition-key-fields.json");
-    //     eventType.setPartitionStrategy(HASH_STRATEGY);
-
-    //     final JSONObject event = new JSONObject(readFile("sample-data-event.json"));
-    //     assertThat(strategy.extractEventKeys(eventType, event),
-    //             equalTo(ImmutableList.of("A1", "Super Shirt")));
-    // }
 
     @Test
     public void usesProvidedStringHash() {
-        final StringHash hashMock = mock(StringHash.class);
-        when(hashMock.hashCode(anyString()))
-                .thenAnswer(invocation -> 1);
+        final StringHash stringHashMock = mock(StringHash.class);
 
-        final HashPartitionStrategy mockedHashStrategy =
-                new HashPartitionStrategy(hashPartitioningCrutch, hashMock);
+        when(stringHashMock.hashCode("key1")).thenReturn(2);
+        when(stringHashMock.hashCode("key2")).thenReturn(3);
+
+        final HashPartitionStrategy mockedStringHashStrategy =
+                new HashPartitionStrategy(hashPartitioningCrutch, stringHashMock);
 
         final List<String> partitionNames = asList(PARTITIONS);
-        assertThat(
-                ImmutableList.of(ImmutableList.of("key1"),
-                                 ImmutableList.of("key2"),
-                                 ImmutableList.of("key1", "key2"))
+        final List<String> resultPartitions =
+                List.of(List.of("key1"),
+                        List.of("key2"),
+                        List.of("key1", "key2"))
                 .stream()
-                .map(keys -> {
-                            final BatchItem item = mock(BatchItem.class);
-                            when(item.getPartitionKeys()).thenReturn(keys);
-                            return mockedHashStrategy.calculatePartition(item, partitionNames);
-                        })
-                .collect(Collectors.toList()),
+                .map(keys -> mockedStringHashStrategy.calculatePartition(keys, partitionNames))
+                .collect(Collectors.toList());
 
-                equalTo(ImmutableList.of("1", "1", "2")));
+        assertThat(resultPartitions, equalTo(List.of("2", "3", "5")));
 
-        verify(hashMock, times(2)).hashCode(eq("key1"));
-        verify(hashMock, times(2)).hashCode(eq("key2"));
+        verify(stringHashMock, times(2)).hashCode(eq("key1"));
+        verify(stringHashMock, times(2)).hashCode(eq("key2"));
     }
 
-    // @Test(expected = PartitioningException.class)
-    // public void whenPartitionKeyFieldsAreMissingThenItThrows() {
-    //     final var event = new JSONObject();
-    //     final var eventType = new EventType();
-
-    //     strategy.calculatePartition(event, Collections.emptyList());
-    // }
-
-    // @Test(expected = InvalidPartitionKeyFieldsException.class)
-    // public void whenPayloadIsMissingPartitionKeysThenItThrows() {
-    //     final var event = new JSONObject();
-    //     final var eventType = new EventType();
-    //     eventType.setPartitionKeyFields(List.of("body.sku"));
-
-    //     strategy.calculatePartition(eventType, event, Collections.emptyList());
-    // }
+    @Test(expected = PartitioningException.class)
+    public void whenPartitionKeyFieldsAreMissingThenItThrows() {
+        strategy.calculatePartition(mock(BatchItem.class), Collections.emptyList());
+    }
 
     private double calculateVarianceOfUniformDistribution(final double[] samples) {
         final double xSum = stream(samples).sum();
