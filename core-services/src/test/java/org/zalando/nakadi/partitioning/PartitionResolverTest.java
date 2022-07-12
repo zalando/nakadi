@@ -67,7 +67,7 @@ public class PartitionResolverTest {
         partitionResolver.validate(eventType);
     }
 
-    @Test(expected = NoSuchPartitionStrategyException.class)
+    @Test(expected = InvalidEventTypeException.class)
     public void whenValidateWithNullPartitionStrategyNameThenExceptionThrown() throws Exception {
         final EventType eventType = buildDefaultEventType();
         eventType.setPartitionStrategy(null);

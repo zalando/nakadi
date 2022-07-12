@@ -45,8 +45,11 @@ public class PartitionResolver {
 
     public void validate(final EventTypeBase eventType) throws NoSuchPartitionStrategyException,
             InvalidEventTypeException {
-        final String partitionStrategy = eventType.getPartitionStrategy();
 
+        final String partitionStrategy = eventType.getPartitionStrategy();
+        if (null == partitionStrategy) {
+            throw new InvalidEventTypeException("partition strategy must not be null");
+        }
         if (!ALL_PARTITION_STRATEGIES.contains(partitionStrategy)) {
             throw new NoSuchPartitionStrategyException("partition strategy does not exist: " + partitionStrategy);
         } else if (HASH_STRATEGY.equals(partitionStrategy) && eventType.getPartitionKeyFields().isEmpty()) {
