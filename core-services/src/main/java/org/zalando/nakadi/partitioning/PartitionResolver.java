@@ -3,6 +3,7 @@ package org.zalando.nakadi.partitioning;
 import org.json.JSONObject;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
+import org.zalando.nakadi.domain.CleanupPolicy;
 import org.zalando.nakadi.domain.BatchItem;
 import org.zalando.nakadi.domain.EventCategory;
 import org.zalando.nakadi.domain.EventType;
@@ -61,6 +62,31 @@ public class PartitionResolver {
         }
     }
 
+    public String resolvePartition(final EventType eventType, final BatchItem item,
+            final List<String> orderedPartitions)
+            throws PartitioningException {
+
+        return getPartitionStrategy(eventType).calculatePartition(item, orderedPartitions);
+    }
+
+    public String resolvePartition(final EventType eventType, final NakadiMetadata recordMetadata,
+            final List<String> orderedPartitions)
+            throws PartitioningException {
+
+        return getPartitionStrategy(eventType).calculatePartition(recordMetadata, orderedPartitions);
+    }
+
+    private PartitionStrategy getPartitionStrategy(final EventType eventType) throws PartitioningException {
+
+        final String eventTypeStrategy = eventType.getPartitionStrategy();
+        final PartitionStrategy partitionStrategy = partitionStrategies.get(eventTypeStrategy);
+        if (partitionStrategy == null) {
+            throw new PartitioningException("Partition Strategy defined for this EventType is not found: " +
+                    eventTypeStrategy);
+        }
+        return partitionStrategy;
+    }
+
     public static List<String> getKeyFieldsForExtraction(final EventType eventType) {
 
         final List<String> partitionKeyFields = eventType.getPartitionKeyFields();
@@ -91,28 +117,44 @@ public class PartitionResolver {
                 .collect(Collectors.toList());
     }
 
-    public String resolvePartition(final EventType eventType, final BatchItem item,
-            final List<String> orderedPartitions)
-            throws PartitioningException {
+    public static String getEventKey(final EventType eventType, final BatchItem item) {
 
-        return getPartitionStrategy(eventType).calculatePartition(item, orderedPartitions);
-    }
-
-    public String resolvePartition(final EventType eventType, final NakadiMetadata recordMetadata,
-            final List<String> orderedPartitions)
-            throws PartitioningException {
-
-        return getPartitionStrategy(eventType).calculatePartition(recordMetadata, orderedPartitions);
-    }
-
-    private PartitionStrategy getPartitionStrategy(final EventType eventType) throws PartitioningException {
-
-        final String eventTypeStrategy = eventType.getPartitionStrategy();
-        final PartitionStrategy partitionStrategy = partitionStrategies.get(eventTypeStrategy);
-        if (partitionStrategy == null) {
-            throw new PartitioningException("Partition Strategy defined for this EventType is not found: " +
-                    eventTypeStrategy);
+        if (isCompactedEventType(eventType)) {
+            return item.getEvent()
+                    .getJSONObject("metadata")
+                    .getString("partition_compaction_key");
+        } else {
+            final List<String> partitionKeys = item.getPartitionKeys();
+            if (partitionKeys != null) {
+                return getEventKeyFromPartitionKeys(partitionKeys);
+            }
         }
-        return partitionStrategy;
+
+        // that's fine, not all events get a key assigned to them
+        return null;
+    }
+
+    public static String getEventKey(final EventType eventType, final NakadiMetadata metadata) {
+
+        if (isCompactedEventType(eventType)) {
+            return metadata.getPartitionCompactionKey();
+        } else {
+            final List<String> partitionKeys = metadata.getPartitionKeys();
+            if (partitionKeys != null) {
+                return getEventKeyFromPartitionKeys(partitionKeys);
+            }
+        }
+
+        // that's fine, not all events get a key assigned to them
+        return null;
+    }
+
+    private static boolean isCompactedEventType(final EventType eventType) {
+        return eventType.getCleanupPolicy() == CleanupPolicy.COMPACT ||
+                eventType.getCleanupPolicy() == CleanupPolicy.COMPACT_AND_DELETE;
+    }
+
+    private static String getEventKeyFromPartitionKeys(final List<String> partitionKeys) {
+        return String.join(",", partitionKeys);
     }
 }

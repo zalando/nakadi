@@ -8,7 +8,6 @@ import org.zalando.nakadi.domain.NakadiRecord;
 import org.zalando.nakadi.domain.NakadiRecordResult;
 import org.zalando.nakadi.exceptions.runtime.PartitioningException;
 import org.zalando.nakadi.partitioning.PartitionResolver;
-//import org.zalando.nakadi.partitioning.PartitionStrategy;
 
 import java.util.Collections;
 import java.util.List;
@@ -27,7 +26,6 @@ public class PartitioningCheck extends Check {
     @Override
     public List<NakadiRecordResult> execute(final EventType eventType, final List<NakadiRecord> records) {
 
-        //final PartitionStrategy partitionStrategy = partitionResolver.getPartitionStrategy(eventType);
         final List<String> orderedPartitions = eventTypeCache.getOrderedPartitions(eventType.getName());
 
         for (final NakadiRecord record : records) {

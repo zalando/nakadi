@@ -229,30 +229,11 @@ public class EventPublisher {
 
     private static void assignKey(final List<BatchItem> batch, final EventType eventType) {
         for (final BatchItem item : batch) {
-            final String key = getEventKey(eventType, item);
+            final String key = PartitionResolver.getEventKey(eventType, item);
             if (key != null) {
                 item.setEventKey(key);
             }
         }
-    }
-
-    static String getEventKey(final EventType eventType, final BatchItem item) {
-
-        if (eventType.getCleanupPolicy() == CleanupPolicy.COMPACT ||
-                eventType.getCleanupPolicy() == CleanupPolicy.COMPACT_AND_DELETE) {
-
-            return item.getEvent()
-                    .getJSONObject("metadata")
-                    .getString("partition_compaction_key");
-        } else {
-            final List<String> partitionKeys = item.getPartitionKeys();
-            if (partitionKeys != null) {
-                return String.join(",", partitionKeys);
-            }
-        }
-
-        // that's fine, not all events get a key assigned to them
-        return null;
     }
 
     private void validateEventOwnership(final EventType eventType, final List<BatchItem> batchItems) {
