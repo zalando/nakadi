@@ -6,6 +6,7 @@ import org.junit.Test;
 import org.zalando.nakadi.domain.BatchItem;
 import org.zalando.nakadi.domain.EventType;
 import org.zalando.nakadi.exceptions.runtime.InvalidEventTypeException;
+import org.zalando.nakadi.exceptions.runtime.InvalidPartitionKeyFieldsException;
 import org.zalando.nakadi.exceptions.runtime.NoSuchPartitionStrategyException;
 import org.zalando.nakadi.exceptions.runtime.PartitioningException;
 
@@ -13,6 +14,7 @@ import java.util.List;
 
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.notNullValue;
+import static org.hamcrest.core.IsEqual.equalTo;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 import static org.zalando.nakadi.domain.EventCategory.UNDEFINED;
@@ -20,6 +22,8 @@ import static org.zalando.nakadi.partitioning.PartitionStrategy.HASH_STRATEGY;
 import static org.zalando.nakadi.partitioning.PartitionStrategy.RANDOM_STRATEGY;
 import static org.zalando.nakadi.partitioning.PartitionStrategy.USER_DEFINED_STRATEGY;
 import static org.zalando.nakadi.utils.TestUtils.buildDefaultEventType;
+import static org.zalando.nakadi.utils.TestUtils.loadEventType;
+import static org.zalando.nakadi.utils.TestUtils.readFile;
 
 public class PartitionResolverTest {
 
@@ -94,5 +98,23 @@ public class PartitionResolverTest {
         eventType.setPartitionStrategy(RANDOM_STRATEGY);
 
         partitionResolver.validate(eventType);
+    }
+
+    @Test
+    public void whenValidateWithHashPartitionStrategyAndDataChangeEventLookupIntoDataField() throws Exception {
+        final EventType eventType = loadEventType(
+                "org/zalando/nakadi/domain/event-type.with.partition-key-fields.json");
+        eventType.setPartitionStrategy(HASH_STRATEGY);
+
+        final List<String> partitionKeyFields = PartitionResolver.getKeyFieldsForExtraction(eventType);
+        final JSONObject event = new JSONObject(readFile("sample-data-event.json"));
+
+        assertThat(PartitionResolver.extractPartitionKeys(partitionKeyFields, event),
+                equalTo(List.of("A1", "Super Shirt")));
+    }
+
+    @Test(expected = InvalidPartitionKeyFieldsException.class)
+    public void whenPayloadIsMissingPartitionKeysThenItThrows() {
+        PartitionResolver.extractPartitionKeys(List.of("body.sku"), new JSONObject());
     }
 }

@@ -23,15 +23,12 @@ import org.zalando.nakadi.domain.EventPublishingStep;
 import org.zalando.nakadi.domain.EventType;
 import org.zalando.nakadi.domain.Timeline;
 import org.zalando.nakadi.enrichment.Enrichment;
-import org.zalando.nakadi.exceptions.Try;
 import org.zalando.nakadi.exceptions.runtime.AccessDeniedException;
 import org.zalando.nakadi.exceptions.runtime.EnrichmentException;
 import org.zalando.nakadi.exceptions.runtime.EventPublishingException;
 import org.zalando.nakadi.exceptions.runtime.EventTypeTimeoutException;
 import org.zalando.nakadi.exceptions.runtime.EventValidationException;
 import org.zalando.nakadi.exceptions.runtime.InternalNakadiException;
-import org.zalando.nakadi.exceptions.runtime.InvalidPartitionKeyFieldsException;
-import org.zalando.nakadi.exceptions.runtime.JsonPathAccessException;
 import org.zalando.nakadi.exceptions.runtime.NoSuchEventTypeException;
 import org.zalando.nakadi.exceptions.runtime.PartitioningException;
 import org.zalando.nakadi.exceptions.runtime.PublishEventOwnershipException;
@@ -42,7 +39,6 @@ import org.zalando.nakadi.service.AuthorizationValidator;
 import org.zalando.nakadi.service.TracingService;
 import org.zalando.nakadi.service.timeline.TimelineService;
 import org.zalando.nakadi.service.timeline.TimelineSync;
-import org.zalando.nakadi.util.JsonPathAccess;
 import org.zalando.nakadi.validation.JsonSchemaValidator;
 import org.zalando.nakadi.validation.ValidationError;
 
@@ -130,6 +126,9 @@ public class EventPublisher {
             }
             validateEventOwnership(eventType, batch);
             validate(batch, eventType, delete);
+            if (PartitionStrategy.HASH_STRATEGY.equals(eventType.getPartitionStrategy())) {
+                setPartitionKeys(batch, eventType);
+            }
             partition(batch, eventType);
             assignKey(batch, eventType);
             if (!delete) {
@@ -195,29 +194,16 @@ public class EventPublisher {
                 .collect(Collectors.toList());
     }
 
-    private void partition(final List<BatchItem> batch, final EventType eventType)
-            throws PartitioningException {
+    private void setPartitionKeys(final List<BatchItem> batch, final EventType eventType) throws PartitioningException {
 
-        //final PartitionStrategy partitionStrategy = partitionResolver.getPartitionStrategy(eventType);
-
-        final Optional<List<String>> partitionKeyFields =
-                PartitionStrategy.HASH_STRATEGY.equals(eventType.getPartitionStrategy())
-                ? Optional.of(getPartitionKeyFields(eventType))
-                : Optional.empty();
-
-        final List<String> orderedPartitions = eventTypeCache.getOrderedPartitions(eventType.getName());
+        final List<String> partitionKeyFields = PartitionResolver.getKeyFieldsForExtraction(eventType);
 
         for (final BatchItem item : batch) {
             item.setStep(EventPublishingStep.PARTITIONING);
             try {
-                partitionKeyFields.ifPresent(pkfs -> {
-                            final List<String> partitionKeys = extractPartitionKeys(pkfs, item.getEvent());
-                            item.setPartitionKeys(partitionKeys);
-                        });
-
-                final String partition = partitionResolver.resolvePartition(eventType, item, orderedPartitions);
-                item.setPartition(partition);
-
+                final List<String> partitionKeys =
+                        PartitionResolver.extractPartitionKeys(partitionKeyFields, item.getEvent());
+                item.setPartitionKeys(partitionKeys);
             } catch (final PartitioningException e) {
                 item.updateStatusAndDetail(EventPublishingStatus.FAILED, e.getMessage());
                 throw e;
@@ -225,37 +211,20 @@ public class EventPublisher {
         }
     }
 
-    static List<String> getPartitionKeyFields(final EventType eventType) {
+    private void partition(final List<BatchItem> batch, final EventType eventType) throws PartitioningException {
 
-        final List<String> partitionKeyFields = eventType.getPartitionKeyFields();
-        if (partitionKeyFields == null || partitionKeyFields.isEmpty()) {
-            throw new PartitioningException("Cannot extract partition keys: partition key fields not set!");
+        final List<String> orderedPartitions = eventTypeCache.getOrderedPartitions(eventType.getName());
+
+        for (final BatchItem item : batch) {
+            item.setStep(EventPublishingStep.PARTITIONING);
+            try {
+                final String partition = partitionResolver.resolvePartition(eventType, item, orderedPartitions);
+                item.setPartition(partition);
+            } catch (final PartitioningException e) {
+                item.updateStatusAndDetail(EventPublishingStatus.FAILED, e.getMessage());
+                throw e;
+            }
         }
-
-        return partitionKeyFields.stream()
-                .map(pkf -> EventCategory.DATA.equals(eventType.getCategory())
-                        ? EventType.DATA_PATH_PREFIX + pkf
-                        : pkf)
-                .collect(Collectors.toList());
-    }
-
-    static List<String> extractPartitionKeys(final List<String> partitionKeyFields, final JSONObject jsonEvent)
-            throws PartitioningException {
-
-        final JsonPathAccess traversableJsonEvent = new JsonPathAccess(jsonEvent);
-        final var partitionKeys = partitionKeyFields
-                .stream()
-                .map(Try.wrap(pkf -> {
-                                    try {
-                                        return traversableJsonEvent.get(pkf).toString();
-                                    } catch (final JsonPathAccessException e) {
-                                        throw new InvalidPartitionKeyFieldsException(e.getMessage());
-                                    }
-                                }))
-                .map(Try::getOrThrow)
-                .collect(Collectors.toList());
-
-        return partitionKeys;
     }
 
     private static void assignKey(final List<BatchItem> batch, final EventType eventType) {

@@ -1,20 +1,25 @@
 package org.zalando.nakadi.partitioning;
 
-import com.google.common.collect.ImmutableList;
-import com.google.common.collect.ImmutableMap;
+import org.json.JSONObject;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 import org.zalando.nakadi.domain.BatchItem;
+import org.zalando.nakadi.domain.EventCategory;
 import org.zalando.nakadi.domain.EventType;
 import org.zalando.nakadi.domain.EventTypeBase;
 import org.zalando.nakadi.domain.NakadiMetadata;
+import org.zalando.nakadi.exceptions.Try;
 import org.zalando.nakadi.exceptions.runtime.InvalidEventTypeException;
+import org.zalando.nakadi.exceptions.runtime.InvalidPartitionKeyFieldsException;
+import org.zalando.nakadi.exceptions.runtime.JsonPathAccessException;
 import org.zalando.nakadi.exceptions.runtime.NoSuchPartitionStrategyException;
 import org.zalando.nakadi.exceptions.runtime.PartitioningException;
+import org.zalando.nakadi.util.JsonPathAccess;
 
 import java.util.List;
 import java.util.Map;
 import java.util.Random;
+import java.util.stream.Collectors;
 
 import static org.zalando.nakadi.domain.EventCategory.UNDEFINED;
 import static org.zalando.nakadi.partitioning.PartitionStrategy.HASH_STRATEGY;
@@ -24,14 +29,14 @@ import static org.zalando.nakadi.partitioning.PartitionStrategy.USER_DEFINED_STR
 @Component
 public class PartitionResolver {
 
-    public static final List<String> ALL_PARTITION_STRATEGIES = ImmutableList.of(
+    public static final List<String> ALL_PARTITION_STRATEGIES = List.of(
             HASH_STRATEGY, USER_DEFINED_STRATEGY, RANDOM_STRATEGY);
 
     private final Map<String, PartitionStrategy> partitionStrategies;
 
     @Autowired
     public PartitionResolver(final HashPartitionStrategy hashPartitionStrategy) {
-        partitionStrategies = ImmutableMap.of(
+        partitionStrategies = Map.of(
                 HASH_STRATEGY, hashPartitionStrategy,
                 USER_DEFINED_STRATEGY, new UserDefinedPartitionStrategy(),
                 RANDOM_STRATEGY, new RandomPartitionStrategy(new Random())
@@ -51,6 +56,36 @@ public class PartitionResolver {
             throw new InvalidEventTypeException("'user_defined' partition strategy can't be used " +
                     "for EventType of category 'undefined'");
         }
+    }
+
+    public static List<String> getKeyFieldsForExtraction(final EventType eventType) {
+
+        final List<String> partitionKeyFields = eventType.getPartitionKeyFields();
+        if (partitionKeyFields == null || partitionKeyFields.isEmpty()) {
+            throw new PartitioningException("Cannot extract partition keys: partition key fields not set!");
+        }
+
+        return partitionKeyFields.stream()
+                .map(pkf -> EventCategory.DATA.equals(eventType.getCategory())
+                        ? EventType.DATA_PATH_PREFIX + pkf
+                        : pkf)
+                .collect(Collectors.toList());
+    }
+
+    public static List<String> extractPartitionKeys(final List<String> partitionKeyFields, final JSONObject jsonEvent)
+            throws PartitioningException {
+
+        final JsonPathAccess traversableJsonEvent = new JsonPathAccess(jsonEvent);
+        return partitionKeyFields.stream()
+                .map(Try.wrap(pkf -> {
+                                    try {
+                                        return traversableJsonEvent.get(pkf).toString();
+                                    } catch (final JsonPathAccessException e) {
+                                        throw new InvalidPartitionKeyFieldsException(e.getMessage());
+                                    }
+                                }))
+                .map(Try::getOrThrow)
+                .collect(Collectors.toList());
     }
 
     public String resolvePartition(final EventType eventType, final BatchItem item,

@@ -28,7 +28,6 @@ import org.zalando.nakadi.exceptions.runtime.AccessDeniedException;
 import org.zalando.nakadi.exceptions.runtime.EnrichmentException;
 import org.zalando.nakadi.exceptions.runtime.EventPublishingException;
 import org.zalando.nakadi.exceptions.runtime.EventTypeTimeoutException;
-import org.zalando.nakadi.exceptions.runtime.InvalidPartitionKeyFieldsException;
 import org.zalando.nakadi.exceptions.runtime.PartitioningException;
 import org.zalando.nakadi.kpi.event.NakadiAccessLog;
 import org.zalando.nakadi.mapper.NakadiRecordMapper;
@@ -69,15 +68,12 @@ import static org.mockito.Mockito.atLeastOnce;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
-import static org.zalando.nakadi.partitioning.PartitionStrategy.HASH_STRATEGY;
 import static org.zalando.nakadi.utils.TestUtils.buildBusinessEvent;
 import static org.zalando.nakadi.utils.TestUtils.buildDefaultEventType;
 import static org.zalando.nakadi.utils.TestUtils.createBatchItem;
-import static org.zalando.nakadi.utils.TestUtils.loadEventType;
 import static org.zalando.nakadi.utils.TestUtils.randomString;
 import static org.zalando.nakadi.utils.TestUtils.randomStringOfLength;
 import static org.zalando.nakadi.utils.TestUtils.randomValidStringOfLength;
-import static org.zalando.nakadi.utils.TestUtils.readFile;
 
 public class EventPublisherTest {
 
@@ -814,23 +810,5 @@ public class EventPublisherTest {
         }
         sb.setCharAt(sb.length() - 1, ']');
         return sb.toString();
-    }
-
-    @Test
-    public void whenValidateWithHashPartitionStrategyAndDataChangeEventLookupIntoDataField() throws Exception {
-        final EventType eventType = loadEventType(
-                "org/zalando/nakadi/domain/event-type.with.partition-key-fields.json");
-        eventType.setPartitionStrategy(HASH_STRATEGY);
-
-        final List<String> partitionKeyFields = EventPublisher.getPartitionKeyFields(eventType);
-        final JSONObject event = new JSONObject(readFile("sample-data-event.json"));
-
-        assertThat(EventPublisher.extractPartitionKeys(partitionKeyFields, event),
-                equalTo(List.of("A1", "Super Shirt")));
-    }
-
-    @Test(expected = InvalidPartitionKeyFieldsException.class)
-    public void whenPayloadIsMissingPartitionKeysThenItThrows() {
-        EventPublisher.extractPartitionKeys(List.of("body.sku"), new JSONObject());
     }
 }
