@@ -63,7 +63,6 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
 import static org.springframework.test.web.servlet.setup.MockMvcBuilders.standaloneSetup;
 import static org.zalando.nakadi.domain.Feature.DISABLE_EVENT_TYPE_DELETION;
-import static org.zalando.nakadi.util.PrincipalMockFactory.mockPrincipal;
 
 public class EventTypeControllerTestCase {
 
@@ -150,10 +149,6 @@ public class EventTypeControllerTestCase {
         return mockMvc.perform(delete("/event-types/" + eventTypeName));
     }
 
-    protected ResultActions deleteEventType(final String eventTypeName, final String clientId) throws Exception {
-        return mockMvc.perform(delete("/event-types/" + eventTypeName).principal(mockPrincipal(clientId)));
-    }
-
     protected ResultActions postEventType(final EventType eventType) throws Exception {
         final String content = TestUtils.OBJECT_MAPPER.writeValueAsString(eventType);
 
@@ -167,13 +162,6 @@ public class EventTypeControllerTestCase {
         return mockMvc.perform(requestBuilder);
     }
 
-    protected ResultActions putEventType(final EventType eventType, final String name, final String clientId)
-            throws Exception {
-        final String content = TestUtils.OBJECT_MAPPER.writeValueAsString(eventType);
-
-        return putEventType(content, name, clientId);
-    }
-
     protected ResultActions putEventType(final EventType eventType, final String name) throws Exception {
         final String content = TestUtils.OBJECT_MAPPER.writeValueAsString(eventType);
 
@@ -181,15 +169,7 @@ public class EventTypeControllerTestCase {
     }
 
     protected ResultActions putEventType(final String content, final String name) throws Exception {
-        final MockHttpServletRequestBuilder requestBuilder = put("/event-types/" + name).contentType(APPLICATION_JSON)
-                .content(content);
-        return mockMvc.perform(requestBuilder);
-    }
-
-    protected ResultActions putEventType(final String content, final String name, final String clientId)
-            throws Exception {
         final MockHttpServletRequestBuilder requestBuilder = put("/event-types/" + name)
-                .principal(mockPrincipal(clientId))
                 .contentType(APPLICATION_JSON)
                 .content(content);
         return mockMvc.perform(requestBuilder);

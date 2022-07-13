@@ -18,7 +18,6 @@ import org.zalando.nakadi.plugin.api.authz.AuthorizationService;
 import org.zalando.nakadi.security.ClientResolver;
 import org.zalando.nakadi.service.publishing.NakadiAuditLogPublisher;
 import org.zalando.nakadi.service.timeline.TimelineService;
-import org.zalando.nakadi.util.PrincipalMockFactory;
 import org.zalando.nakadi.utils.TestUtils;
 import org.zalando.nakadi.view.TimelineView;
 
@@ -57,8 +56,7 @@ public class TimelinesControllerTest {
                 .thenReturn(Mockito.mock(Timeline.class));
         mockMvc.perform(MockMvcRequestBuilders.post("/event-types/event_type/timelines")
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content(new JSONObject().put("storage_id", "default").toString())
-                        .principal(PrincipalMockFactory.mockPrincipal("org/zalando/nakadi")))
+                        .content(new JSONObject().put("storage_id", "default").toString()))
                 .andExpect(MockMvcResultMatchers.status().isCreated());
     }
 
@@ -72,8 +70,7 @@ public class TimelinesControllerTest {
         final List<TimelineView> timelineViews = timelines.stream().map(TimelineView::new).collect(Collectors.toList());
 
         mockMvc.perform(MockMvcRequestBuilders.get("/event-types/event_type/timelines")
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .principal(PrincipalMockFactory.mockPrincipal("org/zalando/nakadi")))
+                        .contentType(MediaType.APPLICATION_JSON))
                 .andExpect(MockMvcResultMatchers.status().isOk())
                 .andExpect(MockMvcResultMatchers.content().json(
                         TestUtils.OBJECT_MAPPER.writeValueAsString(timelineViews)));

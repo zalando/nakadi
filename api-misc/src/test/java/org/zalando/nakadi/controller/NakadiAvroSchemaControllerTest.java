@@ -25,7 +25,6 @@ import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 import static org.springframework.test.web.servlet.setup.MockMvcBuilders.standaloneSetup;
-import static org.zalando.nakadi.util.PrincipalMockFactory.mockPrincipal;
 import static org.zalando.nakadi.utils.TestUtils.JACKSON_2_HTTP_MESSAGE_CONVERTER;
 
 public class NakadiAvroSchemaControllerTest {
@@ -55,8 +54,7 @@ public class NakadiAvroSchemaControllerTest {
         final var schemaName = LocalSchemaRegistry.BATCH_PUBLISHING_KEY;
         final var schemaVersion = "1";
         final var result = mockMvc.perform(
-                        get("/avro-schemas/" + schemaName + "/versions/" + schemaVersion)
-                                .principal(mockPrincipal("org/zalando/nakadi")))
+                        get("/avro-schemas/" + schemaName + "/versions/" + schemaVersion))
                 .andExpect(status().isOk())
                 .andReturn();
         final var response = result.getResponse().getContentAsString();
@@ -73,10 +71,8 @@ public class NakadiAvroSchemaControllerTest {
     @Test
     public void testGetSchemas() throws Exception {
         final var schemaName = LocalSchemaRegistry.BATCH_PUBLISHING_KEY;
-        final var schemaVersion = "1";
         final var result = mockMvc.perform(
-                        get("/avro-schemas/" + schemaName + "/versions")
-                                .principal(mockPrincipal("org/zalando/nakadi")))
+                        get("/avro-schemas/" + schemaName + "/versions"))
                 .andExpect(status().isOk())
                 .andReturn();
         final var response = result.getResponse().getContentAsString();

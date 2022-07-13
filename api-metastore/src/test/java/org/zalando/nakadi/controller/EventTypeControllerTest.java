@@ -505,7 +505,7 @@ public class EventTypeControllerTest extends EventTypeControllerTestCase {
 
         doReturn(SecuritySettings.AuthMode.BASIC).when(settings).getAuthMode();
 
-        putEventType(eventType, eventType.getName(), "org/zalando/nakadi")
+        putEventType(eventType, eventType.getName())
                 .andExpect(status().isOk());
     }
 
@@ -535,7 +535,7 @@ public class EventTypeControllerTest extends EventTypeControllerTestCase {
         postEventType(eventType);
         disableETDeletionFeature();
 
-        deleteEventType(eventType.getName(), "somebody").andExpect(status().isForbidden());
+        deleteEventType(eventType.getName()).andExpect(status().isForbidden());
     }
 
     @Test
@@ -548,7 +548,7 @@ public class EventTypeControllerTest extends EventTypeControllerTestCase {
         postEventType(eventType);
         disableETDeletionFeature();
 
-        deleteEventType(eventType.getName(), "org/zalando/nakadi")
+        deleteEventType(eventType.getName())
                 .andExpect(status().isOk()).andExpect(content().string(""));
     }
 
@@ -810,7 +810,7 @@ public class EventTypeControllerTest extends EventTypeControllerTestCase {
         final Problem expectedProblem = Problem.valueOf(SERVICE_UNAVAILABLE,
                 "Event type is currently in maintenance, please repeat request");
 
-        putEventType(eventType, eventType.getName(), "org/zalando/nakadi")
+        putEventType(eventType, eventType.getName())
                 .andExpect(status().isServiceUnavailable())
                 .andExpect(content().string(matchesProblem(expectedProblem)));
     }
@@ -845,7 +845,7 @@ public class EventTypeControllerTest extends EventTypeControllerTestCase {
         eventTypeOptions2.setRetentionTime(172800001L);
         eventType2.setOptions(eventTypeOptions2);
 
-        putEventType(eventType2, eventType2.getName(), "org/zalando/nakadi")
+        putEventType(eventType2, eventType2.getName())
                 .andExpect(status().isInternalServerError());
         verify(topicRepository, times(2)).updateTopicConfig(anyString(), anyLong(), any());
         verify(eventTypeRepository, times(0)).update(any());
@@ -868,7 +868,7 @@ public class EventTypeControllerTest extends EventTypeControllerTestCase {
         eventTypeOptions2.setRetentionTime(172800001L);
         eventType2.setOptions(eventTypeOptions2);
 
-        putEventType(eventType2, eventType2.getName(), "org/zalando/nakadi")
+        putEventType(eventType2, eventType2.getName())
                 .andExpect(status().isInternalServerError());
         verify(topicRepository, times(2)).updateTopicConfig(anyString(), anyLong(), any());
         verify(eventTypeRepository).update(any());
