@@ -33,8 +33,8 @@ import org.zalando.nakadi.exceptions.runtime.NoSuchEventTypeException;
 import org.zalando.nakadi.exceptions.runtime.PartitioningException;
 import org.zalando.nakadi.exceptions.runtime.PublishEventOwnershipException;
 import org.zalando.nakadi.exceptions.runtime.ServiceTemporarilyUnavailableException;
+import org.zalando.nakadi.partitioning.EventKeyExtractor;
 import org.zalando.nakadi.partitioning.PartitionResolver;
-import org.zalando.nakadi.partitioning.PartitionStrategy;
 import org.zalando.nakadi.service.AuthorizationValidator;
 import org.zalando.nakadi.service.TracingService;
 import org.zalando.nakadi.service.timeline.TimelineService;
@@ -47,6 +47,7 @@ import java.io.IOException;
 import java.util.List;
 import java.util.Optional;
 import java.util.concurrent.TimeoutException;
+import java.util.function.Function;
 import java.util.stream.Collectors;
 
 @Component
@@ -126,9 +127,6 @@ public class EventPublisher {
             }
             validateEventOwnership(eventType, batch);
             validate(batch, eventType, delete);
-            if (PartitionStrategy.HASH_STRATEGY.equals(eventType.getPartitionStrategy())) {
-                setPartitionKeys(batch, eventType);
-            }
             partition(batch, eventType);
             assignKey(batch, eventType);
             if (!delete) {
@@ -194,32 +192,17 @@ public class EventPublisher {
                 .collect(Collectors.toList());
     }
 
-    private void setPartitionKeys(final List<BatchItem> batch, final EventType eventType) throws PartitioningException {
-
-        final List<String> partitionKeyFields = PartitionResolver.getKeyFieldsForExtraction(eventType);
-
-        for (final BatchItem item : batch) {
-            item.setStep(EventPublishingStep.PARTITIONING);
-            try {
-                final List<String> partitionKeys =
-                        PartitionResolver.extractPartitionKeys(partitionKeyFields, item.getEvent());
-                item.setPartitionKeys(partitionKeys);
-            } catch (final PartitioningException e) {
-                item.updateStatusAndDetail(EventPublishingStatus.FAILED, e.getMessage());
-                throw e;
-            }
-        }
-    }
-
     private void partition(final List<BatchItem> batch, final EventType eventType) throws PartitioningException {
+
+        final Function<BatchItem, List<String>> keyExtractor = EventKeyExtractor.partitionKeysFromBatchItem(eventType);
 
         final List<String> orderedPartitions = eventTypeCache.getOrderedPartitions(eventType.getName());
 
         for (final BatchItem item : batch) {
             item.setStep(EventPublishingStep.PARTITIONING);
             try {
-                final String partition = partitionResolver.resolvePartition(eventType, item, orderedPartitions);
-                item.setPartition(partition);
+                item.setPartitionKeys(keyExtractor.apply(item));
+                item.setPartition(partitionResolver.resolvePartition(eventType, item, orderedPartitions));
             } catch (final PartitioningException e) {
                 item.updateStatusAndDetail(EventPublishingStatus.FAILED, e.getMessage());
                 throw e;
@@ -228,11 +211,9 @@ public class EventPublisher {
     }
 
     private static void assignKey(final List<BatchItem> batch, final EventType eventType) {
-        for (final BatchItem item : batch) {
-            final String key = PartitionResolver.getEventKey(eventType, item);
-            if (key != null) {
-                item.setEventKey(key);
-            }
+        final Function<BatchItem, String> kafkaKeyExtractor = EventKeyExtractor.kafkaKeyFromBatchItem(eventType);
+        for (final BatchItem v : batch) {
+            v.setEventKey(kafkaKeyExtractor.apply(v));
         }
     }
 

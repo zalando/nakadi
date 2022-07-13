@@ -3,6 +3,7 @@ package org.zalando.nakadi.partitioning;
 import org.zalando.nakadi.domain.BatchItem;
 import org.zalando.nakadi.domain.NakadiMetadata;
 import org.zalando.nakadi.exceptions.runtime.PartitioningException;
+
 import java.util.List;
 
 public interface PartitionStrategy {
