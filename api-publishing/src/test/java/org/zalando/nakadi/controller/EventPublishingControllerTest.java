@@ -43,7 +43,6 @@ import org.zalando.nakadi.utils.TestUtils;
 
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Optional;
 import java.util.function.Supplier;
 
 import static org.hamcrest.CoreMatchers.equalTo;
@@ -90,7 +89,6 @@ public class EventPublishingControllerTest {
         kpiPublisher = Mockito.mock(NakadiKpiPublisher.class);
         settings = Mockito.mock(SecuritySettings.class);
         authorizationService = Mockito.mock(AuthorizationService.class);
-        Mockito.when(authorizationService.getSubject()).thenReturn(Optional.of(() -> "adminClientId"));
         Mockito.when(settings.getAuthMode()).thenReturn(OFF);
 
         blacklistService = Mockito.mock(BlacklistService.class);
@@ -220,7 +218,7 @@ public class EventPublishingControllerTest {
         Mockito.verify(kpiPublisher, Mockito.times(1)).publish(kpiEventCaptor.capture());
         final NakadiBatchPublished batchPublishedEvent = (NakadiBatchPublished) kpiEventCaptor.getValue().get();
         Assert.assertEquals("my-topic", batchPublishedEvent.getEventType());
-        Assert.assertEquals("adminClientId", batchPublishedEvent.getApp());
+        Assert.assertEquals("unauthenticated", batchPublishedEvent.getApp());
         Assert.assertEquals("", batchPublishedEvent.getTokenRealm());
         Assert.assertEquals(3, batchPublishedEvent.getNumberOfEvents());
         Assert.assertEquals(33, batchPublishedEvent.getBatchSize());

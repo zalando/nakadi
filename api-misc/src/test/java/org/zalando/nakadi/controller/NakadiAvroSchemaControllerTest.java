@@ -20,7 +20,6 @@ import java.util.Optional;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
-import static org.mockito.Mockito.doReturn;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
@@ -41,7 +40,6 @@ public class NakadiAvroSchemaControllerTest {
         final LocalSchemaRegistry localSchemaRegistry = TestUtils.getLocalSchemaRegistry();
         final NakadiAvroSchemaController controller = new NakadiAvroSchemaController(
                 localSchemaRegistry, new ObjectMapper());
-        doReturn("org/zalando/nakadi").when(securitySettings).getAdminClientId();
         when(authorizationService.getSubject()).thenReturn(Optional.empty());
 
         this.mockMvc = standaloneSetup(controller)

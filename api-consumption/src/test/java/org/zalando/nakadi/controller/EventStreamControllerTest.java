@@ -165,7 +165,6 @@ public class EventStreamControllerTest {
 
         settings = mock(SecuritySettings.class);
         when(settings.getAuthMode()).thenReturn(OFF);
-        when(settings.getAdminClientId()).thenReturn("org/zalando/nakadi");
 
         mockMvc = standaloneSetup(controller)
                 .setMessageConverters(new StringHttpMessageConverter(), JACKSON_2_HTTP_MESSAGE_CONVERTER)

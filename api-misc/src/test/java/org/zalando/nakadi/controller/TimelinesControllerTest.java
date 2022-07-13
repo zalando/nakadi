@@ -42,7 +42,6 @@ public class TimelinesControllerTest {
     public TimelinesControllerTest() {
         final TimelinesController controller = new TimelinesController(timelineService, auditLogPublisher);
         when(securitySettings.getAuthMode()).thenReturn(OFF);
-        when(securitySettings.getAdminClientId()).thenReturn("org/zalando/nakadi");
         when(authorizationService.getSubject()).thenReturn(Optional.empty());
         mockMvc = MockMvcBuilders.standaloneSetup(controller)
                 .setMessageConverters(new StringHttpMessageConverter(), TestUtils.JACKSON_2_HTTP_MESSAGE_CONVERTER)

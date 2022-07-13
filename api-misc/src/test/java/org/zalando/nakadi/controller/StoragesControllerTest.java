@@ -22,7 +22,6 @@ import java.util.Optional;
 
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.doNothing;
-import static org.mockito.Mockito.doReturn;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 import static org.springframework.http.MediaType.APPLICATION_JSON;
@@ -48,7 +47,6 @@ public class StoragesControllerTest {
     public void before() {
         final StoragesController controller = new StoragesController(storageService, adminService);
 
-        doReturn("org/zalando/nakadi").when(securitySettings).getAdminClientId();
         when(authorizationService.getSubject()).thenReturn(Optional.empty());
         mockMvc = standaloneSetup(controller)
                 .setMessageConverters(new StringHttpMessageConverter(), JACKSON_2_HTTP_MESSAGE_CONVERTER)
@@ -65,7 +63,7 @@ public class StoragesControllerTest {
                 .thenReturn(storages);
         when(adminService.isAdmin(AuthorizationService.Operation.READ)).thenReturn(true);
         mockMvc.perform(get("/storages")
-                .principal(mockPrincipal("org/zalando/nakadi")))
+                        .principal(mockPrincipal("org/zalando/nakadi")))
                 .andExpect(status().isOk());
     }
 
@@ -74,7 +72,7 @@ public class StoragesControllerTest {
         doNothing().when(storageService).deleteStorage("s1");
         when(adminService.isAdmin(AuthorizationService.Operation.WRITE)).thenReturn(true);
         mockMvc.perform(delete("/storages/s1")
-                .principal(mockPrincipal("org/zalando/nakadi")))
+                        .principal(mockPrincipal("org/zalando/nakadi")))
                 .andExpect(status().isNoContent());
     }
 
@@ -84,9 +82,9 @@ public class StoragesControllerTest {
         doNothing().when(storageService).createStorage(any());
         when(adminService.isAdmin(AuthorizationService.Operation.WRITE)).thenReturn(true);
         mockMvc.perform(post("/storages")
-                .contentType(APPLICATION_JSON)
-                .content(json.toString())
-                .principal(mockPrincipal("org/zalando/nakadi")))
+                        .contentType(APPLICATION_JSON)
+                        .content(json.toString())
+                        .principal(mockPrincipal("org/zalando/nakadi")))
                 .andExpect(status().isCreated());
     }
 
@@ -96,8 +94,8 @@ public class StoragesControllerTest {
                 .thenReturn(createKafkaStorage("test_storage"));
         when(adminService.isAdmin(AuthorizationService.Operation.WRITE)).thenReturn(true);
         mockMvc.perform(put("/storages/default/test_storage")
-                .contentType(APPLICATION_JSON)
-                .principal(mockPrincipal("org/zalando/nakadi")))
+                        .contentType(APPLICATION_JSON)
+                        .principal(mockPrincipal("org/zalando/nakadi")))
                 .andExpect(status().isOk());
     }
 
@@ -105,8 +103,8 @@ public class StoragesControllerTest {
     public void testSetDefaultStorageAccessDenied() throws Exception {
         when(adminService.isAdmin(AuthorizationService.Operation.WRITE)).thenReturn(false);
         mockMvc.perform(put("/storages/default/test_storage")
-                .contentType(APPLICATION_JSON)
-                .principal(mockPrincipal("org/zalando/nakadi")))
+                        .contentType(APPLICATION_JSON)
+                        .principal(mockPrincipal("org/zalando/nakadi")))
                 .andExpect(status().isForbidden());
     }
 
