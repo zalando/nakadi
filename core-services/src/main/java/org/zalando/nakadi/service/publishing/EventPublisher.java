@@ -212,8 +212,8 @@ public class EventPublisher {
 
     private static void assignKey(final List<BatchItem> batch, final EventType eventType) {
         final Function<BatchItem, String> kafkaKeyExtractor = EventKeyExtractor.kafkaKeyFromBatchItem(eventType);
-        for (final BatchItem v : batch) {
-            v.setEventKey(kafkaKeyExtractor.apply(v));
+        for (final BatchItem item : batch) {
+            item.setEventKey(kafkaKeyExtractor.apply(item));
         }
     }
 
