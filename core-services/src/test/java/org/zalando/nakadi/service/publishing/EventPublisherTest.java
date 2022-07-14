@@ -1,6 +1,5 @@
 package org.zalando.nakadi.service.publishing;
 
-import com.google.common.collect.ImmutableList;
 import org.apache.avro.specific.SpecificRecord;
 import org.json.JSONArray;
 import org.json.JSONObject;
@@ -15,6 +14,7 @@ import org.zalando.nakadi.cache.EventTypeCache;
 import org.zalando.nakadi.config.NakadiSettings;
 import org.zalando.nakadi.domain.BatchItem;
 import org.zalando.nakadi.domain.BatchItemResponse;
+import org.zalando.nakadi.domain.CleanupPolicy;
 import org.zalando.nakadi.domain.EventPublishResult;
 import org.zalando.nakadi.domain.EventPublishingStatus;
 import org.zalando.nakadi.domain.EventPublishingStep;
@@ -211,7 +211,7 @@ public class EventPublisherTest {
 
         assertThat(result.getStatus(), equalTo(EventPublishingStatus.ABORTED));
         verify(enrichment, times(0)).enrich(any(), any());
-        verify(partitionResolver, times(0)).resolvePartition(any(EventType.class), any(JSONObject.class), any());
+        verify(partitionResolver, times(0)).resolvePartition(any(EventType.class), any(BatchItem.class), any());
         verify(topicRepository, times(0)).syncPostBatch(any(), any(), any(), anyBoolean());
     }
 
@@ -260,7 +260,7 @@ public class EventPublisherTest {
 
         assertThat(result.getStatus(), equalTo(EventPublishingStatus.ABORTED));
         verify(enrichment, times(0)).enrich(any(), any());
-        verify(partitionResolver, times(0)).resolvePartition(any(EventType.class), any(JSONObject.class), any());
+        verify(partitionResolver, times(0)).resolvePartition(any(EventType.class), any(BatchItem.class), any());
         verify(topicRepository, times(0)).syncPostBatch(any(), any(), any(), anyBoolean());
     }
 
@@ -341,7 +341,7 @@ public class EventPublisherTest {
 
         assertThat(result.getStatus(), equalTo(EventPublishingStatus.SUBMITTED));
         verify(enrichment, times(1)).enrich(any(), any());
-        verify(partitionResolver, times(1)).resolvePartition(any(EventType.class), any(JSONObject.class), any());
+        verify(partitionResolver, times(1)).resolvePartition(any(EventType.class), any(BatchItem.class), any());
         verify(topicRepository, times(1)).syncPostBatch(any(), any(), any(), eq(false));
     }
 
@@ -356,7 +356,7 @@ public class EventPublisherTest {
 
         assertThat(result.getStatus(), equalTo(EventPublishingStatus.ABORTED));
         verify(enrichment, times(0)).enrich(any(), any());
-        verify(partitionResolver, times(0)).resolvePartition(any(EventType.class), any(JSONObject.class), any());
+        verify(partitionResolver, times(0)).resolvePartition(any(EventType.class), any(BatchItem.class), any());
         verify(topicRepository, times(0)).syncPostBatch(any(), any(), any(), anyBoolean());
     }
 
@@ -371,7 +371,7 @@ public class EventPublisherTest {
 
         assertThat(result.getStatus(), equalTo(EventPublishingStatus.ABORTED));
         verify(enrichment, times(0)).enrich(any(), any());
-        verify(partitionResolver, times(0)).resolvePartition(any(EventType.class), any(JSONObject.class), any());
+        verify(partitionResolver, times(0)).resolvePartition(any(EventType.class), any(BatchItem.class), any());
         verify(topicRepository, times(0)).syncPostBatch(any(), any(), any(), anyBoolean());
     }
 
@@ -386,7 +386,7 @@ public class EventPublisherTest {
 
         assertThat(result.getStatus(), equalTo(EventPublishingStatus.SUBMITTED));
         verify(enrichment, times(1)).enrich(any(), any());
-        verify(partitionResolver, times(1)).resolvePartition(any(EventType.class), any(JSONObject.class), any());
+        verify(partitionResolver, times(1)).resolvePartition(any(EventType.class), any(BatchItem.class), any());
         verify(topicRepository, times(1)).syncPostBatch(any(), any(), any(), eq(false));
     }
 
@@ -431,7 +431,7 @@ public class EventPublisherTest {
         assertThat(second.getDetail(), is(isEmptyString()));
 
         verify(cache, times(2)).getValidator(any());
-        verify(partitionResolver, times(1)).resolvePartition(any(EventType.class), any(JSONObject.class), any());
+        verify(partitionResolver, times(1)).resolvePartition(any(EventType.class), any(BatchItem.class), any());
     }
 
     @Test
@@ -461,7 +461,7 @@ public class EventPublisherTest {
 
         assertThat(result.getStatus(), equalTo(EventPublishingStatus.ABORTED));
         verify(cache, atLeastOnce()).getValidator(eventType.getName());
-        verify(partitionResolver, times(1)).resolvePartition(any(EventType.class), any(JSONObject.class), any());
+        verify(partitionResolver, times(1)).resolvePartition(any(EventType.class), any(BatchItem.class), any());
         verify(enrichment, times(1)).enrich(any(), any());
         verify(topicRepository, times(0)).syncPostBatch(any(), any(), any(), anyBoolean());
     }
@@ -470,53 +470,79 @@ public class EventPublisherTest {
     public void whenSinglePartitioningKeyThenEventKeyIsSet() throws Exception {
         final EventType eventType = EventTypeTestBuilder.builder()
                 .partitionStrategy(PartitionStrategy.HASH_STRATEGY)
-                .partitionKeyFields(ImmutableList.of("my_field"))
+                .partitionKeyFields(List.of("my_field"))
                 .build();
-
-        final JSONArray batch = buildDefaultBatch(1);
-        batch.getJSONObject(0).put("my_field", "my_key");
-
         mockSuccessfulValidation(eventType);
+
+        final JSONObject event = new JSONObject("{\"my_field\": \"my_key\"}");
+        final JSONArray batch = new JSONArray(List.of(event));
 
         publisher.publish(batch.toString(), eventType.getName());
 
         final List<BatchItem> publishedBatch = capturePublishedBatch();
-        assertThat(publishedBatch.get(0).getEventKey(), equalTo("my_key"));
+        final BatchItem publishedItem = publishedBatch.get(0);
+        assertThat(publishedItem.getEventKey(), equalTo("my_key"));
+        assertThat(publishedItem.getPartitionKeys(), equalTo(List.of("my_key")));
     }
 
     @Test
-    public void whenMultiplePartitioningKeyThenEventKeyIsNotSet() throws Exception {
+    public void whenMultiplePartitioningKeyThenEventKeyIsComposite() throws Exception {
         final EventType eventType = EventTypeTestBuilder.builder()
                 .partitionStrategy(PartitionStrategy.HASH_STRATEGY)
-                .partitionKeyFields(ImmutableList.of("my_field", "other_field"))
+                .partitionKeyFields(List.of("my_field", "other_field"))
                 .build();
-
-        final JSONArray batch = buildDefaultBatch(1);
-        final JSONObject event = batch.getJSONObject(0);
-        event.put("my_field", "my_key");
-        event.put("other_field", "other_value");
-
         mockSuccessfulValidation(eventType);
+
+        final JSONObject event = new JSONObject("{\"my_field\": \"my_key\", \"other_field\": \"other_value\"}");
+        final JSONArray batch = new JSONArray(List.of(event));
 
         publisher.publish(batch.toString(), eventType.getName());
 
         final List<BatchItem> publishedBatch = capturePublishedBatch();
-        assertThat(publishedBatch.get(0).getEventKey(), equalTo(null));
+        final BatchItem publishedItem = publishedBatch.get(0);
+        assertThat(publishedItem.getEventKey(), equalTo("my_key,other_value"));
+        assertThat(publishedItem.getPartitionKeys(), equalTo(List.of("my_key", "other_value")));
     }
 
     @Test
-    public void whenNoneHashPartitioningStrategyThenEventKeyIsNotSet() throws Exception {
+    public void whenCompactedThenUsesPartitionCompactionKey() throws Exception {
+        final EventType eventType = EventTypeTestBuilder.builder()
+                .partitionStrategy(PartitionStrategy.HASH_STRATEGY)
+                .partitionKeyFields(List.of("my_field"))
+                .cleanupPolicy(CleanupPolicy.COMPACT)
+                .build();
+        mockSuccessfulValidation(eventType);
+
+        final JSONObject event = new JSONObject(
+                "{\"metadata\": {\"partition_compaction_key\": \"compaction_key\"}," +
+                " \"my_field\": \"my_key\"}");
+        final JSONArray batch = new JSONArray(List.of(event));
+
+        publisher.publish(batch.toString(), eventType.getName());
+
+        final List<BatchItem> publishedBatch = capturePublishedBatch();
+        final BatchItem publishedItem = publishedBatch.get(0);
+        assertThat(publishedItem.getEventKey(), equalTo("compaction_key"));
+
+        // TODO: in the future we want these to be exactly the same, but have to enforce for now
+        assertThat(publishedItem.getPartitionKeys(), equalTo(List.of("my_key")));
+    }
+
+    @Test
+    public void whenNotAHashPartitioningStrategyThenEventKeyIsNotSet() throws Exception {
         final EventType eventType = EventTypeTestBuilder.builder()
                 .partitionStrategy(PartitionStrategy.RANDOM_STRATEGY)
                 .build();
-        final JSONArray batch = buildDefaultBatch(1);
-
         mockSuccessfulValidation(eventType);
+
+        final JSONArray batch = buildDefaultBatch(1);
 
         publisher.publish(batch.toString(), eventType.getName());
 
         final List<BatchItem> publishedBatch = capturePublishedBatch();
-        assertThat(publishedBatch.get(0).getEventKey(), equalTo(null));
+        final BatchItem publishedItem = publishedBatch.get(0);
+        assertThat(publishedItem.getEventKey(), equalTo(null));
+        assertThat(publishedItem.getPartitionKeys(), equalTo(null));
     }
 
     @SuppressWarnings("unchecked")
@@ -653,7 +679,7 @@ public class EventPublisherTest {
         Mockito
                 .doThrow(new PartitioningException("partition error"))
                 .when(partitionResolver)
-                .resolvePartition(any(EventType.class), any(JSONObject.class), any());
+                .resolvePartition(any(EventType.class), any(BatchItem.class), any());
     }
 
     private void mockFaultEnrichment() throws EnrichmentException {

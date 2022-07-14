@@ -1,10 +1,8 @@
 package org.zalando.nakadi.partitioning;
 
-import com.google.common.collect.ImmutableList;
-import com.google.common.collect.ImmutableMap;
-import org.json.JSONObject;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
+import org.zalando.nakadi.domain.BatchItem;
 import org.zalando.nakadi.domain.EventType;
 import org.zalando.nakadi.domain.EventTypeBase;
 import org.zalando.nakadi.domain.NakadiMetadata;
@@ -24,14 +22,14 @@ import static org.zalando.nakadi.partitioning.PartitionStrategy.USER_DEFINED_STR
 @Component
 public class PartitionResolver {
 
-    public static final List<String> ALL_PARTITION_STRATEGIES = ImmutableList.of(
+    public static final List<String> ALL_PARTITION_STRATEGIES = List.of(
             HASH_STRATEGY, USER_DEFINED_STRATEGY, RANDOM_STRATEGY);
 
     private final Map<String, PartitionStrategy> partitionStrategies;
 
     @Autowired
     public PartitionResolver(final HashPartitionStrategy hashPartitionStrategy) {
-        partitionStrategies = ImmutableMap.of(
+        partitionStrategies = Map.of(
                 HASH_STRATEGY, hashPartitionStrategy,
                 USER_DEFINED_STRATEGY, new UserDefinedPartitionStrategy(),
                 RANDOM_STRATEGY, new RandomPartitionStrategy(new Random())
@@ -40,8 +38,11 @@ public class PartitionResolver {
 
     public void validate(final EventTypeBase eventType) throws NoSuchPartitionStrategyException,
             InvalidEventTypeException {
-        final String partitionStrategy = eventType.getPartitionStrategy();
 
+        final String partitionStrategy = eventType.getPartitionStrategy();
+        if (null == partitionStrategy) {
+            throw new InvalidEventTypeException("partition strategy must not be null");
+        }
         if (!ALL_PARTITION_STRATEGIES.contains(partitionStrategy)) {
             throw new NoSuchPartitionStrategyException("partition strategy does not exist: " + partitionStrategy);
         } else if (HASH_STRATEGY.equals(partitionStrategy) && eventType.getPartitionKeyFields().isEmpty()) {
@@ -53,29 +54,29 @@ public class PartitionResolver {
         }
     }
 
-    public String resolvePartition(final EventType eventType, final JSONObject eventAsJson,
-            final List<String> orderedPartitions)
+    public String resolvePartition(final EventType eventType, final BatchItem item,
+                                   final List<String> orderedPartitions)
             throws PartitioningException {
 
-        return getPartitionStrategy(eventType).calculatePartition(eventType, eventAsJson, orderedPartitions);
+        return getPartitionStrategy(eventType).calculatePartition(item, orderedPartitions);
     }
 
-    public String resolvePartition(final EventType eventType, final NakadiMetadata nakadiRecordMetadata,
-            final List<String> orderedPartitions)
+    public String resolvePartition(final EventType eventType, final NakadiMetadata recordMetadata,
+                                   final List<String> orderedPartitions)
             throws PartitioningException {
 
-        return getPartitionStrategy(eventType).calculatePartition(nakadiRecordMetadata, orderedPartitions);
+        return getPartitionStrategy(eventType).calculatePartition(recordMetadata, orderedPartitions);
     }
 
-    private PartitionStrategy getPartitionStrategy(final EventType eventType) {
+    private PartitionStrategy getPartitionStrategy(final EventType eventType) throws PartitioningException {
+
         final String eventTypeStrategy = eventType.getPartitionStrategy();
         final PartitionStrategy partitionStrategy = partitionStrategies.get(eventTypeStrategy);
-
         if (partitionStrategy == null) {
             throw new PartitioningException("Partition Strategy defined for this EventType is not found: " +
                     eventTypeStrategy);
         }
-
         return partitionStrategy;
     }
+
 }

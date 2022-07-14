@@ -1,7 +1,6 @@
 package org.zalando.nakadi.partitioning;
 
-import org.json.JSONObject;
-import org.zalando.nakadi.domain.EventType;
+import org.zalando.nakadi.domain.BatchItem;
 import org.zalando.nakadi.domain.NakadiMetadata;
 import org.zalando.nakadi.exceptions.runtime.PartitioningException;
 
@@ -17,27 +16,20 @@ public class RandomPartitionStrategy implements PartitionStrategy {
     }
 
     @Override
-    public String calculatePartition(final EventType eventType,
-                                     final JSONObject jsonEvent,
-                                     final List<String> partitions)
+    public String calculatePartition(final BatchItem item, final List<String> orderedPartitions)
             throws PartitioningException {
 
-        return getRandomPartition(partitions);
+        return getRandomPartition(orderedPartitions);
     }
 
     @Override
-    public String calculatePartition(final NakadiMetadata nakadiRecordMetadata,
-                                     final List<String> partitions)
+    public String calculatePartition(final NakadiMetadata recordMetadata, final List<String> orderedPartitions)
             throws PartitioningException {
 
-        return getRandomPartition(partitions);
+        return getRandomPartition(orderedPartitions);
     }
 
-    public String calculatePartition(final List<String> partitions) {
-        return getRandomPartition(partitions);
-    }
-
-    private String getRandomPartition(final List<String> partitions){
+    String getRandomPartition(final List<String> partitions) {
         if (partitions.size() == 1) {
             return partitions.get(0);
         } else {

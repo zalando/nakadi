@@ -92,7 +92,7 @@ public class NakadiRecordMapper {
         final Envelope env = mapToEnvelope(nakadiRecord);
         final ByteBuffer byteBuffer = Envelope.getEncoder().encode(env);
 
-        return new ProducerRecord<>(topic, partitionInt, nakadiRecord.getEventKey(), byteBuffer.array());
+        return new ProducerRecord<>(topic, partitionInt, nakadiRecord.getEventKeyBytes(), byteBuffer.array());
     }
 
     private Envelope mapToEnvelope(final NakadiRecord nakadiRecord) {

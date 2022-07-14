@@ -4,6 +4,7 @@ import com.google.common.collect.ImmutableList;
 import org.json.JSONObject;
 import org.junit.Test;
 import org.mockito.Mockito;
+import org.zalando.nakadi.domain.BatchItem;
 import org.zalando.nakadi.domain.NakadiMetadata;
 import org.zalando.nakadi.exceptions.runtime.PartitioningException;
 
@@ -20,7 +21,10 @@ public class UserDefinedPartitionStrategyTest {
     @Test
     public void whenCorrectPartitionThenOk() {
         final JSONObject event = new JSONObject("{\"metadata\":{\"partition\":\"1\"}}");
-        assertThat(STRATEGY.calculatePartition(null, event, PARTITIONS), equalTo(PARTITIONS.get(1)));
+
+        final BatchItem item = Mockito.mock(BatchItem.class);
+        Mockito.when(item.getEvent()).thenReturn(event);
+        assertThat(STRATEGY.calculatePartition(item, PARTITIONS), equalTo(PARTITIONS.get(1)));
 
         final var metadata = Mockito.mock(NakadiMetadata.class);
         Mockito.when(metadata.getPartition()).thenReturn("1");
@@ -29,11 +33,11 @@ public class UserDefinedPartitionStrategyTest {
 
     @Test(expected = PartitioningException.class)
     public void whenIncorrectPartitionInMetadataThenPartitioningException() throws PartitioningException {
-        STRATEGY.calculatePartition("", PARTITIONS);
+        STRATEGY.resolvePartition("", PARTITIONS);
     }
 
     @Test(expected = PartitioningException.class)
     public void whenUnknownPartitionThenPartitioningException() throws PartitioningException {
-        STRATEGY.calculatePartition("4", PARTITIONS);
+        STRATEGY.resolvePartition("4", PARTITIONS);
     }
 }

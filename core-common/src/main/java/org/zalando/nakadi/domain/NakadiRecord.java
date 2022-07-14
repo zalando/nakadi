@@ -1,17 +1,27 @@
 package org.zalando.nakadi.domain;
 
+import java.nio.charset.StandardCharsets;
+
 public class NakadiRecord {
 
-    private byte[] eventKey;
+    private String eventKey;
     private byte[] payload;
     private EventOwnerHeader owner;
     private NakadiMetadata metadata;
 
-    public byte[] getEventKey() {
+    public String getEventKey() {
         return eventKey;
     }
 
-    public NakadiRecord setEventKey(final byte[] eventKey) {
+    public byte[] getEventKeyBytes() {
+        if (eventKey == null) {
+            return null;
+        }
+
+        return eventKey.getBytes(StandardCharsets.UTF_8);
+    }
+
+    public NakadiRecord setEventKey(final String eventKey) {
         this.eventKey = eventKey;
         return this;
     }

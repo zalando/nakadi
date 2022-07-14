@@ -67,6 +67,7 @@ public class BatchItem implements Resource<BatchItem> {
     private String partition;
     private String brokerId;
     private String eventKey;
+    private List<String> partitionKeys;
     private int eventSize;
     private EventOwnerHeader owner;
 
@@ -149,6 +150,15 @@ public class BatchItem implements Resource<BatchItem> {
 
     public void setEventKey(@Nullable final String key) {
         this.eventKey = key;
+    }
+
+    @Nullable
+    public List<String> getPartitionKeys() {
+        return partitionKeys;
+    }
+
+    public void setPartitionKeys(@Nullable final List<String> keys) {
+        this.partitionKeys = keys;
     }
 
     @Override

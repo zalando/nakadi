@@ -1,22 +1,24 @@
 package org.zalando.nakadi.service.publishing.check;
 
 import org.zalando.nakadi.domain.EventType;
+import org.zalando.nakadi.domain.NakadiMetadata;
 import org.zalando.nakadi.domain.NakadiRecord;
 import org.zalando.nakadi.domain.NakadiRecordResult;
+import org.zalando.nakadi.partitioning.EventKeyExtractor;
 
-import java.nio.charset.StandardCharsets;
 import java.util.Collections;
 import java.util.List;
+import java.util.function.Function;
 
 public class EventKeyCheck extends Check {
 
     @Override
     public List<NakadiRecordResult> execute(final EventType eventType, final List<NakadiRecord> records) {
-        for (final var record : records) {
-            final var partitionCompactionKey = record.getMetadata().getPartitionCompactionKey();
-            if (partitionCompactionKey != null) {
-                record.setEventKey(partitionCompactionKey.getBytes(StandardCharsets.UTF_8));
-            }
+        final Function<NakadiMetadata, String> kafkaKeyExtractor =
+                EventKeyExtractor.kafkaKeyFromNakadiMetadata(eventType);
+
+        for (final NakadiRecord record : records) {
+            record.setEventKey(kafkaKeyExtractor.apply(record.getMetadata()));
         }
         return Collections.emptyList();
     }
