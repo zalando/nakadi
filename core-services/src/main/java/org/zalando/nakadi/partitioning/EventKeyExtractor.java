@@ -41,7 +41,7 @@ public class EventKeyExtractor {
             return batchItem -> batchItem.getEvent().getJSONObject("metadata").getString("partition_compaction_key");
         } else {
             return batchItem -> Optional.ofNullable(batchItem.getPartitionKeys())
-                    .map(EventKeyExtractor::getEventKeyFromPartitionKeys)
+                    .map(EventKeyExtractor::getKafkaKeyFromPartitionKeys)
                     .orElse(null);
         }
     }
@@ -51,7 +51,7 @@ public class EventKeyExtractor {
             return NakadiMetadata::getPartitionCompactionKey;
         } else {
             return nakadiMetadata -> Optional.ofNullable(nakadiMetadata.getPartitionKeys())
-                    .map(EventKeyExtractor::getEventKeyFromPartitionKeys)
+                    .map(EventKeyExtractor::getKafkaKeyFromPartitionKeys)
                     .orElse(null);
         }
     }
@@ -61,7 +61,7 @@ public class EventKeyExtractor {
                 eventType.getCleanupPolicy() == CleanupPolicy.COMPACT_AND_DELETE;
     }
 
-    private static String getEventKeyFromPartitionKeys(final List<String> partitionKeys) {
+    private static String getKafkaKeyFromPartitionKeys(final List<String> partitionKeys) {
         return String.join(",", partitionKeys);
 
     }
