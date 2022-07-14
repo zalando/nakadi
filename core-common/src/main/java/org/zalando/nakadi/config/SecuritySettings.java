@@ -20,20 +20,17 @@ public class SecuritySettings {
     private final String localTokenInfoUrl;
     private final String clientId;
     private final AuthMode authMode;
-    private final String adminClientId;
     public static final String UNAUTHENTICATED_CLIENT_ID = "unauthenticated";
 
     @Autowired
     public SecuritySettings(@Value("${nakadi.oauth2.tokenInfoUrl}") final String tokenInfoUrl,
                             @Value("${nakadi.oauth2.localTokenInfoUrl}") final String localTokenInfoUrl,
                             @Value("${nakadi.oauth2.clientId}") final String clientId,
-                            @Value("${nakadi.oauth2.mode:BASIC}") final AuthMode authMode,
-                            @Value("${nakadi.oauth2.adminClientId}") final String adminClientId) {
+                            @Value("${nakadi.oauth2.mode:BASIC}") final AuthMode authMode) {
         this.tokenInfoUrl = tokenInfoUrl;
         this.localTokenInfoUrl = localTokenInfoUrl;
         this.clientId = clientId;
         this.authMode = authMode;
-        this.adminClientId = adminClientId;
     }
 
     public String getTokenInfoUrl() {
@@ -46,10 +43,6 @@ public class SecuritySettings {
 
     public AuthMode getAuthMode() {
         return authMode;
-    }
-
-    public String getAdminClientId() {
-        return adminClientId;
     }
 
     public String getLocalTokenInfoUrl() {

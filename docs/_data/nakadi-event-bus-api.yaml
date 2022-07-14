@@ -309,9 +309,6 @@ paths:
 
          * Events in the stream may be visible for a short period of time before being removed.
 
-         Depending on the Nakadi configuration, the oauth resource owner username may have to be equal to
-         'nakadi.oauth2.adminClientId' property to be able to access this endpoint.
-
          Updating the `EventType` is only allowed for clients that satisfy the authorization `admin` requirements,
          if it exists.
 
@@ -1847,8 +1844,6 @@ paths:
         - settings-api
       description: |
         Lists all blocked producers/consumers divided by app and event type.
-        The oauth resource owner username has to be equal to 'nakadi.oauth2.adminClientId' property
-        to be able to access this endpoint.
       responses:
         '200':
           description: Lists all blocked producers/consumers.
@@ -1890,8 +1885,6 @@ paths:
         - settings-api
       description: |
         Blocks publication/consumption for particular app or event type.
-        The oauth resource owner username has to be equal to 'nakadi.oauth2.adminClientId' property
-        to be able to access this endpoint.
       parameters:
         - $ref: '#/parameters/BlacklistType'
         - name: name
@@ -1907,8 +1900,6 @@ paths:
         - settings-api
       description: |
         Unblocks publication/consumption for particular app or event type.
-        The oauth resource owner username has to be equal to 'nakadi.oauth2.adminClientId' property
-        to be able to access this endpoint.
       parameters:
         - $ref: '#/parameters/BlacklistType'
         - name: name
@@ -1926,8 +1917,6 @@ paths:
         - settings-api
       description: |
         Lists all available features.
-        The oauth resource owner username has to be equal to 'nakadi.oauth2.adminClientId' property
-        to be able to access this endpoint.
       responses:
         '200':
           description: A list of all available features.
@@ -1946,8 +1935,6 @@ paths:
         - settings-api
       description: |
         Enables or disables feature depends on the payload
-        The oauth resource owner username has to be equal to 'nakadi.oauth2.adminClientId' property
-        to be able to access this endpoint.
       parameters:
         - name: feature
           in: body
@@ -1964,8 +1951,6 @@ paths:
         - timelines-api
       description: |
         Lists all available storage backends.
-        The oauth resource owner username has to be equal to 'nakadi.oauth2.adminClientId' property
-        to be able to access this endpoint.
       responses:
         '200':
           description: A list of all available storage backends.
@@ -1983,8 +1968,6 @@ paths:
         - timelines-api
       description: |
         Creates a new storage backend.
-        The oauth resource owner username has to be equal to 'nakadi.oauth2.adminClientId' property
-        to be able to access this endpoint.
       parameters:
         - name: storage
           in: body
@@ -2011,8 +1994,6 @@ paths:
         - timelines-api
       description: |
         Retrieves a storage backend by its ID.
-        The oauth resource owner username has to be equal to 'nakadi.oauth2.adminClientId' property
-        to be able to access this endpoint.
       parameters:
         - name: id
           in: path
@@ -2037,8 +2018,6 @@ paths:
         - timelines-api
       description: |
         Deletes a storage backend from its ID, if it is not in use.
-        The oauth resource owner username has to be equal to 'nakadi.oauth2.adminClientId' property
-        to be able to access this endpoint.
       parameters:
         - name: id
           in: path
@@ -2067,8 +2046,6 @@ paths:
         - timelines-api
       description: |
         Sets default storage to use in Nakadi.
-        The oauth resource owner username has to be equal to 'nakadi.oauth2.adminClientId' property
-        to be able to access this endpoint.
       parameters:
         - name: id
           in: path
@@ -2095,8 +2072,6 @@ paths:
         - timelines-api
       description: |
         Creates a new timeline for an event type and makes it active.
-        The oauth resource owner username has to be equal to 'nakadi.oauth2.adminClientId' property
-        to be able to access this endpoint.
       parameters:
         - name: name
           in: path
@@ -2134,8 +2109,6 @@ paths:
         - timelines-api
       description: |
         List timelines for a given event type.
-        The oauth resource owner username has to be equal to 'nakadi.oauth2.adminClientId' property
-        to be able to access this endpoint.
       parameters:
         - name: name
           in: path
