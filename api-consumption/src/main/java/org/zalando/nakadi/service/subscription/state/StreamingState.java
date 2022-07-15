@@ -267,7 +267,6 @@ class StreamingState extends State {
                     streamTimeoutReached))) {
                 sentSomething |= !toSend.isEmpty();
                 flushData(e.getKey(), toSend, batchesSent == 0 ? Optional.of("Stream started") : Optional.empty());
-                this.sentEvents += toSend.size();
                 if (toSend.isEmpty()) {
                     break;
                 }
@@ -331,6 +330,7 @@ class StreamingState extends State {
             getContext().getKpiCollector().recordBatchSent(pk.getEventType(), batchSizeBytes, data.size());
 
             batchesSent++;
+            sentEvents += data.size();
         } catch (final IOException e) {
             shutdownGracefully("Failed to write data to output: " + e);
         }
