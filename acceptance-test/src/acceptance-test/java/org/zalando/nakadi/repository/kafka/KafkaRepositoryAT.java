@@ -60,6 +60,7 @@ public class KafkaRepositoryAT extends BaseAT {
     private static final int KAFKA_BATCH_SIZE = 1048576;
     private static final long KAFKA_BUFFER_MEMORY = KAFKA_BATCH_SIZE * 10L;
     private static final int KAFKA_LINGER_MS = 0;
+    private static final int KAFKA_MAX_IN_FLIGHT_REQUESTS_PER_CONNECTION = 5;
     private static final long NAKADI_EVENT_MAX_BYTES = 1000000L;
     private static final long TIMELINE_WAIT_TIMEOUT = 40000;
     private static final int NAKADI_SUBSCRIPTION_MAX_PARTITIONS = 8;
@@ -105,8 +106,8 @@ public class KafkaRepositoryAT extends BaseAT {
                 DEFAULT_CURATOR_ROTATION_MS);
 
         kafkaSettings = new KafkaSettings(KAFKA_RETRIES, KAFKA_REQUEST_TIMEOUT, KAFKA_BATCH_SIZE, KAFKA_BUFFER_MEMORY,
-                KAFKA_LINGER_MS, KAFKA_ENABLE_AUTO_COMMIT, KAFKA_MAX_REQUEST_SIZE,
-                KAFKA_DELIVERY_TIMEOUT, KAFKA_MAX_BLOCK_TIMEOUT, "", KAFKA_COMPRESSION_TYPE);
+                KAFKA_LINGER_MS, KAFKA_MAX_IN_FLIGHT_REQUESTS_PER_CONNECTION, KAFKA_ENABLE_AUTO_COMMIT,
+                KAFKA_MAX_REQUEST_SIZE, KAFKA_DELIVERY_TIMEOUT, KAFKA_MAX_BLOCK_TIMEOUT, "", KAFKA_COMPRESSION_TYPE);
         kafkaHelper = new KafkaTestHelper(KAFKA_URL);
         defaultTopicConfig = new NakadiTopicConfig(DEFAULT_PARTITION_COUNT, DEFAULT_CLEANUP_POLICY,
                 Optional.of(DEFAULT_RETENTION_TIME));

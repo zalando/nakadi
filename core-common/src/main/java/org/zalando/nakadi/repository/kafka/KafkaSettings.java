@@ -18,6 +18,7 @@ public class KafkaSettings {
     private final int batchSize;
     private final long bufferMemory;
     private final int lingerMs;
+    private final int maxInFlightRequests;
     private final boolean enableAutoCommit;
     private final int maxRequestSize;
     private final int deliveryTimeoutMs;
@@ -31,6 +32,7 @@ public class KafkaSettings {
                          @Value("${nakadi.kafka.batch.size}") final int batchSize,
                          @Value("${nakadi.kafka.buffer.memory}") final long bufferMemory,
                          @Value("${nakadi.kafka.linger.ms}") final int lingerMs,
+                         @Value("${nakadi.kafka.max.in.flight.requests.per.connection}") final int maxInFlightRequests,
                          @Value("${nakadi.kafka.enable.auto.commit}") final boolean enableAutoCommit,
                          @Value("${nakadi.kafka.max.request.size}") final int maxRequestSize,
                          @Value("${nakadi.kafka.delivery.timeout.ms}") final int deliveryTimeoutMs,
@@ -42,6 +44,7 @@ public class KafkaSettings {
         this.batchSize = batchSize;
         this.bufferMemory = bufferMemory;
         this.lingerMs = lingerMs;
+        this.maxInFlightRequests = maxInFlightRequests;
         this.enableAutoCommit = enableAutoCommit;
         this.maxRequestSize = maxRequestSize;
         this.deliveryTimeoutMs = deliveryTimeoutMs;
@@ -68,6 +71,10 @@ public class KafkaSettings {
 
     public int getLingerMs() {
         return lingerMs;
+    }
+
+    public int getMaxInFlightRequests() {
+        return maxInFlightRequests;
     }
 
     public boolean getEnableAutoCommit() {

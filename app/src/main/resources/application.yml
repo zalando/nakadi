@@ -67,6 +67,7 @@ nakadi:
     # Y - spike koeff, to get traffic for loaded instance out of average traffic (here: 2)
     # Z - seconds to tolerate networking issues (here: 10)
     linger.ms: 0
+    max.in.flight.requests.per.connection: 5
     enable.auto.commit: false
     delivery.timeout.ms: 30000 # request.timeout.ms + linger.ms
     max.block.ms: 5000 # kafka default 60000
