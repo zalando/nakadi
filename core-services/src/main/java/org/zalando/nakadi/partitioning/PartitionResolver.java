@@ -12,7 +12,6 @@ import org.zalando.nakadi.exceptions.runtime.PartitioningException;
 
 import java.util.List;
 import java.util.Map;
-import java.util.Random;
 
 import static org.zalando.nakadi.domain.EventCategory.UNDEFINED;
 import static org.zalando.nakadi.partitioning.PartitionStrategy.HASH_STRATEGY;
@@ -32,7 +31,7 @@ public class PartitionResolver {
         partitionStrategies = Map.of(
                 HASH_STRATEGY, hashPartitionStrategy,
                 USER_DEFINED_STRATEGY, new UserDefinedPartitionStrategy(),
-                RANDOM_STRATEGY, new RandomPartitionStrategy(new Random())
+                RANDOM_STRATEGY, new RandomPartitionStrategy()
         );
     }
 
