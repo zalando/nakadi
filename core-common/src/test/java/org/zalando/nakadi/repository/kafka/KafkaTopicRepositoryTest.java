@@ -344,6 +344,63 @@ public class KafkaTopicRepositoryTest {
         assertThat(secondItem.getResponse().getPublishingStatus(), equalTo(EventPublishingStatus.SUBMITTED));
     }
 
+    // keys: [A, B, A]
+    // stat: [F, S, A]
+    @Test
+    public void whenFirstItemFailsThenSecondItemForTheSameKeyIsAborted() {
+        final BatchItem firstItemA = new BatchItem(
+                "{}",
+                BatchItem.EmptyInjectionConfiguration.build(1, true),
+                new BatchItem.InjectionConfiguration[BatchItem.Injection.values().length],
+                Collections.emptyList());
+        firstItemA.setPartition("1");
+        firstItemA.setEventKey("A");
+
+        final BatchItem itemB = new BatchItem(
+                "{}",
+                BatchItem.EmptyInjectionConfiguration.build(1, true),
+                new BatchItem.InjectionConfiguration[BatchItem.Injection.values().length],
+                Collections.emptyList());
+        itemB.setPartition("2");
+        itemB.setEventKey("B");
+
+        final BatchItem secondItemA = new BatchItem(
+                "{}",
+                BatchItem.EmptyInjectionConfiguration.build(1, true),
+                new BatchItem.InjectionConfiguration[BatchItem.Injection.values().length],
+                Collections.emptyList());
+        secondItemA.setPartition("1");
+        secondItemA.setEventKey("A");
+
+        final List<BatchItem> batch = new ArrayList<>();
+        batch.add(firstItemA);
+        batch.add(itemB);
+        batch.add(secondItemA);
+
+        when(kafkaProducer.partitionsFor(EXPECTED_PRODUCER_RECORD.topic())).thenReturn(ImmutableList.of(
+                new PartitionInfo(EXPECTED_PRODUCER_RECORD.topic(), 1, NODE, null, null),
+                new PartitionInfo(EXPECTED_PRODUCER_RECORD.topic(), 2, NODE, null, null)));
+
+        when(kafkaProducer.send(any(), any())).thenAnswer(invocation -> {
+            final ProducerRecord record = (ProducerRecord) invocation.getArguments()[0];
+            final Callback callback = (Callback) invocation.getArguments()[1];
+            if (record.partition() == 1) {
+                callback.onCompletion(null, new Exception()); // return exception for the first item A
+            } else {
+                callback.onCompletion(null, null);
+            }
+            return null;
+        });
+
+        Assert.assertThrows(EventPublishingException.class, () -> {
+            kafkaTopicRepository.syncPostBatch(EXPECTED_PRODUCER_RECORD.topic(), batch, "random", false);
+        });
+
+        assertThat(firstItemA.getResponse().getPublishingStatus(), equalTo(EventPublishingStatus.FAILED));
+        assertThat(itemB.getResponse().getPublishingStatus(), equalTo(EventPublishingStatus.SUBMITTED));
+        assertThat(secondItemA.getResponse().getPublishingStatus(), equalTo(EventPublishingStatus.ABORTED));
+    }
+
     @Test
     public void whenPostEventOverflowsBufferThenUpdateItemStatus() {
         final BatchItem item = new BatchItem("{}",
