@@ -195,7 +195,7 @@ public class EventStream {
 
     private void sendBatch(final NakadiCursor topicPosition, final List<byte[]> currentBatch)
             throws IOException {
-        final int bytesWritten = eventStreamWriter
+        final long bytesWritten = eventStreamWriter
                 .writeBatch(outputStream, cursorConverter.convert(topicPosition), currentBatch);
         bytesFlushedMeter.mark(bytesWritten);
         kpiCollector.recordBatchSent(config.getEtName(), bytesWritten, currentBatch.size());

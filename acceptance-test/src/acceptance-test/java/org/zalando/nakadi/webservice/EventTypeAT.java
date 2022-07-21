@@ -91,7 +91,10 @@ public class EventTypeAT extends BaseAT {
         final EventType eventType = buildDefaultEventType();
         final ResourceAuthorizationAttribute auth = new ResourceAuthorizationAttribute(
                 "service", "stups_test" + randomTextString());
+        final String owningApp = "stups_owning_app";
+
         eventType.setAuthorization(new ResourceAuthorization(List.of(auth), List.of(auth), List.of(auth)));
+        eventType.setOwningApplication(owningApp);
 
         final String body = MAPPER.writer().writeValueAsString(eventType);
 
@@ -106,7 +109,8 @@ public class EventTypeAT extends BaseAT {
         given()
                 .header("accept", "application/json")
                 .contentType(JSON)
-                .get(ENDPOINT + "?writer=" + AuthorizationAttributeQueryParser.getQuery(auth))
+                .get(ENDPOINT + "?writer=" + AuthorizationAttributeQueryParser.getQuery(auth) +
+                        "&owning_application=" + owningApp)
                 .then()
                 .statusCode(HttpStatus.SC_OK)
                 .body("name", hasItems(eventType.getName()));
@@ -172,6 +176,18 @@ public class EventTypeAT extends BaseAT {
                         .getBody().asString(),
                 EventType.class);
         Assert.assertEquals(eventType.getEventOwnerSelector(), retrievedEventType.getEventOwnerSelector());
+    }
+
+    @Test
+    public void whenEventAuthSelectorCreateWithMetadataAndValueThen422() throws Exception {
+        final EventType eventType = buildDefaultEventType();
+        eventType.setEventOwnerSelector(new EventOwnerSelector(EventOwnerSelector.Type.METADATA, "x", "y"));
+
+        given().body(MAPPER.writer().writeValueAsString(eventType))
+                .header("accept", "application/json")
+                .contentType(JSON).post(ENDPOINT)
+                .then()
+                .statusCode(HttpStatus.SC_UNPROCESSABLE_ENTITY);
     }
 
     @Test

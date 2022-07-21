@@ -55,9 +55,9 @@ public class CompressionBodyRequestFilter implements Filter {
         } else if (contentEncodingOpt.isPresent()) {
             final String contentEncoding = contentEncodingOpt.get();
             if (contentEncoding.contains("gzip")) {
-                request = new FilterServletRequestWrapper(request, GZIPInputStream::new);
+                request = new FilterServletRequestWrapper(request, new GZIPInputStream(request.getInputStream()));
             } else if (contentEncoding.contains("zstd")) {
-                request = new FilterServletRequestWrapper(request, ZstdInputStream::new);
+                request = new FilterServletRequestWrapper(request, new ZstdInputStream(request.getInputStream()));
             }
         }
 
@@ -88,66 +88,76 @@ public class CompressionBodyRequestFilter implements Filter {
 
     static class FilterServletRequestWrapper extends HttpServletRequestWrapper {
 
-        private final StreamConverter streamConverter;
-
-        interface StreamConverter {
-            InputStream to(InputStream is) throws IOException;
-        }
+        private final ServletInputStreamWrapper inputStreamWrapper;
+        private BufferedReader reader;
 
         FilterServletRequestWrapper(
                 final HttpServletRequest request,
-                final StreamConverter streamConverter) {
+                final InputStream decompressedStream) throws IOException {
             super(request);
-            this.streamConverter = streamConverter;
+            this.inputStreamWrapper = new ServletInputStreamWrapper(request.getInputStream(), decompressedStream);
+            this.reader = null;
         }
 
         @Override
         public ServletInputStream getInputStream() throws IOException {
-            return new ServletInputStreamWrapper(streamConverter.to(super.getInputStream()));
+            return inputStreamWrapper;
         }
 
         @Override
         public BufferedReader getReader() throws IOException {
-            return new BufferedReader(new InputStreamReader(this.getInputStream()));
+            if (null == reader) {
+                reader = new BufferedReader(new InputStreamReader(inputStreamWrapper));
+            }
+            return reader;
         }
     }
 
-    static class ServletInputStreamWrapper extends ServletInputStream {
+    private static class ServletInputStreamWrapper extends ServletInputStream {
 
-        private final InputStream inputStream;
+        private final ServletInputStream originalServletInputStream;
+        private final InputStream convertedInputStream;
 
-        ServletInputStreamWrapper(final InputStream inputStream) {
-            this.inputStream = inputStream;
+        private ServletInputStreamWrapper(
+                final ServletInputStream originalServletInputStream,
+                final InputStream convertedInputStream) {
+            this.originalServletInputStream = originalServletInputStream;
+            this.convertedInputStream = convertedInputStream;
         }
 
         @Override
         public int read() throws IOException {
-            return inputStream.read();
+            return convertedInputStream.read();
+        }
+
+        @Override
+        public int read(final byte[] b) throws IOException {
+            return convertedInputStream.read(b);
+        }
+
+        @Override
+        public int read(final byte[] b, final int off, final int len) throws IOException {
+            return convertedInputStream.read(b, off, len);
         }
 
         @Override
         public void close() throws IOException {
-            inputStream.close();
+            convertedInputStream.close();
         }
 
         @Override
         public boolean isFinished() {
-            try {
-                return inputStream.available() == 0;
-            } catch (final IOException e) {
-                LOG.error("Error occurred when reading request input stream", e);
-                return false;
-            }
+            return originalServletInputStream.isFinished();
         }
 
         @Override
         public boolean isReady() {
-            return true;
+            return originalServletInputStream.isReady();
         }
 
         @Override
         public void setReadListener(final ReadListener listener) {
-            throw new UnsupportedOperationException("Not supported");
+            originalServletInputStream.setReadListener(listener);
         }
     }
 

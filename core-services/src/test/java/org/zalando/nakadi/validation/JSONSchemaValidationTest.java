@@ -31,8 +31,9 @@ public class JSONSchemaValidationTest {
 
     @Test
     public void validationOfBusinessEventShouldRequiredMetadata() {
+        final JSONObject schema = basicSchema();
         final EventType et = EventTypeTestBuilder.builder().name("some-event-type")
-                .schema(basicSchema()).build();
+                .schema(schema).build();
         et.setCategory(EventCategory.BUSINESS);
 
         final JSONObject event = new JSONObject("{ \"foo\": \"bar\" }");
@@ -46,8 +47,9 @@ public class JSONSchemaValidationTest {
 
     @Test
     public void validationOfBusinessEventShouldAllowSpanCtxtInMetadata() {
+        final JSONObject schema = basicSchema();
         final EventType et = EventTypeTestBuilder.builder().name("some-event-type")
-                .schema(basicSchema()).compatibilityMode(CompatibilityMode.COMPATIBLE).build();
+                .schema(schema).compatibilityMode(CompatibilityMode.COMPATIBLE).build();
         et.setCategory(EventCategory.BUSINESS);
 
         final JSONObject validEvent = new JSONObject("{\"metadata\":{" +
@@ -82,8 +84,9 @@ public class JSONSchemaValidationTest {
 
     @Test
     public void validationOfDataChangeEventRequiresExtraFields() {
+        final JSONObject schema = basicSchema();
         final EventType et = EventTypeTestBuilder.builder().name("some-event-type")
-                .schema(basicSchema()).build();
+                .schema(schema).build();
         et.setCategory(EventCategory.DATA);
 
         final JSONObject event = new JSONObject("{ \"data\": { \"foo\": \"bar\" } }");
@@ -98,7 +101,8 @@ public class JSONSchemaValidationTest {
 
     @Test
     public void validationOfDataChangeEventShouldNotAllowAdditionalFieldsAtTheRootLevelObject() {
-        final EventType et = EventTypeTestBuilder.builder().name("some-event-type").schema(basicSchema()).build();
+        final JSONObject schema = basicSchema();
+        final EventType et = EventTypeTestBuilder.builder().name("some-event-type").schema(schema).build();
         et.setCategory(EventCategory.DATA);
 
         final JSONObject event = dataChangeEvent();
@@ -113,7 +117,8 @@ public class JSONSchemaValidationTest {
 
     @Test
     public void requireMetadataEventTypeToBeTheSameAsEventTypeName() {
-        final EventType et = EventTypeTestBuilder.builder().name("some-event-type").schema(basicSchema()).build();
+        final JSONObject schema = basicSchema();
+        final EventType et = EventTypeTestBuilder.builder().name("some-event-type").schema(schema).build();
         et.setCategory(EventCategory.BUSINESS);
 
         final JSONObject event = businessEvent();
@@ -129,7 +134,8 @@ public class JSONSchemaValidationTest {
 
     @Test
     public void requireMetadataOccurredAt() {
-        final EventType et = EventTypeTestBuilder.builder().name("some-event-type").schema(basicSchema()).build();
+        final JSONObject schema = basicSchema();
+        final EventType et = EventTypeTestBuilder.builder().name("some-event-type").schema(schema).build();
         et.setCategory(EventCategory.BUSINESS);
 
         final JSONObject event = businessEvent();
@@ -144,7 +150,8 @@ public class JSONSchemaValidationTest {
 
     @Test
     public void requireEidToBeFormattedAsUUID() {
-        final EventType et = EventTypeTestBuilder.builder().name("some-event-type").schema(basicSchema()).build();
+        final JSONObject schema = basicSchema();
+        final EventType et = EventTypeTestBuilder.builder().name("some-event-type").schema(schema).build();
         et.setCategory(EventCategory.BUSINESS);
 
         final JSONObject event = businessEvent();
@@ -160,7 +167,8 @@ public class JSONSchemaValidationTest {
 
     @Test
     public void requirePatternMatchingToBeFast() {
-        final EventType et = EventTypeTestBuilder.builder().name("some-event-type").schema(patternSchema()).build();
+        final JSONObject schema = patternSchema();
+        final EventType et = EventTypeTestBuilder.builder().name("some-event-type").schema(schema).build();
         et.setCategory(EventCategory.UNDEFINED);
 
         final long startTime = System.currentTimeMillis();

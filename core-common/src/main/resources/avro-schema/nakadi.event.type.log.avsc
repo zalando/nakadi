@@ -1,0 +1,28 @@
+{
+  "name": "NakadiEventTypeLog",
+  "namespace": "org.zalando.nakadi.kpi.event",
+  "type": "record",
+  "doc": "Stores KPI events of type nakadi.event.type.log",
+  "fields": [
+    {
+      "name": "event_type",
+      "type": "string"
+    },
+    {
+      "name": "status",
+      "type": "string"
+    },
+    {
+      "name": "category",
+      "type": "string"
+    },
+    {
+      "name": "authz",
+      "type": "string"
+    },
+    {
+      "name": "compatibility_mode",
+      "type": "string"
+    }
+  ]
+}

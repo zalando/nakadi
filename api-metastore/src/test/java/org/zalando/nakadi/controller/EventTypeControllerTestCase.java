@@ -1,6 +1,7 @@
 package org.zalando.nakadi.controller;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
+import com.google.common.collect.Lists;
 import org.junit.Before;
 import org.mockito.Mockito;
 import org.springframework.http.converter.StringHttpMessageConverter;
@@ -24,9 +25,7 @@ import org.zalando.nakadi.plugin.api.ApplicationService;
 import org.zalando.nakadi.plugin.api.authz.AuthorizationService;
 import org.zalando.nakadi.repository.TopicRepository;
 import org.zalando.nakadi.repository.db.EventTypeRepository;
-import org.zalando.nakadi.repository.db.SchemaRepository;
 import org.zalando.nakadi.repository.db.SubscriptionDbRepository;
-import org.zalando.nakadi.repository.db.SubscriptionTokenLister;
 import org.zalando.nakadi.repository.kafka.KafkaConfig;
 import org.zalando.nakadi.repository.kafka.PartitionsCalculator;
 import org.zalando.nakadi.security.ClientResolver;
@@ -49,6 +48,7 @@ import org.zalando.nakadi.validation.schema.PartitionStrategyConstraint;
 import org.zalando.problem.Problem;
 import uk.co.datumedge.hamcrest.json.SameJSONAs;
 
+import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 
@@ -63,7 +63,6 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
 import static org.springframework.test.web.servlet.setup.MockMvcBuilders.standaloneSetup;
 import static org.zalando.nakadi.domain.Feature.DISABLE_EVENT_TYPE_DELETION;
-import static org.zalando.nakadi.util.PrincipalMockFactory.mockPrincipal;
 
 public class EventTypeControllerTestCase {
 
@@ -93,10 +92,8 @@ public class EventTypeControllerTestCase {
     protected final AuthorizationValidator authorizationValidator = mock(AuthorizationValidator.class);
     protected final NakadiKpiPublisher nakadiKpiPublisher = mock(NakadiKpiPublisher.class);
     protected final NakadiAuditLogPublisher nakadiAuditLogPublisher = mock(NakadiAuditLogPublisher.class);
-    protected final SubscriptionTokenLister subscriptionTokenLister = mock(SubscriptionTokenLister.class);
     private final SchemaService schemaService = mock(SchemaService.class);
     private final AvroSchemaCompatibility avroSchemaCompatibility = Mockito.mock(AvroSchemaCompatibility.class);
-    private final SchemaRepository schemaRepository = Mockito.mock(SchemaRepository.class);
     protected MockMvc mockMvc;
 
     public EventTypeControllerTestCase() {
@@ -133,7 +130,7 @@ public class EventTypeControllerTestCase {
                 featureToggleService, authorizationValidator, timelineSync, transactionTemplate, nakadiSettings,
                 nakadiKpiPublisher, nakadiAuditLogPublisher,
                 eventTypeOptionsValidator, eventTypeCache,
-                schemaService, adminService, subscriptionTokenLister, null);
+                schemaService, adminService, null);
 
         final EventTypeController controller = new EventTypeController(eventTypeService, featureToggleService,
                 adminService, nakadiSettings);
@@ -152,10 +149,6 @@ public class EventTypeControllerTestCase {
         return mockMvc.perform(delete("/event-types/" + eventTypeName));
     }
 
-    protected ResultActions deleteEventType(final String eventTypeName, final String clientId) throws Exception {
-        return mockMvc.perform(delete("/event-types/" + eventTypeName).principal(mockPrincipal(clientId)));
-    }
-
     protected ResultActions postEventType(final EventType eventType) throws Exception {
         final String content = TestUtils.OBJECT_MAPPER.writeValueAsString(eventType);
 
@@ -169,13 +162,6 @@ public class EventTypeControllerTestCase {
         return mockMvc.perform(requestBuilder);
     }
 
-    protected ResultActions putEventType(final EventType eventType, final String name, final String clientId)
-            throws Exception {
-        final String content = TestUtils.OBJECT_MAPPER.writeValueAsString(eventType);
-
-        return putEventType(content, name, clientId);
-    }
-
     protected ResultActions putEventType(final EventType eventType, final String name) throws Exception {
         final String content = TestUtils.OBJECT_MAPPER.writeValueAsString(eventType);
 
@@ -183,15 +169,7 @@ public class EventTypeControllerTestCase {
     }
 
     protected ResultActions putEventType(final String content, final String name) throws Exception {
-        final MockHttpServletRequestBuilder requestBuilder = put("/event-types/" + name).contentType(APPLICATION_JSON)
-                .content(content);
-        return mockMvc.perform(requestBuilder);
-    }
-
-    protected ResultActions putEventType(final String content, final String name, final String clientId)
-            throws Exception {
         final MockHttpServletRequestBuilder requestBuilder = put("/event-types/" + name)
-                .principal(mockPrincipal(clientId))
                 .contentType(APPLICATION_JSON)
                 .content(content);
         return mockMvc.perform(requestBuilder);
@@ -202,8 +180,15 @@ public class EventTypeControllerTestCase {
         return mockMvc.perform(requestBuilder);
     }
 
-    protected ResultActions getEventTypes(final String writer) throws Exception {
-        final MockHttpServletRequestBuilder requestBuilder = get("/event-types?writer=" + writer);
+    protected ResultActions getEventTypes(final String writer, final String owningApp) throws Exception {
+        final List<String> query = Lists.newArrayList();
+        if (writer != null && !writer.isEmpty()) {
+            query.add("writer=" + writer);
+        }
+        if (owningApp != null && !owningApp.isEmpty()) {
+            query.add("owning_application=" + owningApp);
+        }
+        final MockHttpServletRequestBuilder requestBuilder = get("/event-types?" + String.join("&", query));
         return mockMvc.perform(requestBuilder);
     }
 

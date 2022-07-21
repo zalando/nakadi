@@ -4,9 +4,7 @@ import org.apache.http.HttpStatus;
 import org.hamcrest.MatcherAssert;
 import org.hamcrest.Matchers;
 import org.junit.Assert;
-import org.junit.Before;
 import org.junit.Test;
-import org.zalando.nakadi.domain.Feature;
 import org.zalando.nakadi.domain.Subscription;
 import org.zalando.nakadi.utils.TestUtils;
 import org.zalando.nakadi.webservice.utils.NakadiTestUtils;
@@ -25,11 +23,6 @@ public class BinaryEventPublisherAT extends BaseAT {
     private static final String NAKADI_EVENT_TYPE_LOG = "nakadi.event.type.log";
     private static final String NAKADI_BATCH_PUBLISHED = "nakadi.batch.published";
     private static final String NAKADI_DATA_STREAMED = "nakadi.data.streamed";
-
-    @Before
-    public void setupAvroForKPIEvents() {
-        NakadiTestUtils.switchFeature(Feature.AVRO_FOR_KPI_EVENTS, true);
-    }
 
     @Test
     public void testNakadiAccessLogInAvro() throws Exception {
@@ -152,9 +145,13 @@ public class BinaryEventPublisherAT extends BaseAT {
         final var event = events.get(0);
         // All acceptance tests are run against same instance, so the exact event that is consumed is unpredictable.
         // So the test is only looking for a valid event.
-        Assert.assertEquals(
-                NAKADI_DATA_STREAMED,
-                ((Map) event.get("metadata")).get("event_type"));
+        final var metadata = (Map) event.get("metadata");
+        Assert.assertEquals(NAKADI_DATA_STREAMED, metadata.get("event_type"));
+        Assert.assertNotNull(metadata.get("occurred_at"));
+        Assert.assertNotNull(metadata.get("received_at"));
+        Assert.assertNotNull(metadata.get("partition"));
+        Assert.assertNotNull(metadata.get("flow_id"));
+        Assert.assertNotNull(metadata.get("partition"));
         Assert.assertNotNull(event.get("api"));
         Assert.assertNotNull(event.get("event_type"));
         Assert.assertNotNull(event.get("app"));
@@ -167,8 +164,8 @@ public class BinaryEventPublisherAT extends BaseAT {
 
     private List<Map> consumeEvent(final TestStreamingClient client) {
         TestUtils.waitFor(() -> MatcherAssert.assertThat(
-                client.getBatches().size(), Matchers.greaterThanOrEqualTo(1)), 10000);
-        return client.getBatches().get(0).getEvents();
+                client.getJsonBatches().size(), Matchers.greaterThanOrEqualTo(1)), 10000);
+        return client.getJsonBatches().get(0).getEvents();
     }
 
     private TestStreamingClient subscribeAndStartStreaming(final String eventType) throws IOException {

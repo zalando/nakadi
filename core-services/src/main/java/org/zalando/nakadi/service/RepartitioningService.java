@@ -5,6 +5,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
+import org.zalando.nakadi.cache.EventTypeCache;
 import org.zalando.nakadi.config.NakadiSettings;
 import org.zalando.nakadi.domain.EventType;
 import org.zalando.nakadi.domain.EventTypeStatistics;
@@ -18,7 +19,6 @@ import org.zalando.nakadi.exceptions.runtime.NakadiBaseException;
 import org.zalando.nakadi.exceptions.runtime.NakadiRuntimeException;
 import org.zalando.nakadi.repository.db.EventTypeRepository;
 import org.zalando.nakadi.repository.db.SubscriptionDbRepository;
-import org.zalando.nakadi.repository.db.SubscriptionTokenLister;
 import org.zalando.nakadi.service.subscription.LogPathBuilder;
 import org.zalando.nakadi.service.subscription.zk.SubscriptionClientFactory;
 import org.zalando.nakadi.service.subscription.zk.ZkSubscriptionClient;
@@ -41,32 +41,32 @@ public class RepartitioningService {
     private static final Logger LOG = LoggerFactory.getLogger(RepartitioningService.class);
 
     private final EventTypeRepository eventTypeRepository;
+    private final EventTypeCache eventTypeCache;
     private final TimelineService timelineService;
     private final SubscriptionDbRepository subscriptionRepository;
     private final SubscriptionClientFactory subscriptionClientFactory;
     private final NakadiSettings nakadiSettings;
     private final CursorConverter cursorConverter;
     private final TimelineSync timelineSync;
-    private final SubscriptionTokenLister subscriptionTokenLister;
 
     @Autowired
     public RepartitioningService(
             final EventTypeRepository eventTypeRepository,
+            final EventTypeCache eventTypeCache,
             final TimelineService timelineService,
             final SubscriptionDbRepository subscriptionRepository,
             final SubscriptionClientFactory subscriptionClientFactory,
             final NakadiSettings nakadiSettings,
             final CursorConverter cursorConverter,
-            final TimelineSync timelineSync,
-            final SubscriptionTokenLister subscriptionTokenLister) {
+            final TimelineSync timelineSync) {
         this.eventTypeRepository = eventTypeRepository;
+        this.eventTypeCache = eventTypeCache;
         this.timelineService = timelineService;
         this.subscriptionRepository = subscriptionRepository;
         this.subscriptionClientFactory = subscriptionClientFactory;
         this.nakadiSettings = nakadiSettings;
         this.cursorConverter = cursorConverter;
         this.timelineSync = timelineSync;
-        this.subscriptionTokenLister = subscriptionTokenLister;
     }
 
     public void repartition(final String eventTypeName, final int partitions)
@@ -94,7 +94,8 @@ public class RepartitioningService {
             // Increase kafka partitions count, increase partitions in database
             timelineService.updateTimeLineForRepartition(eventType, partitions);
 
-            updateSubscriptionsForRepartitioning(eventType.getName(), partitions);
+            subscriptionRepository.listAllSubscriptionsFor(ImmutableSet.of(eventType.getName()))
+                    .forEach(sub -> updateSubscriptionForRepartitioning(sub, eventTypeName, partitions));
 
             // it is clear that the operation has to be done under the lock with other related work for changing event
             // type, but it is skipped, because it is quite rare operation to change event type and repartition at the
@@ -103,6 +104,7 @@ public class RepartitioningService {
                 eventType.getDefaultStatistic().setReadParallelism(partitions);
                 eventType.getDefaultStatistic().setWriteParallelism(partitions);
                 eventTypeRepository.update(eventType);
+                eventTypeCache.invalidate(eventTypeName);
             } catch (Exception e) {
                 throw new NakadiBaseException(e.getMessage(), e);
             }
@@ -169,18 +171,6 @@ public class RepartitioningService {
                 LOG.warn("Failed to close zookeeper connection while updating subsciprtion {}",
                         subscription.getId(), ex);
             }
-        }
-    }
-
-    private void updateSubscriptionsForRepartitioning(final String eventTypeName, final int partitions)
-            throws NakadiBaseException {
-        SubscriptionTokenLister.ListResult list = subscriptionTokenLister.listSubscriptions(
-                ImmutableSet.of(eventTypeName), Optional.empty(), Optional.empty(),null, 100);
-        while (list != null) {
-            list.getItems()
-                    .forEach(item -> updateSubscriptionForRepartitioning(item, eventTypeName, partitions));
-            list = null == list.getNext() ? null : subscriptionTokenLister.listSubscriptions(
-                    ImmutableSet.of(eventTypeName), Optional.empty(), Optional.empty(), list.getNext(), 100);
         }
     }
 }

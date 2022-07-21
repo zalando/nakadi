@@ -1,0 +1,52 @@
+{
+  "name": "NakadiDataStreamed",
+  "namespace": "org.zalando.nakadi.kpi.event",
+  "type": "record",
+  "doc": "Stores KPI events of type nakadi.data.streamed",
+  "fields": [
+    {
+      "name": "api",
+      "description": "This field indicates if data was streamed through low level api or high level api",
+      "type": "string"
+    },
+    {
+      "name": "subscription",
+      "description": "this is optional and is only present when streaming from a subscription",
+      "type": [
+        "null",
+        "string"
+      ],
+      "default": null
+    },
+    {
+      "name": "event_type",
+      "type": "string"
+    },
+    {
+      "name": "app",
+      "type": "string"
+    },
+    {
+      "name": "app_hashed",
+      "type": "string"
+    },
+    {
+      "name": "token_realm",
+      "type": "string"
+    },
+    {
+      "name": "number_of_events",
+      "type": "long"
+    },
+    {
+      "name": "bytes_streamed",
+      "description": "amount of bytes streamed since last event",
+      "type": "long"
+    },
+    {
+      "name": "batches_streamed",
+      "description": "amount of batches streamed since last event",
+      "type": "int"
+    }
+  ]
+}

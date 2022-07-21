@@ -40,7 +40,7 @@ services:
     - "2181:2181"
 
   kafka:
-    image: registry.opensource.zalan.do/aruha/nakadi-kafka:2.7.1
+    image: bitnami/kafka:3.1.1
     ports:
     - "29092:29092"
     - "9092:9092"
@@ -55,5 +55,6 @@ services:
       KAFKA_AUTO_CREATE_TOPICS_ENABLE: 'false'
       KAFKA_DELETE_TOPIC_ENABLE: 'true'
       KAFKA_BROKER_ID: 0
+      ALLOW_PLAINTEXT_LISTENER: 'yes'
     volumes:
     - /var/run/docker.sock:/var/run/docker.sock

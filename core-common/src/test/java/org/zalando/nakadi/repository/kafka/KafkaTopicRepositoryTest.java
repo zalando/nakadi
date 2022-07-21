@@ -1,6 +1,5 @@
 package org.zalando.nakadi.repository.kafka;
 
-import com.codahale.metrics.MetricRegistry;
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.Lists;
 import org.apache.kafka.clients.consumer.Consumer;
@@ -24,17 +23,21 @@ import org.zalando.nakadi.domain.CursorError;
 import org.zalando.nakadi.domain.EventOwnerHeader;
 import org.zalando.nakadi.domain.EventPublishingStatus;
 import org.zalando.nakadi.domain.NakadiCursor;
+import org.zalando.nakadi.domain.NakadiMetadata;
 import org.zalando.nakadi.domain.NakadiRecord;
-import org.zalando.nakadi.domain.NakadiRecordMetadata;
+import org.zalando.nakadi.domain.NakadiRecordResult;
 import org.zalando.nakadi.domain.PartitionEndStatistics;
 import org.zalando.nakadi.domain.PartitionStatistics;
 import org.zalando.nakadi.domain.Timeline;
 import org.zalando.nakadi.domain.TopicPartition;
 import org.zalando.nakadi.exceptions.runtime.EventPublishingException;
 import org.zalando.nakadi.exceptions.runtime.InvalidCursorException;
-import org.zalando.nakadi.repository.zookeeper.ZookeeperSettings;
+import org.zalando.nakadi.mapper.NakadiRecordMapper;
+import org.zalando.nakadi.utils.TestUtils;
 import org.zalando.nakadi.view.Cursor;
 
+import java.io.IOException;
+import java.time.Instant;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
@@ -74,12 +77,10 @@ public class KafkaTopicRepositoryTest {
     private static final Node NODE = new Node(1, "host", 9091);
     private final NakadiSettings nakadiSettings = mock(NakadiSettings.class);
     private final KafkaSettings kafkaSettings = mock(KafkaSettings.class);
-    private final ZookeeperSettings zookeeperSettings = mock(ZookeeperSettings.class);
     private final KafkaTopicConfigFactory kafkaTopicConfigFactory = mock(KafkaTopicConfigFactory.class);
     private final KafkaLocationManager kafkaLocationManager = mock(KafkaLocationManager.class);
+    private NakadiRecordMapper nakadiRecordMapper;
     private static final String KAFKA_CLIENT_ID = "application_name-topic_name";
-    private final RecordDeserializer recordDeserializer = (f, e) -> e;
-
     @Captor
     private ArgumentCaptor<ProducerRecord<byte[], byte[]>> producerRecordArgumentCaptor;
 
@@ -121,16 +122,16 @@ public class KafkaTopicRepositoryTest {
     private final KafkaFactory kafkaFactory;
 
     @SuppressWarnings("unchecked")
-    public KafkaTopicRepositoryTest() {
+    public KafkaTopicRepositoryTest() throws IOException {
         kafkaProducer = mock(KafkaProducer.class);
         when(kafkaProducer.partitionsFor(anyString())).then(
                 invocation -> partitionsOfTopic((String) invocation.getArguments()[0])
         );
+        nakadiRecordMapper = TestUtils.getNakadiRecordMapper();
         kafkaFactory = createKafkaFactory();
-        kafkaTopicRepository = createKafkaRepository(kafkaFactory, new MetricRegistry());
+        kafkaTopicRepository = createKafkaRepository(kafkaFactory);
         MockitoAnnotations.initMocks(this);
     }
-
 
     @Test
     public void canListAllTopics() {
@@ -186,27 +187,23 @@ public class KafkaTopicRepositoryTest {
         for (final Cursor cursor : MY_TOPIC_VALID_CURSORS) {
             kafkaTopicRepository.createEventConsumer(
                     KAFKA_CLIENT_ID,
-                    asTopicPosition(MY_TOPIC, asList(cursor)),
-                    recordDeserializer);
+                    asTopicPosition(MY_TOPIC, asList(cursor)));
         }
         // validate all valid cursors
         kafkaTopicRepository.createEventConsumer(
                 KAFKA_CLIENT_ID,
-                asTopicPosition(MY_TOPIC, MY_TOPIC_VALID_CURSORS),
-                recordDeserializer);
+                asTopicPosition(MY_TOPIC, MY_TOPIC_VALID_CURSORS));
 
         // validate each individual valid cursor
         for (final Cursor cursor : ANOTHER_TOPIC_VALID_CURSORS) {
             kafkaTopicRepository.createEventConsumer(
                     KAFKA_CLIENT_ID,
-                    asTopicPosition(ANOTHER_TOPIC, asList(cursor)),
-                    recordDeserializer);
+                    asTopicPosition(ANOTHER_TOPIC, asList(cursor)));
         }
         // validate all valid cursors
         kafkaTopicRepository.createEventConsumer(
                 KAFKA_CLIENT_ID,
-                asTopicPosition(ANOTHER_TOPIC, ANOTHER_TOPIC_VALID_CURSORS),
-                recordDeserializer);
+                asTopicPosition(ANOTHER_TOPIC, ANOTHER_TOPIC_VALID_CURSORS));
     }
 
     @Test
@@ -216,8 +213,7 @@ public class KafkaTopicRepositoryTest {
         try {
             kafkaTopicRepository.createEventConsumer(
                     KAFKA_CLIENT_ID,
-                    asTopicPosition(MY_TOPIC, asList(outOfBoundOffset)),
-                    recordDeserializer);
+                    asTopicPosition(MY_TOPIC, asList(outOfBoundOffset)));
         } catch (final InvalidCursorException e) {
             assertThat(e.getError(), equalTo(CursorError.UNAVAILABLE));
         }
@@ -226,8 +222,7 @@ public class KafkaTopicRepositoryTest {
         try {
             kafkaTopicRepository.createEventConsumer(
                     KAFKA_CLIENT_ID,
-                    asTopicPosition(MY_TOPIC, asList(nonExistingPartition)),
-                    recordDeserializer);
+                    asTopicPosition(MY_TOPIC, asList(nonExistingPartition)));
         } catch (final InvalidCursorException e) {
             assertThat(e.getError(), equalTo(CursorError.PARTITION_NOT_FOUND));
         }
@@ -236,8 +231,7 @@ public class KafkaTopicRepositoryTest {
         try {
             kafkaTopicRepository.createEventConsumer(
                     KAFKA_CLIENT_ID,
-                    asTopicPosition(MY_TOPIC, asList(wrongOffset)),
-                    recordDeserializer);
+                    asTopicPosition(MY_TOPIC, asList(wrongOffset)));
         } catch (final InvalidCursorException e) {
             assertThat(e.getError(), equalTo(CursorError.INVALID_FORMAT));
         }
@@ -452,35 +446,29 @@ public class KafkaTopicRepositoryTest {
     public void testSendNakadiRecordsOk() {
         final String eventType = UUID.randomUUID().toString();
         final String topic = UUID.randomUUID().toString();
-        final List<NakadiRecord> nakadiRecords = Lists.newArrayList(
-                new NakadiRecord(eventType, 0, null, null, null),
-                new NakadiRecord(eventType, 0, null, null, null),
-                new NakadiRecord(eventType, 0, null, null, null)
-        );
+        final var nakadiRecord = getTestNakadiRecord("0");
+        final List<NakadiRecord> nakadiRecords = Lists.newArrayList(nakadiRecord, nakadiRecord, nakadiRecord);
 
         when(kafkaProducer.send(any(), any())).thenAnswer(invocation -> {
-            final ProducerRecord record = (ProducerRecord) invocation.getArguments()[0];
             final Callback callback = (Callback) invocation.getArguments()[1];
             callback.onCompletion(null, null);
             return null;
         });
 
-        final List<NakadiRecordMetadata> result =
-                kafkaTopicRepository.sendEvents(topic, nakadiRecords);
-        Assert.assertTrue(result.isEmpty());
+        final List<NakadiRecordResult> result = kafkaTopicRepository.sendEvents(topic, nakadiRecords);
+        Assert.assertEquals(3, result.size());
+        result.forEach(r -> Assert.assertEquals(NakadiRecordResult.Status.SUCCEEDED, r.getStatus()));
     }
 
     @Test
-    public void testSendNakadiRecordsHalfPublished() {
+    public void testSendNakadiRecordsHalfPublished() throws IOException {
         final String eventType = UUID.randomUUID().toString();
         final String topic = UUID.randomUUID().toString();
         final List<NakadiRecord> nakadiRecords = Lists.newArrayList(
-                new NakadiRecord(eventType, 0, null, null, null),
-                new NakadiRecord(eventType, 1, null, null, null),
-                new NakadiRecord(eventType, 2, null, null, null),
-                new NakadiRecord(eventType, 3, null, null, null)
-
-        );
+                getTestNakadiRecord("0"),
+                getTestNakadiRecord("1"),
+                getTestNakadiRecord("2"),
+                getTestNakadiRecord("3"));
 
         final Exception exception = new Exception();
         when(kafkaProducer.send(any(), any())).thenAnswer(invocation -> {
@@ -494,26 +482,27 @@ public class KafkaTopicRepositoryTest {
             return null;
         });
 
-        final List<NakadiRecordMetadata> result =
+        final List<NakadiRecordResult> result =
                 kafkaTopicRepository.sendEvents(topic, nakadiRecords);
-        Assert.assertEquals(2, result.size());
+        Assert.assertEquals(4, result.size());
         Assert.assertEquals(exception, result.get(0).getException());
-        Assert.assertEquals(exception, result.get(1).getException());
-        Assert.assertEquals(Integer.valueOf(0), result.get(0).getPartition());
-        Assert.assertEquals(Integer.valueOf(2), result.get(1).getPartition());
+        Assert.assertEquals(NakadiRecordResult.Status.FAILED, result.get(0).getStatus());
+        Assert.assertEquals(null, result.get(1).getException());
+        Assert.assertEquals(NakadiRecordResult.Status.SUCCEEDED, result.get(1).getStatus());
+        Assert.assertEquals(exception, result.get(2).getException());
+        Assert.assertEquals(NakadiRecordResult.Status.FAILED, result.get(2).getStatus());
+        Assert.assertEquals(null, result.get(3).getException());
+        Assert.assertEquals(NakadiRecordResult.Status.SUCCEEDED, result.get(3).getStatus());
     }
 
     @Test
-    public void testSendNakadiRecordsHalfSubmitted() {
-        final String eventType = UUID.randomUUID().toString();
+    public void testSendNakadiRecordsHalfSubmitted() throws IOException {
         final String topic = UUID.randomUUID().toString();
         final List<NakadiRecord> nakadiRecords = Lists.newArrayList(
-                new NakadiRecord(eventType, 0, null, null, null),
-                new NakadiRecord(eventType, 1, null, null, null),
-                new NakadiRecord(eventType, 2, null, null, null),
-                new NakadiRecord(eventType, 3, null, null, null)
-
-        );
+                getTestNakadiRecord("0"),
+                getTestNakadiRecord("1"),
+                getTestNakadiRecord("2"),
+                getTestNakadiRecord("3"));
 
         final KafkaException exception = new KafkaException();
         when(kafkaProducer.send(any(), any())).thenAnswer(invocation -> {
@@ -527,31 +516,33 @@ public class KafkaTopicRepositoryTest {
             return null;
         });
 
-        final List<NakadiRecordMetadata> result =
+        final List<NakadiRecordResult> result =
                 kafkaTopicRepository.sendEvents(topic, nakadiRecords);
-        Assert.assertEquals(2, result.size());
-        Assert.assertEquals(exception, result.get(0).getException());
-        Assert.assertEquals(exception, result.get(1).getException());
-        Assert.assertEquals(Integer.valueOf(2), result.get(0).getPartition());
-        Assert.assertEquals(Integer.valueOf(3), result.get(1).getPartition());
+        Assert.assertEquals(4, result.size());
+        Assert.assertEquals(null, result.get(0).getException());
+        Assert.assertEquals(NakadiRecordResult.Status.SUCCEEDED, result.get(0).getStatus());
+        Assert.assertEquals(null, result.get(1).getException());
+        Assert.assertEquals(NakadiRecordResult.Status.SUCCEEDED, result.get(1).getStatus());
+        Assert.assertEquals(exception, result.get(2).getException());
+        Assert.assertEquals(NakadiRecordResult.Status.ABORTED, result.get(2).getStatus());
+        Assert.assertEquals(exception, result.get(3).getException());
+        Assert.assertEquals(NakadiRecordResult.Status.ABORTED, result.get(3).getStatus());
     }
 
     private static Cursor cursor(final String partition, final String offset) {
         return new Cursor(partition, offset);
     }
 
-    private KafkaTopicRepository createKafkaRepository(final KafkaFactory kafkaFactory,
-                                                       final MetricRegistry metricRegistry) {
+    private KafkaTopicRepository createKafkaRepository(final KafkaFactory kafkaFactory) {
         try {
             return new KafkaTopicRepository.Builder()
                     .setKafkaZookeeper(createKafkaZookeeper())
                     .setKafkaFactory(kafkaFactory)
                     .setNakadiSettings(nakadiSettings)
                     .setKafkaSettings(kafkaSettings)
-                    .setZookeeperSettings(zookeeperSettings)
                     .setKafkaTopicConfigFactory(kafkaTopicConfigFactory)
                     .setKafkaLocationManager(kafkaLocationManager)
-                    .setMetricRegistry(metricRegistry)
+                    .setNakadiRecordMapper(nakadiRecordMapper)
                     .build();
         } catch (final Exception e) {
             throw new RuntimeException(e);
@@ -626,4 +617,18 @@ public class KafkaTopicRepositoryTest {
         verify(kafkaProducer, atLeastOnce()).send(producerRecordArgumentCaptor.capture(), any());
         return producerRecordArgumentCaptor.getValue();
     }
+
+    private NakadiRecord getTestNakadiRecord(final String partition) {
+        final NakadiMetadata metadata = new NakadiMetadata();
+        metadata.setEid(UUID.randomUUID().toString());
+        metadata.setOccurredAt(Instant.now());
+        metadata.setSchemaVersion("0");
+        metadata.setPartition(partition);
+        metadata.setEventType("test-event");
+
+        return new NakadiRecord()
+                .setMetadata(metadata)
+                .setPayload(new byte[0]);
+    }
+
 }

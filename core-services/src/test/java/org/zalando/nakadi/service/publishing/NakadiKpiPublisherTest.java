@@ -1,33 +1,32 @@
 package org.zalando.nakadi.service.publishing;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
-import com.fasterxml.jackson.dataformat.avro.AvroMapper;
-import org.json.JSONObject;
+import org.apache.avro.message.RawMessageDecoder;
+import org.apache.avro.specific.SpecificData;
+import org.apache.avro.specific.SpecificRecord;
+import org.junit.Assert;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.mockito.ArgumentCaptor;
 import org.mockito.Captor;
 import org.mockito.Mockito;
 import org.mockito.junit.MockitoJUnitRunner;
-import org.springframework.core.io.DefaultResourceLoader;
-import org.springframework.core.io.Resource;
-import org.zalando.nakadi.domain.EnvelopeHolder;
 import org.zalando.nakadi.domain.Feature;
 import org.zalando.nakadi.domain.NakadiRecord;
-import org.zalando.nakadi.domain.kpi.KPIEvent;
-import org.zalando.nakadi.domain.kpi.SubscriptionLogEvent;
-import org.zalando.nakadi.repository.kafka.SequenceDecoder;
+import org.zalando.nakadi.kpi.event.NakadiSubscriptionLog;
+import org.zalando.nakadi.mapper.NakadiRecordMapper;
 import org.zalando.nakadi.security.UsernameHasher;
-import org.zalando.nakadi.service.AvroSchema;
 import org.zalando.nakadi.service.FeatureToggleService;
+import org.zalando.nakadi.service.LocalSchemaRegistry;
+import org.zalando.nakadi.service.SchemaProviderService;
+import org.zalando.nakadi.service.TestSchemaProviderService;
 import org.zalando.nakadi.util.UUIDGenerator;
+import org.zalando.nakadi.utils.TestUtils;
 
 import java.io.IOException;
 import java.util.function.Supplier;
 
 import static org.hamcrest.Matchers.equalTo;
 import static org.junit.Assert.assertThat;
-import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
@@ -38,89 +37,64 @@ public class NakadiKpiPublisherTest {
     private final FeatureToggleService featureToggleService = Mockito.mock(FeatureToggleService.class);
     private final JsonEventProcessor jsonProcessor = Mockito.mock(JsonEventProcessor.class);
     private final BinaryEventProcessor binaryProcessor = Mockito.mock(BinaryEventProcessor.class);
-    private final AvroSchema avroSchema = Mockito.mock(AvroSchema.class);
-    private final UUIDGenerator uuidGenerator = Mockito.mock(UUIDGenerator.class);
+    private final LocalSchemaRegistry localRegistryMock = Mockito.mock(LocalSchemaRegistry.class);
+    private final SchemaProviderService schemaProviderService = new TestSchemaProviderService(localRegistryMock);
+    private final UUIDGenerator uuidGenerator = new UUIDGenerator();
     private final UsernameHasher usernameHasher = new UsernameHasher("123");
+    private final NakadiRecordMapper recordMapper;
 
     @Captor
     private ArgumentCaptor<String> eventTypeCaptor;
     @Captor
     private ArgumentCaptor<NakadiRecord> nakadiRecordCaptor;
-    @Captor
-    private ArgumentCaptor<JSONObject> jsonObjectCaptor;
 
-    @Test
-    public void testPublishJsonKPIEventWithFeatureToggleOn() {
-        when(featureToggleService.isFeatureEnabled(Feature.KPI_COLLECTION)).thenReturn(true);
-        when(featureToggleService.isFeatureEnabled(Feature.AVRO_FOR_KPI_EVENTS)).thenReturn(false);
-
-        final var subscriptionLogEvent = new SubscriptionLogEvent()
-                .setSubscriptionId("test-subscription-id")
-                .setStatus("created");
-
-        new NakadiKpiPublisher(featureToggleService, jsonProcessor, binaryProcessor, usernameHasher,
-                new EventMetadataTestStub(), uuidGenerator, avroSchema)
-                .publish(() -> subscriptionLogEvent);
-
-        verify(jsonProcessor).queueEvent(eventTypeCaptor.capture(), jsonObjectCaptor.capture());
-
-        assertEquals(subscriptionLogEvent.getName(), eventTypeCaptor.getValue());
-        assertEquals("test-subscription-id", jsonObjectCaptor.getValue().get("subscription_id"));
-        assertEquals("created", jsonObjectCaptor.getValue().get("status"));
-        verifyNoInteractions(binaryProcessor, avroSchema);
+    public NakadiKpiPublisherTest() throws IOException {
+        this.recordMapper = TestUtils.getNakadiRecordMapper();
     }
 
     @Test
-    public void testPublishAvroKPIEventWithFeatureToggleOn() throws IOException {
+    public void testPublishKPIEventWithFeatureToggleOn() throws IOException {
         when(featureToggleService.isFeatureEnabled(Feature.KPI_COLLECTION)).thenReturn(true);
-        when(featureToggleService.isFeatureEnabled(Feature.AVRO_FOR_KPI_EVENTS)).thenReturn(true);
 
-        final var subscriptionLogEvent = new SubscriptionLogEvent()
+        final NakadiSubscriptionLog subscriptionLogEvent = NakadiSubscriptionLog.newBuilder()
                 .setSubscriptionId("test-subscription-id")
-                .setStatus("created");
+                .setStatus("created")
+                .build();
 
-        // Publish the above KPIEvent and capture it.
-        final Resource eventTypeRes = new DefaultResourceLoader().getResource("event-type-schema/");
-        final var avroSchema = new AvroSchema(new AvroMapper(), new ObjectMapper(), eventTypeRes);
         new NakadiKpiPublisher(featureToggleService, jsonProcessor, binaryProcessor, usernameHasher,
-                new EventMetadataTestStub(), new UUIDGenerator(), avroSchema)
+                new EventMetadataTestStub(), uuidGenerator, schemaProviderService, recordMapper)
                 .publish(() -> subscriptionLogEvent);
 
-        verifyNoInteractions(jsonProcessor);
-
-        //Verify the event-type and NakadiRecord
         verify(binaryProcessor).queueEvent(eventTypeCaptor.capture(), nakadiRecordCaptor.capture());
-        assertEquals(subscriptionLogEvent.getName(), eventTypeCaptor.getValue());
-        final var nakadiRecord = nakadiRecordCaptor.getValue();
-        assertEquals(subscriptionLogEvent.getName(), nakadiRecord.getEventType());
 
-        // Build EnvelopHolder from the data in NakadiRecord and extract GenericRecord
-        final var envelopeHolder = EnvelopeHolder.fromBytes(nakadiRecord.getData());
-        final var schemaEntry = avroSchema
-                .getLatestEventTypeSchemaVersion(subscriptionLogEvent.getName());
-        final var sequenceDecoder = new SequenceDecoder(schemaEntry.getSchema());
-        final var record = sequenceDecoder.read(envelopeHolder.getPayload());
+        final NakadiRecord nakadiRecord = nakadiRecordCaptor.getValue();
 
-        // Verify values in GenericRecord
-        assertEquals("test-subscription-id", record.get("subscription_id").toString());
-        assertEquals("created", record.get("status").toString());
+        final NakadiSubscriptionLog result = new RawMessageDecoder<NakadiSubscriptionLog>(
+                SpecificData.get(), NakadiSubscriptionLog.getClassSchema())
+                .decode(nakadiRecord.getPayload());
+
+        Assert.assertEquals("nakadi.subscription.log", eventTypeCaptor.getValue());
+        Assert.assertEquals("nakadi.subscription.log", nakadiRecord.getMetadata().getEventType());
+        Assert.assertEquals("test-subscription-id", result.getSubscriptionId());
+        Assert.assertEquals("created", result.getStatus());
     }
 
     @Test
     public void testPublishKPIEventWithFeatureToggleOff() {
         when(featureToggleService.isFeatureEnabled(Feature.KPI_COLLECTION)).thenReturn(false);
-        final Supplier<KPIEvent> mockEventSupplier = Mockito.mock(Supplier.class);
+        final Supplier<SpecificRecord> mockEventSupplier = Mockito.mock(Supplier.class);
         new NakadiKpiPublisher(featureToggleService, jsonProcessor, binaryProcessor, usernameHasher,
-                new EventMetadataTestStub(), uuidGenerator, avroSchema)
+                new EventMetadataTestStub(), uuidGenerator, schemaProviderService, recordMapper)
                 .publish(mockEventSupplier);
-        verifyNoInteractions(mockEventSupplier, jsonProcessor, binaryProcessor, uuidGenerator, avroSchema);
+        verifyNoInteractions(mockEventSupplier, jsonProcessor, binaryProcessor, localRegistryMock);
     }
 
     @Test
-    public void testHash() throws Exception {
+    public void testHash() {
         final NakadiKpiPublisher publisher = new NakadiKpiPublisher(featureToggleService,
                 jsonProcessor, binaryProcessor, usernameHasher,
-                new EventMetadataTestStub(), uuidGenerator, avroSchema);
+                new EventMetadataTestStub(), uuidGenerator, schemaProviderService, recordMapper);
+
         assertThat(publisher.hash("application"),
                 equalTo("befee725ab2ed3b17020112089a693ad8d8cfbf62b2442dcb5b89d66ce72391e"));
     }

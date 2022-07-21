@@ -1,8 +1,7 @@
 package org.zalando.nakadi.service;
 
-import com.google.common.collect.ImmutableList;
-import com.google.common.collect.ImmutableSet;
 import com.google.common.collect.Multimap;
+import org.apache.avro.specific.SpecificRecord;
 import org.junit.Before;
 import org.junit.Test;
 import org.junit.runner.RunWith;
@@ -17,21 +16,19 @@ import org.zalando.nakadi.config.NakadiSettings;
 import org.zalando.nakadi.domain.EventCategory;
 import org.zalando.nakadi.domain.EventType;
 import org.zalando.nakadi.domain.Feature;
-import org.zalando.nakadi.domain.kpi.EventTypeLogEvent;
-import org.zalando.nakadi.domain.kpi.KPIEvent;
 import org.zalando.nakadi.enrichment.Enrichment;
 import org.zalando.nakadi.exceptions.runtime.AccessDeniedException;
-import org.zalando.nakadi.exceptions.runtime.ConflictException;
 import org.zalando.nakadi.exceptions.runtime.EventTypeDeletionException;
 import org.zalando.nakadi.exceptions.runtime.InternalNakadiException;
+import org.zalando.nakadi.exceptions.runtime.InvalidEventTypeException;
 import org.zalando.nakadi.exceptions.runtime.InvalidOwningApplicationException;
 import org.zalando.nakadi.exceptions.runtime.TopicCreationException;
+import org.zalando.nakadi.kpi.event.NakadiEventTypeLog;
 import org.zalando.nakadi.partitioning.PartitionResolver;
 import org.zalando.nakadi.plugin.api.ApplicationService;
 import org.zalando.nakadi.repository.TopicRepository;
 import org.zalando.nakadi.repository.db.EventTypeRepository;
 import org.zalando.nakadi.repository.db.SubscriptionDbRepository;
-import org.zalando.nakadi.repository.db.SubscriptionTokenLister;
 import org.zalando.nakadi.repository.kafka.PartitionsCalculator;
 import org.zalando.nakadi.service.publishing.NakadiAuditLogPublisher;
 import org.zalando.nakadi.service.publishing.NakadiKpiPublisher;
@@ -39,8 +36,8 @@ import org.zalando.nakadi.service.timeline.TimelineService;
 import org.zalando.nakadi.service.timeline.TimelineSync;
 import org.zalando.nakadi.service.validation.EventTypeOptionsValidator;
 import org.zalando.nakadi.utils.EventTypeTestBuilder;
-import org.zalando.nakadi.utils.RandomSubscriptionBuilder;
 import org.zalando.nakadi.utils.TestUtils;
+import org.zalando.nakadi.view.EventOwnerSelector;
 
 import java.util.Collections;
 import java.util.Optional;
@@ -65,8 +62,6 @@ public class EventTypeServiceTest {
 
     protected static final long TOPIC_RETENTION_MIN_MS = 10800000;
     protected static final long TOPIC_RETENTION_MAX_MS = 345600000;
-    public static final String DELETABLE_OWNING_APP = "nakadi_archiver";
-    public static final String DELETABLE_CONSUMER_GROUP = "nakadi_to_s3";
 
     @Mock
     private Enrichment enrichment;
@@ -86,8 +81,6 @@ public class EventTypeServiceTest {
     private SchemaEvolutionService schemaEvolutionService;
     @Mock
     private SubscriptionDbRepository subscriptionDbRepository;
-    @Mock
-    private SubscriptionTokenLister subscriptionTokenLister;
     @Mock
     private TimelineService timelineService;
     @Mock
@@ -110,7 +103,7 @@ public class EventTypeServiceTest {
     private EventTypeService eventTypeService;
 
     @Captor
-    private ArgumentCaptor<Supplier<KPIEvent>> kpiEventCaptor;
+    private ArgumentCaptor<Supplier<SpecificRecord>> kpiEventCaptor;
 
     @Before
     public void setUp() {
@@ -120,10 +113,7 @@ public class EventTypeServiceTest {
                 subscriptionDbRepository, schemaEvolutionService, partitionsCalculator, featureToggleService,
                 authorizationValidator, timelineSync, transactionTemplate, nakadiSettings, nakadiKpiPublisher,
                 nakadiAuditLogPublisher, eventTypeOptionsValidator,
-                eventTypeCache, schemaService, adminService, subscriptionTokenLister, applicationService);
-
-        when(nakadiSettings.getDeletableSubscriptionConsumerGroup()).thenReturn(DELETABLE_CONSUMER_GROUP);
-        when(nakadiSettings.getDeletableSubscriptionOwningApplication()).thenReturn(DELETABLE_OWNING_APP);
+                eventTypeCache, schemaService, adminService, applicationService);
 
         when(transactionTemplate.execute(any())).thenAnswer(invocation -> {
             final TransactionCallback callback = (TransactionCallback) invocation.getArguments()[0];
@@ -150,69 +140,6 @@ public class EventTypeServiceTest {
     }
 
     @Test
-    public void whenSubscriptionsExistThenCantDeleteEventType() {
-        final EventType eventType = TestUtils.buildDefaultEventType();
-
-        doReturn(Optional.of(eventType)).when(eventTypeCache).getEventTypeIfExists(eventType.getName());
-        doReturn(ImmutableList.of(RandomSubscriptionBuilder.builder().build()))
-                .when(subscriptionDbRepository)
-                .listSubscriptions(
-                        ImmutableSet.of(eventType.getName()),
-                        Optional.empty(),
-                        Optional.empty(),
-                        Optional.empty()
-                );
-
-        when(featureToggleService.isFeatureEnabled(Feature.DELETE_EVENT_TYPE_WITH_SUBSCRIPTIONS))
-                .thenReturn(false);
-
-        assertThrows(ConflictException.class,
-                () -> eventTypeService.delete(eventType.getName()));
-    }
-
-    @Test
-    public void testFeatureToggleAllowsDeleteEventTypeWithSubscriptions() {
-        final EventType eventType = TestUtils.buildDefaultEventType();
-
-        doReturn(Optional.of(eventType)).when(eventTypeCache).getEventTypeIfExists(eventType.getName());
-        doReturn(ImmutableList.of(RandomSubscriptionBuilder.builder().build()))
-                .when(subscriptionDbRepository)
-                .listSubscriptions(
-                        ImmutableSet.of(eventType.getName()),
-                        Optional.empty(),
-                        Optional.empty(),
-                        Optional.empty()
-                );
-
-        when(featureToggleService.isFeatureEnabled(Feature.DELETE_EVENT_TYPE_WITH_SUBSCRIPTIONS))
-                .thenReturn(true);
-
-        eventTypeService.delete(eventType.getName());
-        // no exception should be thrown
-    }
-
-    @Test
-    public void testFeatureToggleAllowsDeleteEventTypeWithAuthzSectionAndDeletableSubscription() {
-        final EventType eventType = TestUtils.buildDefaultEventType();
-        eventType.setAuthorization(TestUtils.buildResourceAuthorization());
-
-        doReturn(Optional.of(eventType)).when(eventTypeCache).getEventTypeIfExists(eventType.getName());
-        doReturn(ImmutableList.of(
-                TestUtils.
-                        createSubscription(DELETABLE_OWNING_APP, DELETABLE_CONSUMER_GROUP)))
-                .when(subscriptionDbRepository)
-                .listSubscriptions(
-                        ImmutableSet.of(eventType.getName()),
-                        Optional.empty(),
-                        Optional.empty(),
-                        Optional.empty()
-                );
-
-        eventTypeService.delete(eventType.getName());
-        // no exception should be thrown
-    }
-
-    @Test
     public void testFeatureToggleForbidsDeleteEventTypeWithoutAuthzSection() {
         final EventType eventType = TestUtils.buildDefaultEventType();
 
@@ -222,28 +149,6 @@ public class EventTypeServiceTest {
                 .thenReturn(true);
 
         assertThrows(AccessDeniedException.class, () -> eventTypeService.delete(eventType.getName()));
-    }
-
-    @Test
-    public void testFeatureToggleForbidsDeleteEventTypeWithNonDeletableSubscription() {
-        final EventType eventType = TestUtils.buildDefaultEventType();
-        eventType.setAuthorization(TestUtils.buildResourceAuthorization());
-
-        doReturn(Optional.of(eventType)).when(eventTypeCache).getEventTypeIfExists(eventType.getName());
-
-        doReturn(ImmutableList.of(TestUtils.createSubscription("someone", "something")))
-                .when(subscriptionDbRepository)
-                .listSubscriptions(
-                        ImmutableSet.of(eventType.getName()),
-                        Optional.empty(),
-                        Optional.empty(),
-                        Optional.empty()
-                );
-        when(featureToggleService.isFeatureEnabled(Feature.DELETE_EVENT_TYPE_WITH_SUBSCRIPTIONS))
-                .thenReturn(false);
-
-        assertThrows(ConflictException.class,
-                () -> eventTypeService.delete(eventType.getName()));
     }
 
     @Test
@@ -309,7 +214,7 @@ public class EventTypeServiceTest {
         final EventType et = TestUtils.buildDefaultEventType();
         eventTypeService.create(et, true);
         verify(nakadiKpiPublisher).publish(kpiEventCaptor.capture());
-        final EventTypeLogEvent kpiEvent = (EventTypeLogEvent) kpiEventCaptor.getValue().get();
+        final NakadiEventTypeLog kpiEvent = (NakadiEventTypeLog) kpiEventCaptor.getValue().get();
         assertEquals(et.getName(), kpiEvent.getEventType());
         assertEquals("created", kpiEvent.getStatus());
         assertEquals(et.getCategory().toString(), kpiEvent.getCategory());
@@ -324,7 +229,7 @@ public class EventTypeServiceTest {
         when(schemaEvolutionService.evolve(any(), any())).thenReturn(et);
         eventTypeService.update(et.getName(), et);
         verify(nakadiKpiPublisher).publish(kpiEventCaptor.capture());
-        final EventTypeLogEvent kpiEvent = (EventTypeLogEvent) kpiEventCaptor.getValue().get();
+        final NakadiEventTypeLog kpiEvent = (NakadiEventTypeLog) kpiEventCaptor.getValue().get();
         assertEquals(et.getName(), kpiEvent.getEventType());
         assertEquals("updated", kpiEvent.getStatus());
         assertEquals(et.getCategory().toString(), kpiEvent.getCategory());
@@ -379,7 +284,6 @@ public class EventTypeServiceTest {
         verifyNoInteractions(applicationService);
     }
 
-
     @Test
     public void whenEventTypeDeletedThenKPIEventSubmitted() {
         final EventType et = TestUtils.buildDefaultEventType();
@@ -387,11 +291,22 @@ public class EventTypeServiceTest {
 
         eventTypeService.delete(et.getName());
         verify(nakadiKpiPublisher).publish(kpiEventCaptor.capture());
-        final EventTypeLogEvent kpiEvent = (EventTypeLogEvent) kpiEventCaptor.getValue().get();
+        final NakadiEventTypeLog kpiEvent = (NakadiEventTypeLog) kpiEventCaptor.getValue().get();
         assertEquals(et.getName(), kpiEvent.getEventType());
         assertEquals("deleted", kpiEvent.getStatus());
         assertEquals(et.getCategory().toString(), kpiEvent.getCategory());
         assertEquals("disabled", kpiEvent.getAuthz());
         assertEquals(et.getCompatibilityMode().toString(), kpiEvent.getCompatibilityMode());
+    }
+
+    @Test
+    public void whenMetadataEventOwnerSelectorThenValueUnset() {
+        final EventType et = TestUtils.buildDefaultEventType();
+
+        et.setEventOwnerSelector(new EventOwnerSelector(EventOwnerSelector.Type.METADATA, "any_name", null));
+        assertDoesNotThrow(() -> EventTypeService.validateEventOwnerSelector(et));
+
+        et.setEventOwnerSelector(new EventOwnerSelector(EventOwnerSelector.Type.METADATA, "other_name", "some_value"));
+        assertThrows(InvalidEventTypeException.class, () -> EventTypeService.validateEventOwnerSelector(et));
     }
 }

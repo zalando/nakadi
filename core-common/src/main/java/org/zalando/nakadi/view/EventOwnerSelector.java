@@ -8,6 +8,7 @@ public class EventOwnerSelector {
     public enum Type {
         PATH,
         STATIC,
+        METADATA,
     }
 
     @NotNull

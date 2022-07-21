@@ -80,12 +80,11 @@ public class EventTypeController {
     }
 
     @RequestMapping(method = RequestMethod.GET)
-    public ResponseEntity<?> list(@Nullable @RequestParam final AuthorizationAttribute writer) {
-        if (writer != null) {
-            return status(HttpStatus.OK).body(eventTypeService.list(writer));
-        }
-
-        return status(HttpStatus.OK).body(eventTypeService.list());
+    public ResponseEntity<?> list(
+            @Nullable @RequestParam final AuthorizationAttribute writer,
+            @Nullable @RequestParam(value = "owning_application", required = false) final String owningApplication
+    ) {
+        return status(HttpStatus.OK).body(eventTypeService.list(writer, owningApplication));
     }
 
     @RequestMapping(method = RequestMethod.POST)

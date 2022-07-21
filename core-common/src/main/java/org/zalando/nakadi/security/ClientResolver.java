@@ -22,7 +22,6 @@ import java.util.Optional;
 @Component
 public class ClientResolver implements HandlerMethodArgumentResolver {
 
-    private static final String FULL_ACCESS_CLIENT_ID = "adminClientId";
     private final SecuritySettings settings;
     private final AuthorizationService authorizationService;
 
@@ -50,9 +49,7 @@ public class ClientResolver implements HandlerMethodArgumentResolver {
         if (settings.getAuthMode() == SecuritySettings.AuthMode.OFF) {
             return new FullAccessClient(clientId);
         } else {
-            if (clientId.equals(settings.getAdminClientId())) {
-                return new FullAccessClient(FULL_ACCESS_CLIENT_ID);
-            } else if (!authorizationService.getSubject().isPresent()) {
+            if (!authorizationService.getSubject().isPresent()) {
                 throw new UnauthorizedUserException("Client unauthorized");
             } else {
                 return new NakadiClient(clientId, getRealm());

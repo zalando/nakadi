@@ -4,7 +4,7 @@ import org.zalando.nakadi.domain.BatchItem;
 import org.zalando.nakadi.domain.CleanupPolicy;
 import org.zalando.nakadi.domain.NakadiCursor;
 import org.zalando.nakadi.domain.NakadiRecord;
-import org.zalando.nakadi.domain.NakadiRecordMetadata;
+import org.zalando.nakadi.domain.NakadiRecordResult;
 import org.zalando.nakadi.domain.PartitionEndStatistics;
 import org.zalando.nakadi.domain.PartitionStatistics;
 import org.zalando.nakadi.domain.Timeline;
@@ -17,10 +17,8 @@ import org.zalando.nakadi.exceptions.runtime.TopicConfigException;
 import org.zalando.nakadi.exceptions.runtime.TopicCreationException;
 import org.zalando.nakadi.exceptions.runtime.TopicDeletionException;
 import org.zalando.nakadi.exceptions.runtime.TopicRepositoryException;
-import org.zalando.nakadi.repository.kafka.RecordDeserializer;
 
 import java.util.Collection;
-import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -54,10 +52,7 @@ public interface TopicRepository {
     void syncPostBatch(String topicId, List<BatchItem> batch, String eventTypeName, boolean delete)
             throws EventPublishingException;
 
-
-    default List<NakadiRecordMetadata> sendEvents(String topic, List<NakadiRecord> nakadiRecords) {
-        return Collections.emptyList();
-    }
+    List<NakadiRecordResult> sendEvents(String topic, List<NakadiRecord> nakadiRecords);
 
     void repartition(String topic, int partitionsNumber) throws CannotAddPartitionToTopicException,
             TopicConfigException;
@@ -93,8 +88,7 @@ public interface TopicRepository {
 
     EventConsumer.LowLevelConsumer createEventConsumer(
             String clientId,
-            List<NakadiCursor> positions,
-            RecordDeserializer recordDeserializer) throws InvalidCursorException;
+            List<NakadiCursor> positions) throws InvalidCursorException;
 
     void validateReadCursors(List<NakadiCursor> cursors) throws InvalidCursorException,
             ServiceTemporarilyUnavailableException;

@@ -4,27 +4,34 @@ import com.google.common.cache.CacheBuilder;
 import com.google.common.cache.CacheLoader;
 import com.google.common.cache.LoadingCache;
 import com.google.common.util.concurrent.UncheckedExecutionException;
+import org.json.JSONObject;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.context.annotation.Lazy;
 import org.springframework.stereotype.Service;
 import org.zalando.nakadi.domain.EventType;
-import org.zalando.nakadi.domain.EventTypeSchemaBase;
+import org.zalando.nakadi.domain.EventTypeSchema;
 import org.zalando.nakadi.domain.Timeline;
 import org.zalando.nakadi.exceptions.runtime.InternalNakadiException;
 import org.zalando.nakadi.exceptions.runtime.NoSuchEventTypeException;
+import org.zalando.nakadi.repository.TopicRepositoryHolder;
 import org.zalando.nakadi.repository.db.EventTypeRepository;
 import org.zalando.nakadi.repository.db.TimelineDbRepository;
+import org.zalando.nakadi.service.SchemaService;
+import org.zalando.nakadi.service.timeline.TimelineService;
 import org.zalando.nakadi.service.timeline.TimelineSync;
-import org.zalando.nakadi.validation.EventTypeValidator;
 import org.zalando.nakadi.validation.EventValidatorBuilder;
+import org.zalando.nakadi.validation.JsonSchemaValidator;
+import org.zalando.nakadi.validation.ValidationError;
 
 import javax.annotation.PostConstruct;
 import javax.annotation.PreDestroy;
 import java.time.Duration;
 import java.util.ArrayList;
 import java.util.Collection;
+import java.util.Collections;
 import java.util.List;
 import java.util.Optional;
 import java.util.concurrent.Executors;
@@ -114,6 +121,7 @@ public class EventTypeCache {
     private final LoadingCache<String, CachedValue> valueCache;
     private final EventTypeRepository eventTypeRepository;
     private final TimelineDbRepository timelineRepository;
+    private final TopicRepositoryHolder topicRepositoryHolder;
     private final ScheduledExecutorService scheduledExecutorService;
     private final AtomicLong lastCheck = new AtomicLong();
     private final AtomicLong watcherCounter = new AtomicLong();
@@ -122,6 +130,7 @@ public class EventTypeCache {
     private final long periodicUpdatesInterval;
     private final long zkChangesTTL;
     private final EventValidatorBuilder eventValidatorBuilder;
+    private final SchemaService schemaService;
     private TimelineSync.ListenerRegistration timelineSyncListener = null;
 
     private static final Logger LOG = LoggerFactory.getLogger(EventTypeCache.class);
@@ -131,19 +140,23 @@ public class EventTypeCache {
             final ChangesRegistry changesRegistry,
             final EventTypeRepository eventTypeRepository,
             final TimelineDbRepository timelineRepository,
+            final TopicRepositoryHolder topicRepositoryHolder,
             final TimelineSync timelineSync,
             final EventValidatorBuilder eventValidatorBuilder,
+            @Lazy final SchemaService schemaService,
             @Value("${nakadi.event-cache.periodic-update-seconds:120}") final long periodicUpdatesIntervalSeconds,
             @Value("${nakadi.event-cache.change-ttl:600}") final long zkChangesTTLSeconds) {
         this.changesRegistry = changesRegistry;
         this.eventTypeRepository = eventTypeRepository;
         this.timelineRepository = timelineRepository;
+        this.topicRepositoryHolder = topicRepositoryHolder;
         this.valueCache = CacheBuilder.newBuilder()
                 .expireAfterWrite(Duration.ofHours(2))
                 .build(CacheLoader.from(this::loadValue));
         this.scheduledExecutorService = Executors.newSingleThreadScheduledExecutor();
         this.timelineSync = timelineSync;
         this.eventValidatorBuilder = eventValidatorBuilder;
+        this.schemaService = schemaService;
         this.periodicUpdatesInterval = TimeUnit.SECONDS.toMillis(periodicUpdatesIntervalSeconds);
         this.zkChangesTTL = TimeUnit.SECONDS.toMillis(zkChangesTTLSeconds);
     }
@@ -272,12 +285,16 @@ public class EventTypeCache {
         return getCached(name).getEventType();
     }
 
-    public EventTypeValidator getValidator(final String name) throws NoSuchEventTypeException {
-        return getCached(name).getEventTypeValidator();
+    public JsonSchemaValidator getValidator(final String name) throws NoSuchEventTypeException {
+        return getCached(name).getJsonSchemaValidator();
     }
 
     public List<Timeline> getTimelinesOrdered(final String name) throws NoSuchEventTypeException {
-        return getCached(name).getTimelines();
+        return getCached(name).getTimelinesOrdered();
+    }
+
+    public List<String> getOrderedPartitions(final String name) throws NoSuchEventTypeException {
+        return getCached(name).getOrderedPartitions();
     }
 
     private CachedValue getCached(final String name) throws NoSuchEventTypeException {
@@ -296,20 +313,60 @@ public class EventTypeCache {
         final long start = System.currentTimeMillis();
         final EventType eventType = eventTypeRepository.findByName(eventTypeName);
 
+        final JsonSchemaValidator validator;
+        //
+        // The validator is used for publishing JSON events, but the event type may be already
+        // converted to Avro, so try to find latest JSON schema, if any:
+        //
+        if (eventType.getSchema().getType() != EventTypeSchema.Type.JSON_SCHEMA) {
+            final Optional<EventTypeSchema> schema = schemaService.getLatestSchemaByType(eventTypeName,
+                    EventTypeSchema.Type.JSON_SCHEMA);
+
+            if (schema.isPresent()) {
+                eventType.setLatestSchemaByType(schema.get());
+                validator = eventValidatorBuilder.build(eventType);
+            } else {
+                validator = new NoJsonSchemaValidator(eventTypeName);
+            }
+        } else {
+            validator = eventValidatorBuilder.build(eventType);
+        }
+
         final List<Timeline> timelines =
                 timelineRepository.listTimelinesOrdered(eventTypeName);
+        //
+        // 1. Historically ordering as strings, even though partition "names" are numeric.
+        // 2. Using ArrayList to get fast access by index for actual partitioning.
+        //
+        final List<String> orderedPartitions =
+                TimelineService.getActiveTimeline(timelines)
+                .map(timeline ->
+                        topicRepositoryHolder.getTopicRepository(timeline.getStorage())
+                        .listPartitionNames(timeline.getTopic())
+                        .stream()
+                        .sorted()
+                        .collect(Collectors.toCollection(ArrayList::new)))
+                .orElseThrow(() -> {
+                            throw new InternalNakadiException("No active timeline found for event type: "
+                                    + eventTypeName);
+                        });
 
-        final var schemaType = eventType.getSchema().getType();
-        final EventTypeValidator noopValidator = (json) -> Optional.empty();
-
-        final CachedValue result = new CachedValue(
-                eventType,
-                schemaType == EventTypeSchemaBase.Type.JSON_SCHEMA?
-                        eventValidatorBuilder.build(eventType) : noopValidator,
-                timelines
-        );
         LOG.info("Successfully load event type {}, took: {} ms", eventTypeName, System.currentTimeMillis() - start);
-        return result;
+
+        return new CachedValue(eventType, validator, timelines, Collections.unmodifiableList(orderedPartitions));
+    }
+
+    private class NoJsonSchemaValidator implements JsonSchemaValidator {
+        final String message;
+
+        private NoJsonSchemaValidator(final String eventTypeName) {
+            this.message = "No json_schema found for event type: " + eventTypeName;
+        }
+
+        @Override
+        public Optional<ValidationError> validate(final JSONObject event) {
+            return Optional.of(new ValidationError(message));
+        }
     }
 
     public void addInvalidationListener(final Consumer<String> listener) {
@@ -320,27 +377,34 @@ public class EventTypeCache {
 
     private static class CachedValue {
         private final EventType eventType;
-        private final EventTypeValidator eventTypeValidator;
-        private final List<Timeline> timelines;
+        private final JsonSchemaValidator jsonSchemaValidator;
+        private final List<Timeline> timelinesOrdered;
+        private final List<String> orderedPartitions;
 
         CachedValue(final EventType eventType,
-                    final EventTypeValidator eventTypeValidator,
-                    final List<Timeline> timelines) {
+                    final JsonSchemaValidator jsonSchemaValidator,
+                    final List<Timeline> timelinesOrdered,
+                    final List<String> orderedPartitions) {
             this.eventType = eventType;
-            this.eventTypeValidator = eventTypeValidator;
-            this.timelines = timelines;
+            this.jsonSchemaValidator = jsonSchemaValidator;
+            this.timelinesOrdered = timelinesOrdered;
+            this.orderedPartitions = orderedPartitions;
         }
 
         public EventType getEventType() {
             return eventType;
         }
 
-        public EventTypeValidator getEventTypeValidator() {
-            return eventTypeValidator;
+        public JsonSchemaValidator getJsonSchemaValidator() {
+            return jsonSchemaValidator;
         }
 
-        public List<Timeline> getTimelines() {
-            return timelines;
+        public List<Timeline> getTimelinesOrdered() {
+            return timelinesOrdered;
+        }
+
+        public List<String> getOrderedPartitions() {
+            return orderedPartitions;
         }
     }
 

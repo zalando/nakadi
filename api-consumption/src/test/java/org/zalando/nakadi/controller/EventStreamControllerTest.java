@@ -141,8 +141,7 @@ public class EventStreamControllerTest {
         metricRegistry = new MetricRegistry();
         streamMetrics = new MetricRegistry();
         final EventConsumer.LowLevelConsumer eventConsumerMock = mock(EventConsumer.LowLevelConsumer.class);
-        when(topicRepositoryMock.createEventConsumer(
-                eq(KAFKA_CLIENT_ID), any(), any()))
+        when(topicRepositoryMock.createEventConsumer(eq(KAFKA_CLIENT_ID), any()))
                 .thenReturn(eventConsumerMock);
 
         eventStreamChecks = Mockito.mock(EventStreamChecks.class);
@@ -166,7 +165,6 @@ public class EventStreamControllerTest {
 
         settings = mock(SecuritySettings.class);
         when(settings.getAuthMode()).thenReturn(OFF);
-        when(settings.getAdminClientId()).thenReturn("org/zalando/nakadi");
 
         mockMvc = standaloneSetup(controller)
                 .setMessageConverters(new StringHttpMessageConverter(), JACKSON_2_HTTP_MESSAGE_CONVERTER)
@@ -193,8 +191,7 @@ public class EventStreamControllerTest {
         final ArgumentCaptor<EventStreamConfig> configCaptor = ArgumentCaptor.forClass(EventStreamConfig.class);
 
         final EventConsumer.LowLevelConsumer eventConsumerMock = mock(EventConsumer.LowLevelConsumer.class);
-        when(topicRepositoryMock.createEventConsumer(
-                any(), any(), any()))
+        when(topicRepositoryMock.createEventConsumer(any(), any()))
                 .thenReturn(eventConsumerMock);
 
         final EventStream eventStreamMock = mock(EventStream.class);
@@ -508,7 +505,7 @@ public class EventStreamControllerTest {
         final EventConsumer.LowLevelConsumer eventConsumerMock = mock(EventConsumer.LowLevelConsumer.class);
         when(eventTypeCache.getEventType(TEST_EVENT_TYPE_NAME)).thenReturn(EVENT_TYPE);
         when(topicRepositoryMock.createEventConsumer(
-                eq(KAFKA_CLIENT_ID), eq(ImmutableList.of(NakadiCursor.of(timeline, "0", "0"))), any()))
+                eq(KAFKA_CLIENT_ID), eq(ImmutableList.of(NakadiCursor.of(timeline, "0", "0")))))
                 .thenReturn(eventConsumerMock);
     }
 

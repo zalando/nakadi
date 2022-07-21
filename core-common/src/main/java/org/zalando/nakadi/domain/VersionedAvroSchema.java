@@ -18,4 +18,8 @@ public class VersionedAvroSchema {
     public String getVersion() {
         return version;
     }
+
+    public byte getVersionAsByte() {
+        return Byte.parseByte(version);
+    }
 }

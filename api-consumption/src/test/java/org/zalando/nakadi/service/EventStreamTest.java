@@ -16,10 +16,10 @@ import org.zalando.nakadi.domain.NakadiCursor;
 import org.zalando.nakadi.domain.Timeline;
 import org.zalando.nakadi.exceptions.runtime.AccessDeniedException;
 import org.zalando.nakadi.repository.kafka.KafkaCursor;
+import org.zalando.nakadi.repository.kafka.KafkaRecordDeserializer;
 import org.zalando.nakadi.repository.kafka.NakadiKafkaConsumer;
 import org.zalando.nakadi.security.Client;
 import org.zalando.nakadi.service.converter.CursorConverterImpl;
-import org.zalando.nakadi.service.publishing.NakadiKpiPublisher;
 import org.zalando.nakadi.service.timeline.TimelineService;
 import org.zalando.nakadi.util.ThreadUtils;
 import org.zalando.nakadi.utils.TestUtils;
@@ -69,11 +69,12 @@ public class EventStreamTest {
 
     private static final Timeline TIMELINE = buildTimelineWithTopic(TOPIC);
     private static CursorConverter cursorConverter;
-    private static EventStreamWriter eventStreamWriter = new EventStreamWriterBinary();
+    private EventStreamWriter eventStreamWriter;
 
-    private final NakadiKpiPublisher kpiPublisher = mock(NakadiKpiPublisher.class);
-    private final String kpiEventType = "nakadi.data.streamed";
-    private final long kpiFrequencyMs = 100l;
+    public EventStreamTest() throws IOException {
+        eventStreamWriter = new EventStreamJsonWriter(
+                new KafkaRecordDeserializer(TestUtils.getNakadiRecordMapper(), null));
+    }
 
     @BeforeClass
     public static void setupMocks() {

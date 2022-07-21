@@ -12,8 +12,8 @@
     "ordering_key_fields": [],
     "ordering_instance_ids": [],
     "schema": {
-      "type": "json_schema",
-      "schema": "{\n    \"description\": \"Nakadi KPI: batch published. Used to calculate the number of producers, production throughput per app and number of events produced per app\",\n    \"type\": \"object\",\n    \"properties\": {\n        \"event_type\": {\n            \"type\": \"string\"\n        },\n        \"app\": {\n            \"type\": \"string\"\n        },\n        \"app_hashed\": {\n            \"type\": \"string\"\n        },\"token_realm\": {\n      \"type\":\"string\"\n    },\n        \"number_of_events\": {\n            \"type\": \"number\"\n        },\n        \"batch_size\": {\n            \"description\": \"Size of the batch in bytes\",\n            \"type\": \"number\"\n        },\n        \"ms_spent\": {\n            \"description\": \"Milliseconds spent processing the batch\",\n            \"type\": \"number\"\n        }\n    },\n    \"required\": [\n        \"event_type\",\n        \"app\",\n        \"app_hashed\",\n        \"number_of_events\",\n        \"batch_size\"\n    ]\n}"
+      "type": "avro_schema",
+      "schema": "{\n  \"name\": \"NakadiBatchPublished\",\n  \"namespace\": \"org.zalando.nakadi.kpi.event\",\n  \"type\": \"record\",\n  \"doc\": \"Stores KPI event of type nakadi.batch.published\",\n  \"fields\": [\n    {\n      \"name\": \"event_type\",\n      \"type\": \"string\"\n    },\n    {\n      \"name\": \"app\",\n      \"type\": \"string\"\n    },\n    {\n      \"name\": \"app_hashed\",\n      \"type\": \"string\"\n    },\n    {\n      \"name\": \"token_realm\",\n      \"type\": \"string\"\n    },\n    {\n      \"name\": \"number_of_events\",\n      \"type\": \"int\"\n    },\n    {\n      \"name\": \"ms_spent\",\n      \"type\": \"long\"\n    },\n    {\n      \"name\": \"batch_size\",\n      \"type\": \"long\"\n    }\n  ]\n}\n"
     },
     "default_statistic": {
       "messages_per_minute": 100,
@@ -40,8 +40,8 @@
     "ordering_key_fields": [],
     "ordering_instance_ids": [],
     "schema": {
-      "type": "json_schema",
-      "schema": "{\n    \"description\": \"Nakadi KPI: data streamed. Used to calculate the number of consumers and consumer throughput per app and number of events consumed per app\",\n    \"type\": \"object\",\n    \"properties\": {\n        \"api\": {\n            \"description\": \"This field indicates if data was streamed through low level api or high level api\",\n            \"type\": \"string\"\n        },\n        \"batches_streamed\": { \"type\": \"number\" },     \"subscription\": {\n            \"description\": \"this is optional and is only present when streaming from a subscription\",\n            \"type\": \"string\"\n        },\n        \"event_type\": {\n            \"type\": \"string\"\n        },\n        \"app\": {\n            \"type\": \"string\"\n        },\n        \"app_hashed\": {\n            \"type\": \"string\"\n        },\n        \"token_realm\": {\n            \"type\": \"string\"\n        },\n        \"number_of_events\": {\n            \"type\": \"number\"\n        },\n        \"bytes_streamed\": {\n            \"description\": \"amount of bytes streamed since last event\",\n            \"type\": \"number\"\n        }\n    },\n    \"required\": [\n        \"event_type\",\n        \"api\",\n        \"app\",\n        \"app_hashed\",\n        \"number_of_events\",\n        \"bytes_streamed\"\n    ]\n}"
+      "type": "avro_schema",
+      "schema": "{\n  \"name\": \"NakadiDataStreamed\",\n  \"namespace\": \"org.zalando.nakadi.kpi.event\",\n  \"type\": \"record\",\n  \"doc\": \"Stores KPI events of type nakadi.data.streamed\",\n  \"fields\": [\n    {\n      \"name\": \"api\",\n      \"description\": \"This field indicates if data was streamed through low level api or high level api\",\n      \"type\": \"string\"\n    },\n    {\n      \"name\": \"subscription\",\n      \"description\": \"this is optional and is only present when streaming from a subscription\",\n      \"type\": [\n        \"null\",\n        \"string\"\n      ],\n      \"default\": null\n    },\n    {\n      \"name\": \"event_type\",\n      \"type\": \"string\"\n    },\n    {\n      \"name\": \"app\",\n      \"type\": \"string\"\n    },\n    {\n      \"name\": \"app_hashed\",\n      \"type\": \"string\"\n    },\n    {\n      \"name\": \"token_realm\",\n      \"type\": \"string\"\n    },\n    {\n      \"name\": \"number_of_events\",\n      \"type\": \"long\"\n    },\n    {\n      \"name\": \"bytes_streamed\",\n      \"description\": \"amount of bytes streamed since last event\",\n      \"type\": \"long\"\n    },\n    {\n      \"name\": \"batches_streamed\",\n      \"description\": \"amount of batches streamed since last event\",\n      \"type\": \"int\"\n    }\n  ]\n}\n"
     },
     "default_statistic": {
       "messages_per_minute": 100,
@@ -76,8 +76,8 @@
     "ordering_key_fields": [],
     "ordering_instance_ids": [],
     "schema": {
-      "type": "json_schema",
-      "schema": "{\n    \"description\": \"Nakadi access log\",\n    \"type\": \"object\",\n    \"properties\": {\n    \t\"request_length\": {\n    \t\t\"type\": \"number\"\n    \t},\n    \t\"response_length\": {\n    \t\t\"type\": \"number\"\n    \t},\n    \t\"user_agent\": {\n    \t\t\"type\": \"string\"\n    \t},\n    \t\"accept_encoding\": {\n    \t\t\"type\": \"string\"\n    \t},\n    \t\"content_encoding\": {\n    \t\t\"type\": \"string\"\n    \t},\n        \"method\": {\n            \"type\": \"string\"\n        },\n        \"path\": {\n            \"type\": \"string\"\n        },\n        \"query\": {\n            \"type\": \"string\"\n        },\n        \"app\": {\n            \"type\": \"string\"\n        },\n        \"app_hashed\": {\n            \"type\": \"string\"\n        },\n        \"status_code\": {\n            \"type\": \"number\"\n        },\n        \"response_time_ms\": {\n            \"type\": \"number\"\n        }\n    },\n    \"required\": [\n        \"method\",\n        \"path\",\n        \"query\",\n        \"app\",\n        \"app_hashed\",\n        \"status_code\",\n        \"response_time_ms\"\n    ]\n}"
+      "type": "avro_schema",
+      "schema": "{\n  \"name\": \"NakadiAccessLog\",\n  \"namespace\": \"org.zalando.nakadi.kpi.event\",\n  \"type\": \"record\",\n  \"doc\": \"Stores access log of Nakadi endpoints\",\n  \"fields\": [\n    {\n      \"name\": \"method\",\n      \"type\": \"string\"\n    },\n    {\n      \"name\": \"path\",\n      \"type\": \"string\"\n    },\n    {\n      \"name\": \"query\",\n      \"type\": \"string\"\n    },\n    {\n      \"name\": \"user_agent\",\n      \"type\": \"string\"\n    },\n    {\n      \"name\": \"app\",\n      \"type\": \"string\"\n    },\n    {\n      \"name\": \"app_hashed\",\n      \"type\": \"string\"\n    },\n    {\n      \"name\": \"status_code\",\n      \"type\": \"int\"\n    },\n    {\n      \"name\": \"response_time_ms\",\n      \"type\": \"long\"\n    },\n    {\n      \"name\": \"accept_encoding\",\n      \"type\": \"string\"\n    },\n    {\n      \"name\": \"content_encoding\",\n      \"type\": \"string\"\n    },\n    {\n      \"name\": \"request_length\",\n      \"type\": \"long\"\n    },\n    {\n      \"name\": \"response_length\",\n      \"type\": \"long\"\n    }\n  ]\n}\n"
     },
     "default_statistic": {
       "messages_per_minute": 100,
@@ -111,8 +111,8 @@
     "ordering_key_fields": [],
     "ordering_instance_ids": [],
     "schema": {
-      "type": "json_schema",
-      "schema": "{\n    \"description\": \"Nakadi Event Type log.\",\n    \"type\": \"object\",\n    \"properties\": {\n        \"event_type\": {\n            \"type\": \"string\"\n        },\n        \"status\": {\n            \"type\": \"string\"\n        },\n        \"category\": {\n            \"type\": \"string\"\n        },\n        \"authz\": {\n            \"type\": \"string\"\n        },\n        \"compatibility_mode\": {\n            \"type\": \"string\"\n        }\n    },\n    \"required\": [\n        \"event_type\",\n        \"status\",\n        \"category\",\n        \"authz\",\n        \"compatibility_mode\"\n    ]\n}"
+      "type": "avro_schema",
+      "schema": "{\n  \"name\": \"NakadiEventTypeLog\",\n  \"namespace\": \"org.zalando.nakadi.kpi.event\",\n  \"type\": \"record\",\n  \"doc\": \"Stores KPI events of type nakadi.event.type.log\",\n  \"fields\": [\n    {\n      \"name\": \"event_type\",\n      \"type\": \"string\"\n    },\n    {\n      \"name\": \"status\",\n      \"type\": \"string\"\n    },\n    {\n      \"name\": \"category\",\n      \"type\": \"string\"\n    },\n    {\n      \"name\": \"authz\",\n      \"type\": \"string\"\n    },\n    {\n      \"name\": \"compatibility_mode\",\n      \"type\": \"string\"\n    }\n  ]\n}\n"
     },
     "default_statistic": {
       "messages_per_minute": 100,
@@ -147,8 +147,8 @@
     "ordering_key_fields": [],
     "ordering_instance_ids": [],
     "schema": {
-      "type": "json_schema",
-      "schema": "{\n    \"description\": \"Nakadi Subscription log.\",\n    \"type\": \"object\",\n    \"properties\": {\n        \"subscription_id\": {\n            \"type\": \"string\"\n        },\n        \"status\": {\n            \"type\": \"string\"\n        }\n    },\n    \"required\": [\n        \"subscription_id\",\n        \"status\"\n    ]\n}"
+      "type": "avro_schema",
+      "schema": "{\n  \"name\": \"NakadiSubscriptionLog\",\n  \"namespace\": \"org.zalando.nakadi.kpi.event\",\n  \"type\": \"record\",\n  \"doc\": \"Stores KPI events of type nakadi.subscription.log\",\n  \"fields\": [\n    {\n      \"name\": \"subscription_id\",\n      \"type\": \"string\"\n    },\n    {\n      \"name\": \"status\",\n      \"type\": \"string\"\n    }\n  ]\n}\n"
     },
     "default_statistic": {
       "messages_per_minute": 100,

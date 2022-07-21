@@ -1,6 +1,6 @@
 package org.zalando.nakadi.service;
 
-import org.zalando.nakadi.domain.kpi.DataStreamedEvent;
+import org.zalando.nakadi.kpi.event.NakadiDataStreamed;
 import org.zalando.nakadi.security.Client;
 import org.zalando.nakadi.service.publishing.NakadiKpiPublisher;
 
@@ -40,28 +40,27 @@ public abstract class ConsumptionKpiCollector {
         }
     }
 
-    public void recordBatchSent(final String eventType, final int bytesCount, final int eventsCount) {
+    public void recordBatchSent(final String eventType, final long bytesCount, final int eventsCount) {
         final StreamKpiData kpiData = kpiDataPerEventType.computeIfAbsent(eventType, (x) -> new StreamKpiData());
         kpiData.bytesSent += bytesCount;
         kpiData.numberOfEventsSent += eventsCount;
         kpiData.batchesCount += 1;
     }
 
-    protected abstract DataStreamedEvent enrich(DataStreamedEvent dataStreamedEvent);
-
-    private DataStreamedEvent convertKpiData(final String eventType, final StreamKpiData data) {
-        return enrich(new DataStreamedEvent()
-                .setEventTypeName(eventType)
-                .setApplicationName(clientId)
-                .setHashedApplicationName(appNameHashed)
-                .setTokenRealm(clientRealm)
-                .setNumberOfEvents(data.numberOfEventsSent)
-                .setBytesStreamed(data.bytesSent)
-                .setBatchesStreamed(data.batchesCount));
-    }
+    protected abstract NakadiDataStreamed.Builder enrich(NakadiDataStreamed.Builder dataStreamedEvent);
 
     private void publishKpi(final String eventType, final StreamKpiData data) {
-        kpiPublisher.publish(() -> convertKpiData(eventType, data));
+        kpiPublisher.publish(() -> {
+            final NakadiDataStreamed.Builder builder = NakadiDataStreamed.newBuilder()
+                    .setEventType(eventType)
+                    .setApp(clientId)
+                    .setAppHashed(appNameHashed)
+                    .setTokenRealm(clientRealm)
+                    .setNumberOfEvents(data.numberOfEventsSent)
+                    .setBytesStreamed(data.bytesSent)
+                    .setBatchesStreamed(data.batchesCount);
+            return enrich(builder).build();
+        });
     }
 
     private static class StreamKpiData {

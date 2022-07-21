@@ -63,12 +63,12 @@ public class HilaRebalanceAT extends BaseAT {
         final TestStreamingClient clientA = TestStreamingClient
                 .create(URL, subscription.getId(), "max_uncommitted_events=100")
                 .start();
-        waitFor(() -> assertThat(clientA.getBatches(), hasSize(40)));
+        waitFor(() -> assertThat(clientA.getJsonBatches(), hasSize(40)));
 
         // check that we received 5 events for each partitions
         range(0, 8).forEach(partition ->
                 assertThat(
-                        clientA.getBatches().stream()
+                        clientA.getJsonBatches().stream()
                                 .filter(batch -> batch.getCursor().getPartition().equals(String.valueOf(partition)))
                                 .count(),
                         equalTo(5L)));
@@ -96,8 +96,8 @@ public class HilaRebalanceAT extends BaseAT {
                 x -> String.valueOf(x % 8));
 
         // wait till all events arrive
-        waitFor(() -> assertThat(clientB.getBatches(), hasSize(20)));
-        waitFor(() -> assertThat(clientA.getBatches(), hasSize(60)));
+        waitFor(() -> assertThat(clientB.getJsonBatches(), hasSize(20)));
+        waitFor(() -> assertThat(clientA.getJsonBatches(), hasSize(60)));
 
         // check that only half of partitions were streamed to client A after rebalance
         final Set<String> clientAPartitionsAfterRebalance = getUniquePartitionsStreamedToClient(clientA, 40, 60);
@@ -127,7 +127,7 @@ public class HilaRebalanceAT extends BaseAT {
                 eventType.getName(), 40, x -> "blah__" + x, x -> String.valueOf(x % 8));
 
         // check that after second rebalance all events were consumed by first client
-        waitFor(() -> assertThat(clientA.getBatches(), hasSize(100)));
+        waitFor(() -> assertThat(clientA.getJsonBatches(), hasSize(100)));
     }
 
     @Test(timeout = 15000)
@@ -145,7 +145,7 @@ public class HilaRebalanceAT extends BaseAT {
         client.start();
 
         // wait till we receive 4 batches (2 per partition)
-        waitFor(() -> assertThat(client.getBatches(), hasSize(4)));
+        waitFor(() -> assertThat(client.getJsonBatches(), hasSize(4)));
 
         // check that all batches are from partitions 5, 6
         checkAllEventsAreFromPartitions(client, ImmutableSet.of("5", "6"));
@@ -182,15 +182,15 @@ public class HilaRebalanceAT extends BaseAT {
                 eventType.getName(), 16, x -> "blah" + x, x -> String.valueOf(x % 8));
 
         // we should receive 2 batches for streams that directly requested 1 partition
-        waitFor(() -> assertThat(directClient1.getBatches(), hasSize(2)));
+        waitFor(() -> assertThat(directClient1.getJsonBatches(), hasSize(2)));
         checkAllEventsAreFromPartitions(directClient1, ImmutableSet.of("6"));
 
-        waitFor(() -> assertThat(directClient2.getBatches(), hasSize(2)));
+        waitFor(() -> assertThat(directClient2.getJsonBatches(), hasSize(2)));
         checkAllEventsAreFromPartitions(directClient2, ImmutableSet.of("7"));
 
         // we should receive 6 batches for streams that use auto balance (they read 3 partitions each)
-        waitFor(() -> assertThat(autoClient1.getBatches(), hasSize(6)));
-        waitFor(() -> assertThat(autoClient2.getBatches(), hasSize(6)));
+        waitFor(() -> assertThat(autoClient1.getJsonBatches(), hasSize(6)));
+        waitFor(() -> assertThat(autoClient2.getJsonBatches(), hasSize(6)));
     }
 
     @Test(timeout = 15000)
@@ -210,15 +210,15 @@ public class HilaRebalanceAT extends BaseAT {
         publishBusinessEventWithUserDefinedPartition(
                 eventType.getName(), 8, x -> "blah" + x, x -> String.valueOf(x % 8));
 
-        waitFor(() -> assertThat(autoClient.getBatches(), hasSize(7)));
+        waitFor(() -> assertThat(autoClient.getJsonBatches(), hasSize(7)));
         checkAllEventsAreFromPartitions(autoClient, ImmutableSet.of("0", "1", "2", "3", "4", "5", "7"));
-        waitFor(() -> assertThat(directClient.getBatches(), hasSize(1)));
+        waitFor(() -> assertThat(directClient.getJsonBatches(), hasSize(1)));
         checkAllEventsAreFromPartitions(directClient, ImmutableSet.of("6"));
 
         // commit cursors and wait for stream to be closed (because of reaching stream_limit)
         commitCursors(
                 subscription.getId(),
-                directClient.getBatches().stream().map(StreamBatch::getCursor).collect(Collectors.toList()),
+                directClient.getJsonBatches().stream().map(StreamBatch::getCursor).collect(Collectors.toList()),
                 directClient.getSessionId());
         waitFor(() -> assertThat(directClient.isRunning(), Matchers.is(false)));
 
@@ -228,7 +228,7 @@ public class HilaRebalanceAT extends BaseAT {
                 eventType.getName(), 8, x -> "blah" + x, x -> String.valueOf(x % 8));
 
         // the client with auto-balancing should now get all 8 new events
-        waitFor(() -> assertThat(autoClient.getBatches(), hasSize(7 + 8)));
+        waitFor(() -> assertThat(autoClient.getJsonBatches(), hasSize(7 + 8)));
         checkAllEventsAreFromPartitions(autoClient, ImmutableSet.of("0", "1", "2", "3", "4", "5", "6", "7"));
     }
 
@@ -264,14 +264,14 @@ public class HilaRebalanceAT extends BaseAT {
         final TestStreamingClient clientA = TestStreamingClient
                 .create(URL, subscription.getId(), "")
                 .start();
-        waitFor(() -> assertThat(clientA.getBatches(), hasSize(2)));
+        waitFor(() -> assertThat(clientA.getJsonBatches(), hasSize(2)));
 
         final TestStreamingClient clientB = TestStreamingClient
                 .create(URL, subscription.getId(), "")
                 .start();
 
         // after commit_timeout of first client exceeds it is closed and all events are resent to second client
-        waitFor(() -> assertThat(clientB.getBatches(), hasSize(2)), 10000);
+        waitFor(() -> assertThat(clientB.getJsonBatches(), hasSize(2)), 10000);
     }
 
     @Test(timeout = 15000)
@@ -302,7 +302,7 @@ public class HilaRebalanceAT extends BaseAT {
         waitFor(() -> assertThat(autoClient2.getResponseCode(), Matchers.is(HttpStatus.CONFLICT.value())));
     }
 
-    @Test(timeout = 10000)
+    @Test(timeout = 15000)
     public void testCommitWhenDirectAssignment() throws Exception {
         // connect with 1 stream directly requesting one partition
         final TestStreamingClient client = new TestStreamingClient(URL, subscription.getId(), "batch_flush_timeout=1",
@@ -315,17 +315,17 @@ public class HilaRebalanceAT extends BaseAT {
         // publish 1 event
         publishBusinessEventWithUserDefinedPartition(eventType.getName(), 1, x -> "blah", x -> "0");
         // wait for event to come
-        waitFor(() -> assertThat(client.getBatches(), hasSize(1)));
+        waitFor(() -> assertThat(client.getJsonBatches(), hasSize(1)));
 
         // commit cursor
         final int commitStatusCode = commitCursors(subscription.getId(),
-                ImmutableList.of(client.getBatches().get(0).getCursor()), client.getSessionId());
+                ImmutableList.of(client.getJsonBatches().get(0).getCursor()), client.getSessionId());
 
         // check that we get 204
         assertThat(commitStatusCode, Matchers.is(HttpStatus.NO_CONTENT.value()));
     }
 
-    @Test(timeout = 10000)
+    @Test(timeout = 15000)
     public void testAtLeastOneClientGets409OnTheSamePartitionRequest() throws Exception {
         final TestStreamingClient client1 = new TestStreamingClient(
                 URL, subscription.getId(), "batch_flush_timeout=1",
@@ -342,14 +342,14 @@ public class HilaRebalanceAT extends BaseAT {
 
         waitFor(() -> assertThat("at least one client should get 409 conflict",
                 client1.getResponseCode() == HttpStatus.CONFLICT.value() ||
-                        client1.getResponseCode() == HttpStatus.CONFLICT.value()));
+                        client2.getResponseCode() == HttpStatus.CONFLICT.value()));
     }
 
     public List<SubscriptionCursor> getLastCursorsForPartitions(final TestStreamingClient client,
                                                                 final Set<String> partitions) {
-        if (!client.getBatches().isEmpty()) {
+        if (!client.getJsonBatches().isEmpty()) {
             return partitions.stream()
-                    .map(partition -> client.getBatches().stream()
+                    .map(partition -> client.getJsonBatches().stream()
                             .filter(batch -> batch.getCursor().getPartition().equals(partition))
                             .reduce((batch1, batch2) -> batch2)
                             .map(StreamBatch::getCursor))
@@ -363,7 +363,7 @@ public class HilaRebalanceAT extends BaseAT {
 
     private void checkAllEventsAreFromPartitions(final TestStreamingClient clientA, final Set<String> partitions) {
         // check that all batches belong to the specified set of partitions
-        final List<StreamBatch> batches = clientA.getBatches();
+        final List<StreamBatch> batches = clientA.getJsonBatches();
         final long batchesFromCorrectPartitions = batches.stream()
                 .filter(b -> partitions.contains(b.getCursor().getPartition()))
                 .count();
@@ -376,12 +376,12 @@ public class HilaRebalanceAT extends BaseAT {
     }
 
     private Set<String> getUniquePartitionsStreamedToClient(final TestStreamingClient client) {
-        return getUniquePartitionsStreamedToClient(client, 0, client.getBatches().size());
+        return getUniquePartitionsStreamedToClient(client, 0, client.getJsonBatches().size());
     }
 
     private Set<String> getUniquePartitionsStreamedToClient(final TestStreamingClient client, final int fromBatch,
                                                             final int toBatch) {
-        return client.getBatches()
+        return client.getJsonBatches()
                 .subList(fromBatch, toBatch)
                 .stream()
                 .map(batch -> batch.getCursor().getPartition())

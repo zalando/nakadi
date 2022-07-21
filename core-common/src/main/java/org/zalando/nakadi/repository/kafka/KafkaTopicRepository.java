@@ -1,6 +1,5 @@
 package org.zalando.nakadi.repository.kafka;
 
-import com.codahale.metrics.MetricRegistry;
 import com.google.common.base.Preconditions;
 import com.google.common.collect.ImmutableMap;
 import com.google.common.collect.Lists;
@@ -33,7 +32,7 @@ import org.zalando.nakadi.domain.EventPublishingStatus;
 import org.zalando.nakadi.domain.EventPublishingStep;
 import org.zalando.nakadi.domain.NakadiCursor;
 import org.zalando.nakadi.domain.NakadiRecord;
-import org.zalando.nakadi.domain.NakadiRecordMetadata;
+import org.zalando.nakadi.domain.NakadiRecordResult;
 import org.zalando.nakadi.domain.PartitionEndStatistics;
 import org.zalando.nakadi.domain.PartitionStatistics;
 import org.zalando.nakadi.domain.Timeline;
@@ -45,12 +44,13 @@ import org.zalando.nakadi.exceptions.runtime.TopicConfigException;
 import org.zalando.nakadi.exceptions.runtime.TopicCreationException;
 import org.zalando.nakadi.exceptions.runtime.TopicDeletionException;
 import org.zalando.nakadi.exceptions.runtime.TopicRepositoryException;
+import org.zalando.nakadi.mapper.NakadiRecordMapper;
 import org.zalando.nakadi.repository.EventConsumer;
 import org.zalando.nakadi.repository.NakadiTopicConfig;
 import org.zalando.nakadi.repository.TopicRepository;
-import org.zalando.nakadi.repository.zookeeper.ZookeeperSettings;
 
 import javax.annotation.Nullable;
+import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
@@ -88,20 +88,18 @@ public class KafkaTopicRepository implements TopicRepository {
     private final KafkaFactory kafkaFactory;
     private final NakadiSettings nakadiSettings;
     private final KafkaSettings kafkaSettings;
-    private final ZookeeperSettings zookeeperSettings;
     private final KafkaTopicConfigFactory kafkaTopicConfigFactory;
     private final KafkaLocationManager kafkaLocationManager;
-    private final MetricRegistry metricRegistry;
+    private final NakadiRecordMapper nakadiRecordMapper;
 
     public KafkaTopicRepository(final Builder builder) {
         this.kafkaZookeeper = builder.kafkaZookeeper;
         this.kafkaFactory = builder.kafkaFactory;
         this.nakadiSettings = builder.nakadiSettings;
         this.kafkaSettings = builder.kafkaSettings;
-        this.zookeeperSettings = builder.zookeeperSettings;
         this.kafkaLocationManager = builder.kafkaLocationManager;
         this.kafkaTopicConfigFactory = builder.kafkaTopicConfigFactory;
-        this.metricRegistry = builder.metricRegistry;
+        this.nakadiRecordMapper = builder.nakadiRecordMapper;
     }
 
     public static class Builder {
@@ -109,10 +107,9 @@ public class KafkaTopicRepository implements TopicRepository {
         private KafkaFactory kafkaFactory;
         private NakadiSettings nakadiSettings;
         private KafkaSettings kafkaSettings;
-        private ZookeeperSettings zookeeperSettings;
         private KafkaTopicConfigFactory kafkaTopicConfigFactory;
         private KafkaLocationManager kafkaLocationManager;
-        private MetricRegistry metricRegistry;
+        private NakadiRecordMapper nakadiRecordMapper;
 
         public Builder setKafkaZookeeper(final KafkaZookeeper kafkaZookeeper) {
             this.kafkaZookeeper = kafkaZookeeper;
@@ -134,11 +131,6 @@ public class KafkaTopicRepository implements TopicRepository {
             return this;
         }
 
-        public Builder setZookeeperSettings(final ZookeeperSettings zookeeperSettings) {
-            this.zookeeperSettings = zookeeperSettings;
-            return this;
-        }
-
         public Builder setKafkaTopicConfigFactory(final KafkaTopicConfigFactory kafkaTopicConfigFactory) {
             this.kafkaTopicConfigFactory = kafkaTopicConfigFactory;
             return this;
@@ -149,8 +141,8 @@ public class KafkaTopicRepository implements TopicRepository {
             return this;
         }
 
-        public Builder setMetricRegistry(final MetricRegistry metricRegistry) {
-            this.metricRegistry = metricRegistry;
+        public Builder setNakadiRecordMapper(final NakadiRecordMapper nakadiRecordMapper) {
+            this.nakadiRecordMapper = nakadiRecordMapper;
             return this;
         }
 
@@ -391,12 +383,13 @@ public class KafkaTopicRepository implements TopicRepository {
 
         final StringBuilder sb = new StringBuilder();
         for (final Map.Entry<String, List<BatchItem>> entry : itemsPerPartition.entrySet()) {
+            final String publishingResult = entry.getValue().stream()
+                    .map(i -> i.getResponse().getPublishingStatus() == EventPublishingStatus.SUBMITTED ? "1" : "0")
+                    .collect(Collectors.joining(", "));
             sb.append(entry.getKey())
-                .append(":[")
-                .append(entry.getValue().stream()
-                        .map(i -> i.getResponse().getPublishingStatus() == EventPublishingStatus.SUBMITTED ? "1" : "0")
-                        .collect(Collectors.joining(", ")))
-                .append("] ");
+                    .append(":[")
+                    .append(publishingResult)
+                    .append("] ");
         }
         LOG.info("Failed events in batch for topic {} / {}: {}", topicId, eventType, sb.toString());
 
@@ -413,7 +406,7 @@ public class KafkaTopicRepository implements TopicRepository {
                     if (failedEventKeys.contains(itemKey) && !loggedEventKeys.contains(itemKey)) {
                         // some event has failed, but another one succeeded after it: the publishing order is violated!
                         LOG.warn("Event ordering violation in topic {} / {} partition {} for key {}!",
-                                 topicId, eventType, entry.getKey(), itemKey);
+                                topicId, eventType, entry.getKey(), itemKey);
 
                         // avoid logging the same key twice
                         loggedEventKeys.add(itemKey);
@@ -429,83 +422,87 @@ public class KafkaTopicRepository implements TopicRepository {
      * @param nakadiRecords list of the events to publish
      * @return empty list if no errors otherwise list with the errored events
      */
-    public List<NakadiRecordMetadata> sendEvents(final String topic,
-                                                 final List<NakadiRecord> nakadiRecords) {
+    public List<NakadiRecordResult> sendEvents(final String topic,
+                                               final List<NakadiRecord> nakadiRecords) {
         final Producer<byte[], byte[]> producer = kafkaFactory.takeProducer();
         final CountDownLatch latch = new CountDownLatch(nakadiRecords.size());
-        final Map<NakadiRecord, NakadiRecordMetadata> responses = new ConcurrentHashMap<>();
+        final Map<NakadiRecord, NakadiRecordResult> responses = new ConcurrentHashMap<>();
         try {
             for (final NakadiRecord nakadiRecord : nakadiRecords) {
-                final ProducerRecord<byte[], byte[]> producerRecord = new ProducerRecord<>(
-                        topic,
-                        nakadiRecord.getPartition(),
-                        nakadiRecord.getEventKey(),
-                        nakadiRecord.getData());
+                final ProducerRecord<byte[], byte[]> producerRecord =
+                        nakadiRecordMapper.mapToProducerRecord(nakadiRecord, topic);
 
-                // fixme avro do not forget EventOwnerHeader, set via metadata?
-                // for the internal KPI evnets it is fine not to have it
+                if (null != nakadiRecord.getOwner()) {
+                    nakadiRecord.getOwner().serialize(producerRecord);
+                }
 
-                producerRecord.headers().add(
-                        NakadiRecord.HEADER_FORMAT,
-                        nakadiRecord.getFormat());
                 producer.send(producerRecord, ((metadata, exception) -> {
                     try {
+                        final NakadiRecordResult result;
                         if (exception != null) {
-                            final NakadiRecordMetadata record = new NakadiRecordMetadata(
-                                    nakadiRecord.getEventType(),
-                                    nakadiRecord.getPartition(),
+                            result = new NakadiRecordResult(
+                                    nakadiRecord.getMetadata(),
+                                    NakadiRecordResult.Status.FAILED,
+                                    NakadiRecordResult.Step.PUBLISHING,
                                     exception);
-                            responses.put(nakadiRecord, record);
                         } else {
-                            responses.put(nakadiRecord, NakadiRecordMetadata.NULL_RECORD);
+                            result = new NakadiRecordResult(
+                                    nakadiRecord.getMetadata(),
+                                    NakadiRecordResult.Status.SUCCEEDED,
+                                    NakadiRecordResult.Step.PUBLISHING);
                         }
+                        responses.put(nakadiRecord, result);
                     } finally {
                         latch.countDown();
                     }
                 }));
             }
             final boolean recordsPublished = latch.await(createSendTimeout(), TimeUnit.MILLISECONDS);
-            final List<NakadiRecordMetadata> resps = prepareResponse(
-                    nakadiRecords, responses,
-                    recordsPublished ? null : new TimeoutException(
-                            "timeout waiting for events to be sent to kafka"));
-            final boolean shouldResetProducer = resps.stream()
-                    .map(nrm -> nrm.getException())
+            final boolean shouldResetProducer = responses.values().stream()
+                    .filter(nrm -> nrm.getStatus() == NakadiRecordResult.Status.FAILED)
+                    .map(NakadiRecordResult::getException)
                     .anyMatch(KafkaTopicRepository::isExceptionShouldLeadToReset);
             if (shouldResetProducer) {
                 kafkaFactory.terminateProducer(producer);
             }
 
-            return resps;
+            return prepareResponse(nakadiRecords, responses,
+                    recordsPublished ? null : new TimeoutException("timeout waiting for events to be sent to kafka"));
         } catch (final InterruptException | InterruptedException e) {
             Thread.currentThread().interrupt();
             return prepareResponse(nakadiRecords, responses, e);
         } catch (final RuntimeException e) {
             kafkaFactory.terminateProducer(producer);
+            LOG.debug("RuntimeException:{}", e.getMessage(), e);
             return prepareResponse(nakadiRecords, responses, e);
+        } catch (final IOException ioe) {
+            LOG.debug("IOException:{}", ioe.getMessage(), ioe);
+            return prepareResponse(nakadiRecords, responses, ioe);
         } finally {
             kafkaFactory.releaseProducer(producer);
         }
     }
 
-    private List<NakadiRecordMetadata> prepareResponse(
+    private List<NakadiRecordResult> prepareResponse(
             final List<NakadiRecord> nakadiRecords,
-            final Map<NakadiRecord, NakadiRecordMetadata> recordStatuses,
+            final Map<NakadiRecord, NakadiRecordResult> recordStatuses,
             final Exception exception) {
-        final List<NakadiRecordMetadata> errors = new LinkedList<>();
+        final List<NakadiRecordResult> resps = new LinkedList<>();
         for (final NakadiRecord record : nakadiRecords) {
-            final NakadiRecordMetadata nakadiRecordMetadata = recordStatuses.get(record);
-            if (nakadiRecordMetadata == null) {
-                errors.add(new NakadiRecordMetadata(
-                        record.getEventType(),
-                        record.getPartition(),
+            final NakadiRecordResult nakadiRecordResult = recordStatuses.get(record);
+            if (nakadiRecordResult == null) {
+                // in case kafka producer send method threw exception, the record was not attempted for publishing
+                resps.add(new NakadiRecordResult(
+                        record.getMetadata(),
+                        NakadiRecordResult.Status.ABORTED,
+                        NakadiRecordResult.Step.PUBLISHING,
                         exception));
-            } else if (nakadiRecordMetadata != NakadiRecordMetadata.NULL_RECORD) {
-                errors.add(nakadiRecordMetadata);
+            } else {
+                resps.add(nakadiRecordResult);
             }
         }
 
-        return errors;
+        return resps;
     }
 
     @Override
@@ -702,8 +699,7 @@ public class KafkaTopicRepository implements TopicRepository {
     @Override
     public EventConsumer.LowLevelConsumer createEventConsumer(
             @Nullable final String clientId,
-            final List<NakadiCursor> cursors,
-            final RecordDeserializer recordDeserializer)
+            final List<NakadiCursor> cursors)
             throws ServiceTemporarilyUnavailableException, InvalidCursorException {
 
         final Map<NakadiCursor, KafkaCursor> cursorMapping = convertToKafkaCursors(cursors);
@@ -720,7 +716,6 @@ public class KafkaTopicRepository implements TopicRepository {
                 kafkaFactory.getConsumer(clientId),
                 kafkaCursors,
                 timelineMap,
-                recordDeserializer,
                 nakadiSettings.getKafkaPollTimeoutMs());
 
     }

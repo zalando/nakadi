@@ -1,5 +1,6 @@
 package org.zalando.nakadi.service;
 
+import com.google.common.collect.ImmutableSet;
 import com.google.common.collect.Multimap;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -18,10 +19,7 @@ import org.zalando.nakadi.domain.EventTypeOptions;
 import org.zalando.nakadi.domain.Feature;
 import org.zalando.nakadi.domain.Subscription;
 import org.zalando.nakadi.domain.Timeline;
-import org.zalando.nakadi.domain.kpi.EventTypeLogEvent;
 import org.zalando.nakadi.enrichment.Enrichment;
-import org.zalando.nakadi.exception.SchemaEvolutionException;
-import org.zalando.nakadi.exception.SchemaValidationException;
 import org.zalando.nakadi.exceptions.runtime.AccessDeniedException;
 import org.zalando.nakadi.exceptions.runtime.AuthorizationSectionException;
 import org.zalando.nakadi.exceptions.runtime.CannotAddPartitionToTopicException;
@@ -41,12 +39,15 @@ import org.zalando.nakadi.exceptions.runtime.NoSuchEventTypeException;
 import org.zalando.nakadi.exceptions.runtime.NoSuchPartitionStrategyException;
 import org.zalando.nakadi.exceptions.runtime.NoSuchSubscriptionException;
 import org.zalando.nakadi.exceptions.runtime.NotFoundException;
+import org.zalando.nakadi.exceptions.runtime.SchemaEvolutionException;
+import org.zalando.nakadi.exceptions.runtime.SchemaValidationException;
 import org.zalando.nakadi.exceptions.runtime.ServiceTemporarilyUnavailableException;
 import org.zalando.nakadi.exceptions.runtime.TimelineException;
 import org.zalando.nakadi.exceptions.runtime.TopicConfigException;
 import org.zalando.nakadi.exceptions.runtime.TopicCreationException;
 import org.zalando.nakadi.exceptions.runtime.TopicDeletionException;
 import org.zalando.nakadi.exceptions.runtime.UnableProcessException;
+import org.zalando.nakadi.kpi.event.NakadiEventTypeLog;
 import org.zalando.nakadi.partitioning.PartitionResolver;
 import org.zalando.nakadi.plugin.api.ApplicationService;
 import org.zalando.nakadi.plugin.api.authz.AuthorizationAttribute;
@@ -54,7 +55,6 @@ import org.zalando.nakadi.plugin.api.authz.AuthorizationService;
 import org.zalando.nakadi.repository.TopicRepository;
 import org.zalando.nakadi.repository.db.EventTypeRepository;
 import org.zalando.nakadi.repository.db.SubscriptionDbRepository;
-import org.zalando.nakadi.repository.db.SubscriptionTokenLister;
 import org.zalando.nakadi.repository.kafka.PartitionsCalculator;
 import org.zalando.nakadi.service.publishing.NakadiAuditLogPublisher;
 import org.zalando.nakadi.service.publishing.NakadiKpiPublisher;
@@ -104,7 +104,6 @@ public class EventTypeService {
 
     private final EventTypeCache eventTypeCache;
     private final SchemaService schemaService;
-    private final SubscriptionTokenLister subscriptionTokenLister;
 
     @Autowired
     public EventTypeService(
@@ -126,7 +125,6 @@ public class EventTypeService {
             final EventTypeCache eventTypeCache,
             final SchemaService schemaService,
             final AdminService adminService,
-            final SubscriptionTokenLister subscriptionTokenLister,
             final ApplicationService applicationService) {
         this.eventTypeRepository = eventTypeRepository;
         this.timelineService = timelineService;
@@ -146,16 +144,13 @@ public class EventTypeService {
         this.adminService = adminService;
         this.eventTypeCache = eventTypeCache;
         this.schemaService = schemaService;
-        this.subscriptionTokenLister = subscriptionTokenLister;
         this.applicationService = applicationService;
     }
 
-    public List<EventType> list() {
-        return eventTypeRepository.list();
-    }
-
-    public List<EventType> list(final AuthorizationAttribute writers) {
-        return eventTypeRepository.list(writers);
+    public List<EventType> list(
+            @Nullable final AuthorizationAttribute writer,
+            @Nullable final String owningApplication) {
+        return eventTypeRepository.list(Optional.ofNullable(writer), Optional.ofNullable(owningApplication));
     }
 
     public void create(final EventTypeBase eventType, final boolean checkAuth)
@@ -190,6 +185,8 @@ public class EventTypeService {
         }
 
         validateOwningApplication(null, eventType.getOwningApplication());
+
+        validateEventOwnerSelector(eventType);
 
         if (eventType.getAnnotations() == null) {
             eventType.setAnnotations(new HashMap<>());
@@ -230,12 +227,13 @@ public class EventTypeService {
                 throw new InternalNakadiException("Failed to create event type: " + ex.getMessage(), ex);
             }
         }
-        nakadiKpiPublisher.publish(() -> new EventTypeLogEvent()
+        nakadiKpiPublisher.publish(() -> NakadiEventTypeLog.newBuilder()
                 .setEventType(eventType.getName())
                 .setStatus("created")
                 .setCategory(eventType.getCategory().name())
                 .setAuthz(identifyAuthzState(eventType))
-                .setCompatibilityMode(eventType.getCompatibilityMode().name()));
+                .setCompatibilityMode(eventType.getCompatibilityMode().name())
+                .build());
 
         nakadiAuditLogPublisher.publish(Optional.empty(), Optional.of(eventType),
                 NakadiAuditLogPublisher.ResourceType.EVENT_TYPE, NakadiAuditLogPublisher.ActionType.CREATED,
@@ -377,12 +375,13 @@ public class EventTypeService {
                 }
             }
         }
-        nakadiKpiPublisher.publish(() -> new EventTypeLogEvent()
+        nakadiKpiPublisher.publish(() -> NakadiEventTypeLog.newBuilder()
                 .setEventType(eventTypeName)
                 .setStatus("deleted")
                 .setCategory(eventType.getCategory().name())
                 .setAuthz(identifyAuthzState(eventType))
-                .setCompatibilityMode(eventType.getCompatibilityMode().name()));
+                .setCompatibilityMode(eventType.getCompatibilityMode().name())
+                .build());
 
         nakadiAuditLogPublisher.publish(Optional.of(eventType), Optional.empty(),
                 NakadiAuditLogPublisher.ResourceType.EVENT_TYPE, NakadiAuditLogPublisher.ActionType.DELETED,
@@ -392,12 +391,10 @@ public class EventTypeService {
     private Multimap<TopicRepository, String> deleteEventTypeWithSubscriptions(final String eventType) {
         try {
             return transactionTemplate.execute(action -> {
-                eventTypeRepository.listEventTypesWithRowLock(Set.of(eventType),
-                        EventTypeRepository.RowLockMode.UPDATE);
+                final Set<String> eventTypes = ImmutableSet.of(eventType);
+                eventTypeRepository.listEventTypesWithRowLock(eventTypes, EventTypeRepository.RowLockMode.UPDATE);
 
-                final List<Subscription> subscriptions =
-                        subscriptionRepository.listSubscriptions(Set.of(eventType), Optional.empty(),
-                                Optional.empty(), Optional.empty());
+                final List<Subscription> subscriptions = subscriptionRepository.listAllSubscriptionsFor(eventTypes);
 
                 if (!(featureToggleService.isFeatureEnabled(DELETE_EVENT_TYPE_WITH_SUBSCRIPTIONS)
                         || onlyDeletableSubscriptions(subscriptions))) {
@@ -460,6 +457,8 @@ public class EventTypeService {
                 authorizationValidator.authorizeEventTypeAdmin(original);
                 validateEventOwnerSelectorUnchanged(original, eventTypeBase);
             }
+            validateEventOwnerSelector(eventTypeBase);
+
             authorizationValidator.validateAuthorization(original.asResource(), eventTypeBase.asBaseResource());
             validateName(eventTypeName, eventTypeBase);
             validateCompactionUpdate(original, eventTypeBase);
@@ -498,12 +497,13 @@ public class EventTypeService {
                 LOG.error("Exception occurred when releasing usage of event-type", e);
             }
         }
-        nakadiKpiPublisher.publish(() -> new EventTypeLogEvent()
+        nakadiKpiPublisher.publish(() -> NakadiEventTypeLog.newBuilder()
                 .setEventType(eventTypeName)
                 .setStatus("updated")
                 .setCategory(eventTypeBase.getCategory().name())
                 .setAuthz(identifyAuthzState(eventTypeBase))
-                .setCompatibilityMode(eventTypeBase.getCompatibilityMode().name()));
+                .setCompatibilityMode(eventTypeBase.getCompatibilityMode().name())
+                .build());
 
         nakadiAuditLogPublisher.publish(Optional.of(original), Optional.of(eventType),
                 NakadiAuditLogPublisher.ResourceType.EVENT_TYPE, NakadiAuditLogPublisher.ActionType.UPDATED,
@@ -587,6 +587,19 @@ public class EventTypeService {
         return eventType;
     }
 
+    /**
+     * Same as get(final String eventTypeName), but without using cache.
+     *
+     * @param eventTypeName Name of event-type to be fetched
+     * @return EventType
+     * @throws NoSuchEventTypeException if event-type does not exist
+     */
+    public EventType fetchFromRepository(final String eventTypeName) throws NoSuchEventTypeException {
+        final EventType eventType = eventTypeRepository.findByName(eventTypeName);
+        authorizationValidator.authorizeEventTypeView(eventType);
+        return eventType;
+    }
+
     private Multimap<TopicRepository, String> deleteEventType(final String eventTypeName)
             throws EventTypeDeletionException {
         try {
@@ -623,6 +636,16 @@ public class EventTypeService {
             InvalidEventTypeException {
         if (original.getAudience() != null && eventTypeBase.getAudience() == null) {
             throw new InvalidEventTypeException("event audience must not be set back to null");
+        }
+    }
+
+    static void validateEventOwnerSelector(final EventTypeBase eventType) {
+        final EventOwnerSelector selector = eventType.getEventOwnerSelector();
+        if (selector != null) {
+            if (selector.getType() == EventOwnerSelector.Type.METADATA && selector.getValue() != null) {
+                throw new InvalidEventTypeException(
+                        "event_owner_selector specifying value for type 'metadata' is not supported");
+            }
         }
     }
 

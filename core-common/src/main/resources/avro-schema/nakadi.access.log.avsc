@@ -1,0 +1,56 @@
+{
+  "name": "NakadiAccessLog",
+  "namespace": "org.zalando.nakadi.kpi.event",
+  "type": "record",
+  "doc": "Stores access log of Nakadi endpoints",
+  "fields": [
+    {
+      "name": "method",
+      "type": "string"
+    },
+    {
+      "name": "path",
+      "type": "string"
+    },
+    {
+      "name": "query",
+      "type": "string"
+    },
+    {
+      "name": "user_agent",
+      "type": "string"
+    },
+    {
+      "name": "app",
+      "type": "string"
+    },
+    {
+      "name": "app_hashed",
+      "type": "string"
+    },
+    {
+      "name": "status_code",
+      "type": "int"
+    },
+    {
+      "name": "response_time_ms",
+      "type": "long"
+    },
+    {
+      "name": "accept_encoding",
+      "type": "string"
+    },
+    {
+      "name": "content_encoding",
+      "type": "string"
+    },
+    {
+      "name": "request_length",
+      "type": "long"
+    },
+    {
+      "name": "response_length",
+      "type": "long"
+    }
+  ]
+}

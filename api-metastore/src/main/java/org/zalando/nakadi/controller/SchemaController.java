@@ -16,19 +16,26 @@ import org.zalando.nakadi.domain.EventTypeBase;
 import org.zalando.nakadi.domain.EventTypeSchema;
 import org.zalando.nakadi.domain.EventTypeSchemaBase;
 import org.zalando.nakadi.domain.PaginationWrapper;
-import org.zalando.nakadi.exception.SchemaEvolutionException;
 import org.zalando.nakadi.exceptions.runtime.InternalNakadiException;
 import org.zalando.nakadi.exceptions.runtime.InvalidLimitException;
 import org.zalando.nakadi.exceptions.runtime.InvalidVersionNumberException;
 import org.zalando.nakadi.exceptions.runtime.NoSuchEventTypeException;
 import org.zalando.nakadi.exceptions.runtime.NoSuchSchemaException;
+import org.zalando.nakadi.exceptions.runtime.SchemaEvolutionException;
 import org.zalando.nakadi.exceptions.runtime.ValidationException;
+import org.zalando.nakadi.kpi.event.NakadiEventTypeLog;
 import org.zalando.nakadi.model.CompatibilityResponse;
-import org.zalando.nakadi.model.CompatibilitySchemaRequest;
+import org.zalando.nakadi.model.SchemaWrapper;
+import org.zalando.nakadi.plugin.api.authz.AuthorizationService;
+import org.zalando.nakadi.service.AdminService;
+import org.zalando.nakadi.service.AuthorizationValidator;
 import org.zalando.nakadi.service.EventTypeService;
 import org.zalando.nakadi.service.SchemaService;
+import org.zalando.nakadi.service.publishing.NakadiAuditLogPublisher;
+import org.zalando.nakadi.service.publishing.NakadiKpiPublisher;
 
 import javax.validation.Valid;
+import java.util.Optional;
 
 import static org.springframework.http.ResponseEntity.status;
 
@@ -37,38 +44,82 @@ public class SchemaController {
 
     private final SchemaService schemaService;
     private final EventTypeService eventTypeService;
+    private final AdminService adminService;
+    private final AuthorizationValidator authorizationValidator;
+    private final NakadiAuditLogPublisher nakadiAuditLogPublisher;
+    private final NakadiKpiPublisher nakadiKpiPublisher;
 
     @Autowired
-    public SchemaController(final SchemaService schemaService, final EventTypeService eventTypeService) {
+    public SchemaController(final SchemaService schemaService,
+                            final EventTypeService eventTypeService,
+                            final AdminService adminService,
+                            final AuthorizationValidator authorizationValidator,
+                            final NakadiAuditLogPublisher nakadiAuditLogPublisher,
+                            final NakadiKpiPublisher nakadiKpiPublisher) {
         this.schemaService = schemaService;
         this.eventTypeService = eventTypeService;
+        this.adminService = adminService;
+        this.authorizationValidator = authorizationValidator;
+        this.nakadiAuditLogPublisher = nakadiAuditLogPublisher;
+        this.nakadiKpiPublisher = nakadiKpiPublisher;
     }
 
     @RequestMapping(value = "/event-types/{name}/schemas", method = RequestMethod.POST)
     public ResponseEntity<?> create(@PathVariable("name") final String name,
                                     @Valid @RequestBody final EventTypeSchemaBase schema,
+                                    @RequestParam(value = "fetch", defaultValue = "false") final Boolean fetch,
                                     final Errors errors) {
         if (errors.hasErrors()) {
             throw new ValidationException(errors);
         }
 
-        schemaService.addSchema(name, schema);
+        final var originalEventType = eventTypeService.fetchFromRepository(name);
 
+        if (fetch) {
+            final String version;
+            version = schemaService.
+                    getSchemaVersion(name, schema.getSchema(), schema.getType());
+            return ResponseEntity.status(HttpStatus.OK).body(schemaService.getSchemaVersion(name, version));
+        }
+
+        if (!adminService.isAdmin(AuthorizationService.Operation.WRITE)) {
+            authorizationValidator.authorizeEventTypeAdmin(originalEventType);
+        }
+
+        schemaService.addSchema(originalEventType, schema)
+                .ifPresent(updatedEventType -> {
+                    nakadiAuditLogPublisher.publish(
+                            Optional.of(originalEventType),
+                            Optional.of(updatedEventType),
+                            NakadiAuditLogPublisher.ResourceType.EVENT_TYPE,
+                            NakadiAuditLogPublisher.ActionType.UPDATED,
+                            originalEventType.getName());
+
+                    nakadiKpiPublisher.publish(() -> NakadiEventTypeLog.newBuilder()
+                            .setEventType(name)
+                            .setStatus("updated")
+                            .setCategory(originalEventType.getCategory().name())
+                            .setAuthz(originalEventType.getAuthorization() == null ? "disabled" : "enabled")
+                            .setCompatibilityMode(originalEventType.getCompatibilityMode().name())
+                            .build());
+                });
+
+        // TODO: return different status code when there is no change
         return status(HttpStatus.OK).build();
     }
 
     @RequestMapping(value = "/event-types/{name}/schemas/{version}/compatibility-check", method = RequestMethod.POST)
     public ResponseEntity<?> checkCompatibility(@PathVariable("name") final String name,
                                                 @PathVariable("version") final String version,
-                                                @Valid @RequestBody final CompatibilitySchemaRequest schema,
+                                                @Valid @RequestBody final SchemaWrapper schema,
                                                 final Errors errors) {
         if (errors.hasErrors()) {
             throw new ValidationException(errors);
         }
 
         final EventType eventType = eventTypeService.get(name);
-        final var toCompareEventTypeSchema = version.equals("latest")?
-                eventType.getSchema(): schemaService.getSchemaVersion(name, version);
+        final var toCompareEventTypeSchema = version.equals("latest") ?
+                eventType.getSchema() : schemaService.getSchemaVersion(name, version);
         eventType.setSchema(toCompareEventTypeSchema);
 
         final var newEventTypeBase = new EventTypeBase(eventType);

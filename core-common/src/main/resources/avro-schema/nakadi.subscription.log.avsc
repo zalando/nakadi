@@ -1,0 +1,16 @@
+{
+  "name": "NakadiSubscriptionLog",
+  "namespace": "org.zalando.nakadi.kpi.event",
+  "type": "record",
+  "doc": "Stores KPI events of type nakadi.subscription.log",
+  "fields": [
+    {
+      "name": "subscription_id",
+      "type": "string"
+    },
+    {
+      "name": "status",
+      "type": "string"
+    }
+  ]
+}

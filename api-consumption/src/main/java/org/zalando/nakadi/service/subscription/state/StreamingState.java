@@ -267,7 +267,6 @@ class StreamingState extends State {
                     streamTimeoutReached))) {
                 sentSomething |= !toSend.isEmpty();
                 flushData(e.getKey(), toSend, batchesSent == 0 ? Optional.of("Stream started") : Optional.empty());
-                this.sentEvents += toSend.size();
                 if (toSend.isEmpty()) {
                     break;
                 }
@@ -276,7 +275,7 @@ class StreamingState extends State {
         }
 
         long memoryConsumed = offsets.values().stream().mapToLong(PartitionData::getBytesInMemory).sum();
-        while (memoryConsumed > getContext().getStreamMemoryLimitBytes() && getMessagesAllowedToSend() > 0) {
+        while (memoryConsumed > getContext().getStreamMemoryLimitBytes() && messagesAllowedToSend > 0) {
             // Select heaviest guy (and on previous step we figured out that we can not send anymore full batches,
             // therefore we can take all the events from one partition.
             final Map.Entry<EventTypePartition, PartitionData> heaviestPartition = offsets.entrySet().stream().max(
@@ -285,7 +284,7 @@ class StreamingState extends State {
 
             long deltaSize = heaviestPartition.getValue().getBytesInMemory();
             final List<ConsumedEvent> events = heaviestPartition.getValue().extractMaxEvents(currentTimeMillis,
-                    (int) getMessagesAllowedToSend());
+                    messagesAllowedToSend);
             deltaSize -= heaviestPartition.getValue().getBytesInMemory();
 
             sentSomething = true;
@@ -293,6 +292,7 @@ class StreamingState extends State {
                     heaviestPartition.getKey(),
                     events,
                     Optional.of("Stream parameters are causing overflow"));
+            messagesAllowedToSend -= events.size();
             getLog().warn("Memory limit reached: {} bytes. Dumped events from {}. Freed: {} bytes, {} messages",
                     memoryConsumed, heaviestPartition.getKey(), deltaSize, events.size());
             memoryConsumed -= deltaSize;
@@ -303,7 +303,7 @@ class StreamingState extends State {
         if (wasCommitted && sentSomething) {
             this.lastCommitMillis = System.currentTimeMillis();
         }
-        pollPaused = getMessagesAllowedToSend() <= 0;
+        pollPaused = messagesAllowedToSend <= 0;
         if (!offsets.isEmpty() &&
                 getParameters().isKeepAliveLimitReached(offsets.values().stream()
                         .mapToInt(PartitionData::getKeepAliveInARow))) {
@@ -320,7 +320,7 @@ class StreamingState extends State {
                     sentOffset,
                     getContext().getCursorTokenService().generateToken());
 
-            final int batchSizeBytes = getContext().getWriter().writeSubscriptionBatch(
+            final long batchSizeBytes = getContext().getWriter().writeSubscriptionBatch(
                     getOut().getOutputStream(),
                     cursor,
                     data,
@@ -331,6 +331,7 @@ class StreamingState extends State {
             getContext().getKpiCollector().recordBatchSent(pk.getEventType(), batchSizeBytes, data.size());
 
             batchesSent++;
+            sentEvents += data.size();
         } catch (final IOException e) {
             shutdownGracefully("Failed to write data to output: " + e);
         }
