@@ -42,7 +42,7 @@ public class RepositoriesConfig {
         return featureToggleService;
     }
 
-    @Profile("default")
+    @Profile({"default", "dev"})
     @Bean
     public FeatureToggleService featureToggleService(final ZooKeeperHolder zooKeeperHolder) {
         return new FeatureToggleServiceZk(zooKeeperHolder);
