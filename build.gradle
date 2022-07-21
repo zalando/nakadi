@@ -27,6 +27,8 @@ subprojects {
     }
 
     checkstyle {
+        // Ignored checkstyle
+        ignoreFailures = true
         configFile = new File(rootDir, "checkstyle.xml")
         toolVersion = "8.34"
     }
