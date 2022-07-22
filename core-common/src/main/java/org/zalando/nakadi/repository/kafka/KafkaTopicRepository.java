@@ -300,13 +300,13 @@ public class KafkaTopicRepository implements TopicRepository {
             final String topicId, final List<BatchItem> batch, final String eventType, final boolean delete)
             throws EventPublishingException {
 
-        final List<BatchItem> unkeyedEvents =
+        final List<BatchItem> unkeyedItems =
                 batch.stream().filter(item -> item.getEventKey() == null).collect(Collectors.toList());
-        final List<BatchItem> keyedEvents =
+        final List<BatchItem> keyedItems =
                 batch.stream().filter(item -> item.getEventKey() != null).collect(Collectors.toList());
 
-        final List<Collection<BatchItem>> chunks = splitBatchIntoChunksOfUniqueKeys(keyedEvents);
-        chunks.add(0, unkeyedEvents);
+        final List<Collection<BatchItem>> chunks = splitIntoChunksOfUniqueKeys(keyedItems);
+        chunks.add(0, unkeyedItems);
 
         Collection<BatchItem> currentChunk = null;
 
@@ -367,17 +367,11 @@ public class KafkaTopicRepository implements TopicRepository {
      * event for any given key will be seen in the first chunk, the next event for the same key, if any, in the second
      * chunk, and so on.
      */
-    static List<Collection<BatchItem>> splitBatchIntoChunksOfUniqueKeys(final List<BatchItem> batch) {
+    static List<Collection<BatchItem>> splitIntoChunksOfUniqueKeys(final List<BatchItem> keyedItems) {
         final List<Collection<BatchItem>> chunks = new LinkedList<>();
 
-        final Map<String, List<BatchItem>> itemsByKey = //new HashMap<>();
-                batch.stream()
+        final Map<String, List<BatchItem>> itemsByKey = keyedItems.stream()
                 .collect(Collectors.groupingBy(BatchItem::getEventKey));
-        // for (final BatchItem item : batch) {
-        //     itemsByKey
-        //             .computeIfAbsent(item.getEventKey(), k -> new LinkedList<>())
-        //             .add(item);
-        // }
 
         final Set<String> emptyKeys = new HashSet<>();
 

@@ -398,8 +398,7 @@ public class KafkaTopicRepositoryTest {
                 Set.of(firstItemA, itemB, firstItemC),
                 Set.of(secondItemA, secondItemC));
 
-        final List<Collection<BatchItem>> chunks =
-                KafkaTopicRepository.splitBatchIntoChunksOfUniqueKeys(batch);
+        final List<Collection<BatchItem>> chunks = KafkaTopicRepository.splitIntoChunksOfUniqueKeys(batch);
         assertThat(chunks, equalTo(expectedChunks));
     }
 
