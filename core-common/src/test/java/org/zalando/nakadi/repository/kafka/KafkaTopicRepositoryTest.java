@@ -40,6 +40,7 @@ import java.io.IOException;
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collection;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -344,8 +345,64 @@ public class KafkaTopicRepositoryTest {
         assertThat(secondItem.getResponse().getPublishingStatus(), equalTo(EventPublishingStatus.SUBMITTED));
     }
 
-    // keys: [A, B, A]
-    // stat: [F, S, A]
+    @Test
+    public void splittingOfBatchIntoChunksByKey() {
+        final BatchItem firstItemA = new BatchItem(
+                "{}",
+                BatchItem.EmptyInjectionConfiguration.build(1, true),
+                new BatchItem.InjectionConfiguration[BatchItem.Injection.values().length],
+                Collections.emptyList());
+        firstItemA.setPartition("1");
+        firstItemA.setEventKey("A");
+
+        final BatchItem itemB = new BatchItem(
+                "{}",
+                BatchItem.EmptyInjectionConfiguration.build(1, true),
+                new BatchItem.InjectionConfiguration[BatchItem.Injection.values().length],
+                Collections.emptyList());
+        itemB.setPartition("2");
+        itemB.setEventKey("B");
+
+        final BatchItem secondItemA = new BatchItem(
+                "{}",
+                BatchItem.EmptyInjectionConfiguration.build(1, true),
+                new BatchItem.InjectionConfiguration[BatchItem.Injection.values().length],
+                Collections.emptyList());
+        secondItemA.setPartition("1");
+        secondItemA.setEventKey("A");
+
+        final BatchItem firstItemC = new BatchItem(
+                "{}",
+                BatchItem.EmptyInjectionConfiguration.build(1, true),
+                new BatchItem.InjectionConfiguration[BatchItem.Injection.values().length],
+                Collections.emptyList());
+        firstItemC.setPartition("2");
+        firstItemC.setEventKey("C");
+
+        final BatchItem secondItemC = new BatchItem(
+                "{}",
+                BatchItem.EmptyInjectionConfiguration.build(1, true),
+                new BatchItem.InjectionConfiguration[BatchItem.Injection.values().length],
+                Collections.emptyList());
+        secondItemC.setPartition("2");
+        secondItemC.setEventKey("C");
+
+        final List<BatchItem> batch = new ArrayList<>();
+        batch.add(firstItemA);
+        batch.add(itemB);
+        batch.add(firstItemC);
+        batch.add(secondItemC);
+        batch.add(secondItemA);
+
+        final List<Collection<BatchItem>> expectedChunks = List.of(
+                Set.of(firstItemA, itemB, firstItemC),
+                Set.of(secondItemA, secondItemC));
+
+        final List<Collection<BatchItem>> chunks =
+                KafkaTopicRepository.splitBatchIntoChunksOfUniqueKeys(batch);
+        assertThat(chunks, equalTo(expectedChunks));
+    }
+
     @Test
     public void whenFirstItemFailsThenSecondItemForTheSameKeyIsAborted() {
         final BatchItem firstItemA = new BatchItem(
@@ -396,9 +453,13 @@ public class KafkaTopicRepositoryTest {
             kafkaTopicRepository.syncPostBatch(EXPECTED_PRODUCER_RECORD.topic(), batch, "random", false);
         });
 
-        assertThat(firstItemA.getResponse().getPublishingStatus(), equalTo(EventPublishingStatus.FAILED));
-        assertThat(itemB.getResponse().getPublishingStatus(), equalTo(EventPublishingStatus.SUBMITTED));
-        assertThat(secondItemA.getResponse().getPublishingStatus(), equalTo(EventPublishingStatus.ABORTED));
+        assertThat(
+                List.of(firstItemA.getResponse().getPublishingStatus(),
+                        itemB.getResponse().getPublishingStatus(),
+                        secondItemA.getResponse().getPublishingStatus()),
+                equalTo(List.of(EventPublishingStatus.FAILED,
+                                EventPublishingStatus.SUBMITTED,
+                                EventPublishingStatus.ABORTED)));
     }
 
     @Test

@@ -300,9 +300,15 @@ public class KafkaTopicRepository implements TopicRepository {
             final String topicId, final List<BatchItem> batch, final String eventType, final boolean delete)
             throws EventPublishingException {
 
-        final List<BatchItem> itemsLeft = new ArrayList<>(batch);
-        final List<BatchItem> chunkItems = new ArrayList<>();
-        final Set<String> chunkKeys = new HashSet<>();
+        final List<BatchItem> unkeyedEvents =
+                batch.stream().filter(item -> item.getEventKey() == null).collect(Collectors.toList());
+        final List<BatchItem> keyedEvents =
+                batch.stream().filter(item -> item.getEventKey() != null).collect(Collectors.toList());
+
+        final List<Collection<BatchItem>> chunks = splitBatchIntoChunksOfUniqueKeys(keyedEvents);
+        chunks.add(0, unkeyedEvents);
+
+        Collection<BatchItem> currentChunk = null;
 
         final Producer<byte[], byte[]> producer = kafkaFactory.takeProducer();
         try {
@@ -319,61 +325,85 @@ public class KafkaTopicRepository implements TopicRepository {
             });
 
             long timeoutMs = createSendTimeout();
-            while (true) {
+
+            while (!chunks.isEmpty()) {
+                if (timeoutMs < 0) {
+                    throw new TimeoutException("Timed out before sending all messages.");
+                }
                 final long chunkStartTime = System.currentTimeMillis();
 
-                for (int i = 0; i < itemsLeft.size(); ) {
-                    final BatchItem item = itemsLeft.get(i);
-                    final String itemKey = item.getEventKey();
-                    if (null == itemKey) {
-                        chunkItems.add(item);
-                        itemsLeft.remove(i);
-                    } else if (!chunkKeys.contains(itemKey)) {
-                        chunkKeys.add(itemKey);
-                        chunkItems.add(item);
-                        itemsLeft.remove(i);
-                    } else {
-                        ++i;
-                    }
-                }
+                currentChunk = chunks.remove(0);
+                postChunk(producer, topicId, currentChunk, eventType, delete, timeoutMs);
 
-                postChunk(producer, topicId, chunkItems, eventType, delete, timeoutMs);
-
-                chunkItems.clear();
-                chunkKeys.clear();
-                if (itemsLeft.isEmpty()) {
-                    break;
+                final boolean atLeastOneFailed = currentChunk.stream()
+                        .anyMatch(item -> item.getResponse().getPublishingStatus() == EventPublishingStatus.FAILED);
+                if (atLeastOneFailed) {
+                    failUnpublished(topicId, eventType, currentChunk, chunks, "internal error");
+                    throw new EventPublishingException("Internal error publishing message to kafka", topicId, eventType);
                 }
 
                 timeoutMs -= System.currentTimeMillis() - chunkStartTime;
-                if (timeoutMs <= 0) {
-                    throw new TimeoutException();
-                }
             }
         } catch (final TimeoutException ex) {
             kafkaFactory.terminateProducer(producer);
-            failUnpublished(topicId, eventType, chunkItems, itemsLeft, "timed out");
+            failUnpublished(topicId, eventType, currentChunk, chunks, "timed out");
             throw new EventPublishingException("Timeout publishing message to kafka", ex, topicId, eventType);
         } catch (final ExecutionException ex) {
-            failUnpublished(topicId, eventType, chunkItems, itemsLeft, "internal error");
+            failUnpublished(topicId, eventType, currentChunk, chunks, "internal error");
             throw new EventPublishingException("Internal error publishing message to kafka", ex, topicId, eventType);
         } catch (final InterruptedException ex) {
             Thread.currentThread().interrupt();
-            failUnpublished(topicId, eventType, chunkItems, itemsLeft, "interrupted");
+            failUnpublished(topicId, eventType, currentChunk, chunks, "interrupted");
             throw new EventPublishingException("Interrupted publishing message to kafka", ex, topicId, eventType);
         } finally {
             kafkaFactory.releaseProducer(producer);
         }
-        final boolean atLeastOneFailed = batch.stream()
-                .anyMatch(item -> item.getResponse().getPublishingStatus() == EventPublishingStatus.FAILED);
-        if (atLeastOneFailed) {
-            failUnpublished(topicId, eventType, chunkItems, itemsLeft, "internal error");
-            throw new EventPublishingException("Internal error publishing message to kafka", topicId, eventType);
+    }
+
+    /**
+     * Splits the batch of _keyed_ events for publishing into a list of unordered chunks.
+     *
+     * The event keys in each chunk are unique and the relative order of events for the same key is preserved: the first
+     * event for any given key will be seen in the first chunk, the next event for the same key, if any, in the second
+     * chunk, and so on.
+     */
+    static List<Collection<BatchItem>> splitBatchIntoChunksOfUniqueKeys(final List<BatchItem> batch) {
+        final List<Collection<BatchItem>> chunks = new LinkedList<>();
+
+        final Map<String, List<BatchItem>> itemsByKey = //new HashMap<>();
+                batch.stream()
+                .collect(Collectors.groupingBy(BatchItem::getEventKey));
+        // for (final BatchItem item : batch) {
+        //     itemsByKey
+        //             .computeIfAbsent(item.getEventKey(), k -> new LinkedList<>())
+        //             .add(item);
+        // }
+
+        final Set<String> emptyKeys = new HashSet<>();
+
+        while (!itemsByKey.isEmpty()) {
+            final Set<BatchItem> chunk = new HashSet<>();
+
+            for (final Map.Entry<String, List<BatchItem>> entry : itemsByKey.entrySet()) {
+                final List<BatchItem> items = entry.getValue();
+                chunk.add(items.remove(0));
+                if (items.isEmpty()) {
+                    emptyKeys.add(entry.getKey());
+                }
+            }
+
+            for (final String key : emptyKeys) {
+                itemsByKey.remove(key);
+            }
+            emptyKeys.clear();
+
+            chunks.add(chunk);
         }
+        return chunks;
     }
 
     private void postChunk(final Producer<byte[], byte[]> producer, final String topicId,
-            final List<BatchItem> chunkItems, final String eventType, final boolean delete, final long timeoutMs)
+            final Collection<BatchItem> chunkItems, final String eventType, final boolean delete, final long timeoutMs)
             throws TimeoutException, ExecutionException, InterruptedException {
 
         final Map<BatchItem, CompletableFuture<Exception>> sendFutures = new HashMap<>();
@@ -409,22 +439,24 @@ public class KafkaTopicRepository implements TopicRepository {
         return nakadiSettings.getKafkaSendTimeoutMs() + kafkaSettings.getRequestTimeoutMs();
     }
 
-    private void failUnpublished(final String topicId, final String eventType, final List<BatchItem> failingItems,
-            final List<BatchItem> abortingItems, final String reason) {
+    private void failUnpublished(final String topicId, final String eventType, final Collection<BatchItem> failedChunk,
+            final List<Collection<BatchItem>> abortedChunks, final String reason) {
 
-        logFailedEvents(topicId, eventType, failingItems);
+        logFailedEvents(topicId, eventType, failedChunk);
 
-        failingItems.stream()
+        failedChunk.stream()
                 .filter(item -> item.getResponse().getPublishingStatus() != EventPublishingStatus.SUBMITTED)
                 .filter(item -> item.getResponse().getDetail().isEmpty())
                 .forEach(item -> item.updateStatusAndDetail(EventPublishingStatus.FAILED, reason));
 
-        abortingItems.forEach(item -> item.updateStatusAndDetail(EventPublishingStatus.ABORTED, reason));
+        abortedChunks.forEach(chunk -> {
+                    chunk.forEach(item -> item.updateStatusAndDetail(EventPublishingStatus.ABORTED, reason));
+                });
     }
 
-    private void logFailedEvents(final String topicId, final String eventType, final List<BatchItem> batch) {
+    private void logFailedEvents(final String topicId, final String eventType, final Collection<BatchItem> chunk) {
         final Map<String, List<BatchItem>> itemsPerPartition = new HashMap<>();
-        for (final BatchItem item : batch) {
+        for (final BatchItem item : chunk) {
             itemsPerPartition.computeIfAbsent(item.getPartition(), (k) -> new LinkedList<>()).add(item);
         }
 
@@ -439,28 +471,6 @@ public class KafkaTopicRepository implements TopicRepository {
                     .append("] ");
         }
         LOG.info("Failed events in batch for topic {} / {}: {}", topicId, eventType, sb.toString());
-
-        for (final Map.Entry<String, List<BatchItem>> entry : itemsPerPartition.entrySet()) {
-            final Set<String> failedEventKeys = new HashSet<>();
-            final Set<String> loggedEventKeys = new HashSet<>();
-
-            for (final BatchItem item : entry.getValue()) {
-                final String itemKey = item.getEventKey(); // may be null, but that's OK
-
-                if (item.getResponse().getPublishingStatus() != EventPublishingStatus.SUBMITTED) {
-                    failedEventKeys.add(itemKey);
-                } else {
-                    if (failedEventKeys.contains(itemKey) && !loggedEventKeys.contains(itemKey)) {
-                        // some event has failed, but another one succeeded after it: the publishing order is violated!
-                        LOG.warn("Event ordering violation in topic {} / {} partition {} for key {}!",
-                                topicId, eventType, entry.getKey(), itemKey);
-
-                        // avoid logging the same key twice
-                        loggedEventKeys.add(itemKey);
-                    }
-                }
-            }
-        }
     }
 
     /**
