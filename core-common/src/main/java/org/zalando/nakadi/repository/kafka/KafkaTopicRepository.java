@@ -339,7 +339,7 @@ public class KafkaTopicRepository implements TopicRepository {
                         .anyMatch(item -> item.getResponse().getPublishingStatus() == EventPublishingStatus.FAILED);
                 if (atLeastOneFailed) {
                     failUnpublished(topicId, eventType, currentChunk, chunks, "internal error");
-                    throw new EventPublishingException("Internal error publishing message to kafka", topicId, eventType);
+                    throw new EventPublishingException("Internal error when publishing to kafka", topicId, eventType);
                 }
 
                 timeoutMs -= System.currentTimeMillis() - chunkStartTime;
