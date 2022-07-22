@@ -370,26 +370,26 @@ public class KafkaTopicRepository implements TopicRepository {
     static List<Collection<BatchItem>> splitIntoChunksOfUniqueKeys(final List<BatchItem> keyedItems) {
         final List<Collection<BatchItem>> chunks = new LinkedList<>();
 
-        final Map<String, List<BatchItem>> itemsByKey = keyedItems.stream()
-                .collect(Collectors.groupingBy(BatchItem::getEventKey));
-
-        final Set<String> emptyKeys = new HashSet<>();
+        final List<Map.Entry<String, List<BatchItem>>> itemsByKey = new LinkedList<>(
+                keyedItems.stream()
+                .collect(Collectors.groupingBy(BatchItem::getEventKey))
+                .entrySet());
 
         while (!itemsByKey.isEmpty()) {
             final Set<BatchItem> chunk = new HashSet<>();
 
-            for (final Map.Entry<String, List<BatchItem>> entry : itemsByKey.entrySet()) {
+            for (int i = 0; i < itemsByKey.size(); ) {
+                final Map.Entry<String, List<BatchItem>> entry = itemsByKey.get(i);
+
                 final List<BatchItem> items = entry.getValue();
                 chunk.add(items.remove(0));
+
                 if (items.isEmpty()) {
-                    emptyKeys.add(entry.getKey());
+                    itemsByKey.remove(i);
+                } else {
+                    ++i;
                 }
             }
-
-            for (final String key : emptyKeys) {
-                itemsByKey.remove(key);
-            }
-            emptyKeys.clear();
 
             chunks.add(chunk);
         }
