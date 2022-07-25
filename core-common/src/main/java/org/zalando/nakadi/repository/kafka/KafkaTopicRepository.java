@@ -301,14 +301,6 @@ public class KafkaTopicRepository implements TopicRepository {
             final String topicId, final List<BatchItem> batch, final String eventType, final boolean delete)
             throws EventPublishingException {
 
-        final List<BatchItem> unkeyedItems = batch.stream()
-                .filter(item -> item.getEventKey() == null)
-                .collect(Collectors.toList());
-
-        final Map<String, List<BatchItem>> itemsByKey = batch.stream()
-                .filter(item -> item.getEventKey() != null)
-                .collect(Collectors.groupingBy(BatchItem::getEventKey));
-
         final Producer<byte[], byte[]> producer = kafkaFactory.takeProducer();
         try {
             final Map<String, String> partitionToBroker = producer.partitionsFor(topicId).stream()
@@ -324,8 +316,9 @@ public class KafkaTopicRepository implements TopicRepository {
             });
 
             final List<CompletableFuture<Exception>> futures = new LinkedList<>();
-            // all items without keys can go in any order
-            for (final BatchItem item : unkeyedItems) {
+            final Map<String, CompletableFuture<Exception>> futuresByKey = new HashMap<>();
+
+            for (final BatchItem item : batch) {
                 if (item.getBrokerId() == null) {
                     item.updateStatusAndDetail(EventPublishingStatus.FAILED,
                             String.format("No leader for partition: %s, topic: %s.", item.getPartition(), topicId));
@@ -333,34 +326,30 @@ public class KafkaTopicRepository implements TopicRepository {
                             topicId, item.getPartition());
                     continue;
                 }
-                futures.add(publishItem(producer, topicId, eventType, item, delete));
-            }
-            // items with a key go one after another; if one fails the following items for the same key are aborted
-            for (final Map.Entry<String, List<BatchItem>> entry : itemsByKey.entrySet()) {
-                CompletableFuture<Exception> fut = null;
-                for (final BatchItem item : entry.getValue()) {
-                    if (item.getBrokerId() == null) {
-                        item.updateStatusAndDetail(EventPublishingStatus.FAILED,
-                                String.format("No leader for partition: %s, topic: %s.", item.getPartition(), topicId));
-                        LOG.error("Failed to publish to kafka. No leader for ({}:{}).",
-                                topicId, item.getPartition());
-                        continue;
-                    }
+                final String itemKey = item.getEventKey();
+                if (itemKey == null) {
+                    futures.add(publishItem(producer, topicId, eventType, item, delete));
+                } else {
+                    CompletableFuture<Exception> fut = futuresByKey.get(itemKey);
                     if (fut == null) {
                         fut = publishItem(producer, topicId, eventType, item, delete);
                     } else {
                         fut = fut.thenCompose((e) -> {
                                     if (e != null) {
-                                        item.updateStatusAndDetail(EventPublishingStatus.ABORTED, "xxx");
+                                        item.updateStatusAndDetail(EventPublishingStatus.ABORTED,
+                                                "earlier item failed for key: " + itemKey);
                                         return CompletableFuture.completedStage(e);
                                     } else {
                                         return publishItem(producer, topicId, eventType, item, delete);
                                     }
                                 });
                     }
+                    futuresByKey.put(itemKey, fut);
                 }
-                futures.add(fut);
             }
+
+            futures.addAll(futuresByKey.values());
+
             final CompletableFuture<Void> multiFuture = CompletableFuture.allOf(
                     futures.toArray(new CompletableFuture<?>[futures.size()]));
             multiFuture.get(createSendTimeout(), TimeUnit.MILLISECONDS);
@@ -403,19 +392,17 @@ public class KafkaTopicRepository implements TopicRepository {
     }
 
     private void failUnpublished(final String topicId, final String eventType, final List<BatchItem> batch,
-            final String reason) {
-
+                                 final String reason) {
         logFailedEvents(topicId, eventType, batch);
-
         batch.stream()
                 .filter(item -> item.getResponse().getPublishingStatus() != EventPublishingStatus.SUBMITTED)
                 .filter(item -> item.getResponse().getDetail().isEmpty())
                 .forEach(item -> item.updateStatusAndDetail(EventPublishingStatus.FAILED, reason));
     }
 
-    private void logFailedEvents(final String topicId, final String eventType, final Collection<BatchItem> chunk) {
+    private void logFailedEvents(final String topicId, final String eventType, final List<BatchItem> batch) {
         final Map<String, List<BatchItem>> itemsPerPartition = new HashMap<>();
-        for (final BatchItem item : chunk) {
+        for (final BatchItem item : batch) {
             itemsPerPartition.computeIfAbsent(item.getPartition(), (k) -> new LinkedList<>()).add(item);
         }
 

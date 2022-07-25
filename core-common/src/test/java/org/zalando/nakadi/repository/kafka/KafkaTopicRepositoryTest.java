@@ -355,14 +355,6 @@ public class KafkaTopicRepositoryTest {
         firstItemA.setPartition("1");
         firstItemA.setEventKey("A");
 
-        final BatchItem itemB = new BatchItem(
-                "{}",
-                BatchItem.EmptyInjectionConfiguration.build(1, true),
-                new BatchItem.InjectionConfiguration[BatchItem.Injection.values().length],
-                Collections.emptyList());
-        itemB.setPartition("2");
-        itemB.setEventKey("B");
-
         final BatchItem secondItemA = new BatchItem(
                 "{}",
                 BatchItem.EmptyInjectionConfiguration.build(1, true),
@@ -371,10 +363,27 @@ public class KafkaTopicRepositoryTest {
         secondItemA.setPartition("1");
         secondItemA.setEventKey("A");
 
+        final BatchItem firstItemB = new BatchItem(
+                "{}",
+                BatchItem.EmptyInjectionConfiguration.build(1, true),
+                new BatchItem.InjectionConfiguration[BatchItem.Injection.values().length],
+                Collections.emptyList());
+        firstItemB.setPartition("2");
+        firstItemB.setEventKey("B");
+
+        final BatchItem secondItemB = new BatchItem(
+                "{}",
+                BatchItem.EmptyInjectionConfiguration.build(1, true),
+                new BatchItem.InjectionConfiguration[BatchItem.Injection.values().length],
+                Collections.emptyList());
+        secondItemB.setPartition("2");
+        secondItemB.setEventKey("B");
+
         final List<BatchItem> batch = new ArrayList<>();
         batch.add(firstItemA);
-        batch.add(itemB);
+        batch.add(firstItemB);
         batch.add(secondItemA);
+        batch.add(secondItemB);
 
         when(kafkaProducer.partitionsFor(EXPECTED_PRODUCER_RECORD.topic())).thenReturn(ImmutableList.of(
                 new PartitionInfo(EXPECTED_PRODUCER_RECORD.topic(), 1, NODE, null, null),
@@ -397,11 +406,13 @@ public class KafkaTopicRepositoryTest {
 
         assertThat(
                 List.of(firstItemA.getResponse().getPublishingStatus(),
-                        itemB.getResponse().getPublishingStatus(),
-                        secondItemA.getResponse().getPublishingStatus()),
+                        firstItemB.getResponse().getPublishingStatus(),
+                        secondItemA.getResponse().getPublishingStatus(),
+                        secondItemB.getResponse().getPublishingStatus()),
                 equalTo(List.of(EventPublishingStatus.FAILED,
                                 EventPublishingStatus.SUBMITTED,
-                                EventPublishingStatus.ABORTED)));
+                                EventPublishingStatus.ABORTED,
+                                EventPublishingStatus.SUBMITTED)));
     }
 
     @Test
