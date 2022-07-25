@@ -55,7 +55,6 @@ import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.HashMap;
-import java.util.HashSet;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
@@ -326,10 +325,13 @@ public class KafkaTopicRepository implements TopicRepository {
                             topicId, item.getPartition());
                     continue;
                 }
+
                 final String itemKey = item.getEventKey();
                 if (itemKey == null) {
+                    // items without a key go out of order
                     futures.add(publishItem(producer, topicId, eventType, item, delete));
                 } else {
+                    // items for a single key are composed together for sequential publishing
                     CompletableFuture<Exception> fut = futuresByKey.get(itemKey);
                     if (fut == null) {
                         fut = publishItem(producer, topicId, eventType, item, delete);
@@ -347,7 +349,7 @@ public class KafkaTopicRepository implements TopicRepository {
                     futuresByKey.put(itemKey, fut);
                 }
             }
-
+            // we will wait for all futures together
             futures.addAll(futuresByKey.values());
 
             final CompletableFuture<Void> multiFuture = CompletableFuture.allOf(
