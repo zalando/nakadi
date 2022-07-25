@@ -346,63 +346,6 @@ public class KafkaTopicRepositoryTest {
     }
 
     @Test
-    public void splittingOfBatchIntoChunksByKey() {
-        final BatchItem firstItemA = new BatchItem(
-                "{}",
-                BatchItem.EmptyInjectionConfiguration.build(1, true),
-                new BatchItem.InjectionConfiguration[BatchItem.Injection.values().length],
-                Collections.emptyList());
-        firstItemA.setPartition("1");
-        firstItemA.setEventKey("A");
-
-        final BatchItem itemB = new BatchItem(
-                "{}",
-                BatchItem.EmptyInjectionConfiguration.build(1, true),
-                new BatchItem.InjectionConfiguration[BatchItem.Injection.values().length],
-                Collections.emptyList());
-        itemB.setPartition("2");
-        itemB.setEventKey("B");
-
-        final BatchItem secondItemA = new BatchItem(
-                "{}",
-                BatchItem.EmptyInjectionConfiguration.build(1, true),
-                new BatchItem.InjectionConfiguration[BatchItem.Injection.values().length],
-                Collections.emptyList());
-        secondItemA.setPartition("1");
-        secondItemA.setEventKey("A");
-
-        final BatchItem firstItemC = new BatchItem(
-                "{}",
-                BatchItem.EmptyInjectionConfiguration.build(1, true),
-                new BatchItem.InjectionConfiguration[BatchItem.Injection.values().length],
-                Collections.emptyList());
-        firstItemC.setPartition("2");
-        firstItemC.setEventKey("C");
-
-        final BatchItem secondItemC = new BatchItem(
-                "{}",
-                BatchItem.EmptyInjectionConfiguration.build(1, true),
-                new BatchItem.InjectionConfiguration[BatchItem.Injection.values().length],
-                Collections.emptyList());
-        secondItemC.setPartition("2");
-        secondItemC.setEventKey("C");
-
-        final List<BatchItem> batch = new ArrayList<>();
-        batch.add(firstItemA);
-        batch.add(itemB);
-        batch.add(firstItemC);
-        batch.add(secondItemC);
-        batch.add(secondItemA);
-
-        final List<Collection<BatchItem>> expectedChunks = List.of(
-                Set.of(firstItemA, itemB, firstItemC),
-                Set.of(secondItemA, secondItemC));
-
-        final List<Collection<BatchItem>> chunks = KafkaTopicRepository.splitIntoChunksOfUniqueKeys(batch);
-        assertThat(chunks, equalTo(expectedChunks));
-    }
-
-    @Test
     public void whenFirstItemFailsThenSecondItemForTheSameKeyIsAborted() {
         final BatchItem firstItemA = new BatchItem(
                 "{}",

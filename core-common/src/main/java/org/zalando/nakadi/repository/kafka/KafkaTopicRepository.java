@@ -168,6 +168,7 @@ public class KafkaTopicRepository implements TopicRepository {
                 item.getOwner().serialize(kafkaRecord);
             }
 
+            item.setStep(EventPublishingStep.PUBLISHING);
             producer.send(kafkaRecord, ((metadata, exception) -> {
                 if (null != exception) {
                     LOG.warn("Failed to publish to kafka topic {}", topicId, exception);
@@ -300,15 +301,13 @@ public class KafkaTopicRepository implements TopicRepository {
             final String topicId, final List<BatchItem> batch, final String eventType, final boolean delete)
             throws EventPublishingException {
 
-        final List<BatchItem> unkeyedItems =
-                batch.stream().filter(item -> item.getEventKey() == null).collect(Collectors.toList());
-        final List<BatchItem> keyedItems =
-                batch.stream().filter(item -> item.getEventKey() != null).collect(Collectors.toList());
+        final List<BatchItem> unkeyedItems = batch.stream()
+                .filter(item -> item.getEventKey() == null)
+                .collect(Collectors.toList());
 
-        final List<Collection<BatchItem>> chunks = splitIntoChunksOfUniqueKeys(keyedItems);
-        chunks.add(0, unkeyedItems);
-
-        Collection<BatchItem> currentChunk = null;
+        final Map<String, List<BatchItem>> itemsByKey = batch.stream()
+                .filter(item -> item.getEventKey() != null)
+                .collect(Collectors.groupingBy(BatchItem::getEventKey));
 
         final Producer<byte[], byte[]> producer = kafkaFactory.takeProducer();
         try {
@@ -324,108 +323,78 @@ public class KafkaTopicRepository implements TopicRepository {
                 item.setBrokerId(partitionToBroker.get(item.getPartition()));
             });
 
-            long timeoutMs = createSendTimeout();
-
-            while (!chunks.isEmpty()) {
-                if (timeoutMs < 0) {
-                    throw new TimeoutException("Timed out before sending all messages.");
+            final List<CompletableFuture<Exception>> futures = new LinkedList<>();
+            // all items without keys can go in any order
+            for (final BatchItem item : unkeyedItems) {
+                if (item.getBrokerId() == null) {
+                    item.updateStatusAndDetail(EventPublishingStatus.FAILED,
+                            String.format("No leader for partition: %s, topic: %s.", item.getPartition(), topicId));
+                    LOG.error("Failed to publish to kafka. No leader for ({}:{}).",
+                            topicId, item.getPartition());
+                    continue;
                 }
-                final long chunkStartTime = System.currentTimeMillis();
-
-                currentChunk = chunks.remove(0);
-                postChunk(producer, topicId, currentChunk, eventType, delete, timeoutMs);
-
-                final boolean atLeastOneFailed = currentChunk.stream()
-                        .anyMatch(item -> item.getResponse().getPublishingStatus() == EventPublishingStatus.FAILED);
-                if (atLeastOneFailed) {
-                    failUnpublished(topicId, eventType, currentChunk, chunks, "internal error");
-                    throw new EventPublishingException("Internal error when publishing to kafka", topicId, eventType);
-                }
-
-                timeoutMs -= System.currentTimeMillis() - chunkStartTime;
+                futures.add(publishItem(producer, topicId, eventType, item, delete));
             }
+            // items with a key go one after another; if one fails the following items for the same key are aborted
+            for (final Map.Entry<String, List<BatchItem>> entry : itemsByKey.entrySet()) {
+                CompletableFuture<Exception> fut = null;
+                for (final BatchItem item : entry.getValue()) {
+                    if (item.getBrokerId() == null) {
+                        item.updateStatusAndDetail(EventPublishingStatus.FAILED,
+                                String.format("No leader for partition: %s, topic: %s.", item.getPartition(), topicId));
+                        LOG.error("Failed to publish to kafka. No leader for ({}:{}).",
+                                topicId, item.getPartition());
+                        continue;
+                    }
+                    if (fut == null) {
+                        fut = publishItem(producer, topicId, eventType, item, delete);
+                    } else {
+                        fut = fut.thenCompose((e) -> {
+                                    if (e != null) {
+                                        item.updateStatusAndDetail(EventPublishingStatus.ABORTED, "xxx");
+                                        return CompletableFuture.completedStage(e);
+                                    } else {
+                                        return publishItem(producer, topicId, eventType, item, delete);
+                                    }
+                                });
+                    }
+                }
+                futures.add(fut);
+            }
+            final CompletableFuture<Void> multiFuture = CompletableFuture.allOf(
+                    futures.toArray(new CompletableFuture<?>[futures.size()]));
+            multiFuture.get(createSendTimeout(), TimeUnit.MILLISECONDS);
+
+            // Now lets check for errors
+            final Optional<Exception> needReset = futures.stream()
+                    .filter(fut -> isExceptionShouldLeadToReset(fut.getNow(null)))
+                    .map(fut -> fut.getNow(null))
+                    .findAny();
+            if (needReset.isPresent()) {
+                LOG.info("Terminating producer while publishing to topic {} because of unrecoverable exception",
+                        topicId, needReset.get());
+                kafkaFactory.terminateProducer(producer);
+            }
+
         } catch (final TimeoutException ex) {
             kafkaFactory.terminateProducer(producer);
-            failUnpublished(topicId, eventType, currentChunk, chunks, "timed out");
+            failUnpublished(topicId, eventType, batch, "timed out");
             throw new EventPublishingException("Timeout publishing message to kafka", ex, topicId, eventType);
         } catch (final ExecutionException ex) {
-            failUnpublished(topicId, eventType, currentChunk, chunks, "internal error");
+            failUnpublished(topicId, eventType, batch, "internal error");
             throw new EventPublishingException("Internal error publishing message to kafka", ex, topicId, eventType);
         } catch (final InterruptedException ex) {
             Thread.currentThread().interrupt();
-            failUnpublished(topicId, eventType, currentChunk, chunks, "interrupted");
+            failUnpublished(topicId, eventType, batch, "interrupted");
             throw new EventPublishingException("Interrupted publishing message to kafka", ex, topicId, eventType);
         } finally {
             kafkaFactory.releaseProducer(producer);
         }
-    }
-
-    /**
-     * Splits the batch of _keyed_ events for publishing into a list of unordered chunks.
-     *
-     * The event keys in each chunk are unique and the relative order of events for the same key is preserved: the first
-     * event for any given key will be seen in the first chunk, the next event for the same key, if any, in the second
-     * chunk, and so on.
-     */
-    static List<Collection<BatchItem>> splitIntoChunksOfUniqueKeys(final List<BatchItem> keyedItems) {
-        final List<Collection<BatchItem>> chunks = new LinkedList<>();
-
-        final List<Map.Entry<String, List<BatchItem>>> itemsByKey = new LinkedList<>(
-                keyedItems.stream()
-                .collect(Collectors.groupingBy(BatchItem::getEventKey))
-                .entrySet());
-
-        while (!itemsByKey.isEmpty()) {
-            final Set<BatchItem> chunk = new HashSet<>();
-
-            for (int i = 0; i < itemsByKey.size(); ) {
-                final Map.Entry<String, List<BatchItem>> entry = itemsByKey.get(i);
-
-                final List<BatchItem> items = entry.getValue();
-                chunk.add(items.remove(0));
-
-                if (items.isEmpty()) {
-                    itemsByKey.remove(i);
-                } else {
-                    ++i;
-                }
-            }
-
-            chunks.add(chunk);
-        }
-        return chunks;
-    }
-
-    private void postChunk(final Producer<byte[], byte[]> producer, final String topicId,
-            final Collection<BatchItem> chunkItems, final String eventType, final boolean delete, final long timeoutMs)
-            throws TimeoutException, ExecutionException, InterruptedException {
-
-        final Map<BatchItem, CompletableFuture<Exception>> sendFutures = new HashMap<>();
-        for (final BatchItem item : chunkItems) {
-            final String brokerId = item.getBrokerId();
-            if (brokerId == null) {
-                item.updateStatusAndDetail(EventPublishingStatus.FAILED,
-                        String.format("No leader for partition: %s, topic: %s.", item.getPartition(), topicId));
-                LOG.error("Failed to publish to kafka. No leader for ({}:{}).",
-                        topicId, item.getPartition());
-                continue;
-            }
-            item.setStep(EventPublishingStep.PUBLISHING);
-            sendFutures.put(item, publishItem(producer, topicId, eventType, item, delete));
-        }
-        final CompletableFuture<Void> multiFuture = CompletableFuture.allOf(
-                sendFutures.values().toArray(new CompletableFuture<?>[sendFutures.size()]));
-        multiFuture.get(timeoutMs, TimeUnit.MILLISECONDS);
-
-        // Now lets check for errors
-        final Optional<Exception> needReset = sendFutures.entrySet().stream()
-                .filter(entry -> isExceptionShouldLeadToReset(entry.getValue().getNow(null)))
-                .map(entry -> entry.getValue().getNow(null))
-                .findAny();
-        if (needReset.isPresent()) {
-            LOG.info("Terminating producer while publishing to topic {} because of unrecoverable exception",
-                    topicId, needReset.get());
-            kafkaFactory.terminateProducer(producer);
+        final boolean atLeastOneFailed = batch.stream()
+                .anyMatch(item -> item.getResponse().getPublishingStatus() == EventPublishingStatus.FAILED);
+        if (atLeastOneFailed) {
+            failUnpublished(topicId, eventType, batch, "internal error");
+            throw new EventPublishingException("Internal error when publishing to kafka", topicId, eventType);
         }
     }
 
@@ -433,19 +402,15 @@ public class KafkaTopicRepository implements TopicRepository {
         return nakadiSettings.getKafkaSendTimeoutMs() + kafkaSettings.getRequestTimeoutMs();
     }
 
-    private void failUnpublished(final String topicId, final String eventType, final Collection<BatchItem> failedChunk,
-            final List<Collection<BatchItem>> abortedChunks, final String reason) {
+    private void failUnpublished(final String topicId, final String eventType, final List<BatchItem> batch,
+            final String reason) {
 
-        logFailedEvents(topicId, eventType, failedChunk);
+        logFailedEvents(topicId, eventType, batch);
 
-        failedChunk.stream()
+        batch.stream()
                 .filter(item -> item.getResponse().getPublishingStatus() != EventPublishingStatus.SUBMITTED)
                 .filter(item -> item.getResponse().getDetail().isEmpty())
                 .forEach(item -> item.updateStatusAndDetail(EventPublishingStatus.FAILED, reason));
-
-        abortedChunks.forEach(chunk -> {
-                    chunk.forEach(item -> item.updateStatusAndDetail(EventPublishingStatus.ABORTED, reason));
-                });
     }
 
     private void logFailedEvents(final String topicId, final String eventType, final Collection<BatchItem> chunk) {
