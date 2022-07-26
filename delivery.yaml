@@ -56,10 +56,10 @@ pipeline:
 
           docker buildx build \
             --platform linux/amd64,linux/arm64 \
-            -t ${IMAGE} \
+            -t ${MULTI_ARCH_IMAGE} \
             --push .
           cdp-promote-image ${IMAGE}
 
-          echo "Building oss image"
+          #echo "Building oss image"
           docker build -t ${IMAGE} .
           docker push ${IMAGE}
