@@ -39,11 +39,14 @@ pipeline:
       - desc: Build and push to repo
         cmd: |
           ./gradlew clean app:bootJar
-          IMAGE="container-registry-test.zalando.net/aruha/nakadi-oss:${CDP_BUILD_VERSION}"
+          MULTI_ARCH_IMAGE="container-registry-test.zalando.net/aruha/nakadi-oss:${CDP_BUILD_VERSION}"
+          IMAGE="registry-write.opensource.zalan.do/aruha/nakadi-oss:${CDP_BUILD_VERSION}"
           if [ "$CDP_PULL_REQUEST_NUMBER" ]; then
-            IMAGE="container-registry-test.zalando.net/aruha/nakadi-oss-pr:${CDP_BUILD_VERSION}"
+            IMAGE="registry-write.opensource.zalan.do/aruha/nakadi-oss-pr:${CDP_BUILD_VERSION}"
+            MULTI_ARCH_IMAGE="container-registry-test.zalando.net/aruha/nakadi-oss-pr:${CDP_BUILD_VERSION}"
           fi
 
+          echo "Building multi-arch image"
           docker buildx create \
                 --config /etc/cdp-buildkitd.toml \
                 --driver-opt network=host \
@@ -55,3 +58,8 @@ pipeline:
             --platform linux/amd64,linux/arm64 \
             -t ${IMAGE} \
             --push .
+          cdp-promote-image ${IMAGE}
+
+          echo "Building oss image"
+          docker build -t ${IMAGE} .
+          docker push ${IMAGE}
