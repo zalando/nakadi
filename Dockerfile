@@ -1,4 +1,5 @@
-FROM container-registry.zalando.net/library/eclipse-temurin-11-jre:latest
+ARG BASE_IMAGE
+FROM ${BASE_IMAGE}
 
 MAINTAINER Team Aruha, team-aruha@zalando.de
 

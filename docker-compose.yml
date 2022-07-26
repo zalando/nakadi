@@ -2,7 +2,10 @@ version: '3'
 services:
 
   nakadi:
-    build: .
+    build:
+      context: .
+      args:
+        BASE_IMAGE: "registry.opensource.zalan.do/library/openjdk-11-jre-slim:latest"
     ports:
     - "8080:8080"
     depends_on:
