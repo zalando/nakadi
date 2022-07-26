@@ -1,4 +1,5 @@
-FROM registry.opensource.zalan.do/library/openjdk-11-jre-slim:latest
+ARG BASE_IMAGE
+FROM ${BASE_IMAGE}
 
 MAINTAINER Team Aruha, team-aruha@zalando.de
 
