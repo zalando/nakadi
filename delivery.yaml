@@ -58,7 +58,7 @@ pipeline:
             --platform linux/amd64,linux/arm64 \
             -t ${MULTI_ARCH_IMAGE} \
             --push .
-          cdp-promote-image ${IMAGE}
+          cdp-promote-image ${MULTI_ARCH_IMAGE}
 
           #echo "Building oss image"
           docker build -t ${IMAGE} .
