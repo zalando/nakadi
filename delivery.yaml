@@ -1,9 +1,11 @@
 version: "2017-09-20"
 pipeline:
   - id: test
-    overlay: ci/java11
     type: script
-    vm: critical-large
+    vm_config:
+      type: linux
+      size: extra_large
+      image: cdp-runtime/jdk11
     commands:
       - desc: Checkstyle
         cmd: |
@@ -12,9 +14,11 @@ pipeline:
         cmd: |
           ./gradlew test --stacktrace
   - id: acceptance-test
-    overlay: ci/java11
     type: script
-    vm: critical-large
+    vm_config:
+      type: linux
+      size: extra_large
+      image: cdp-runtime/jdk11
     commands:
       - desc: Install dependencies
         cmd: |
@@ -26,16 +30,28 @@ pipeline:
         cmd: |
           ./gradlew fullAcceptanceTest --stacktrace
   - id: build-push
-    overlay: ci/java11
     type: script
-    vm: critical-large
+    vm_config:
+      type: linux
+      size: extra_large
+      image: cdp-runtime/jdk11
     commands:
       - desc: Build and push to repo
         cmd: |
           ./gradlew clean app:bootJar
-          IMAGE="registry-write.opensource.zalan.do/aruha/nakadi-oss:${CDP_BUILD_VERSION}"
+          IMAGE="container-registry-test.zalando.net/aruha/nakadi-oss:${CDP_BUILD_VERSION}"
           if [ "$CDP_PULL_REQUEST_NUMBER" ]; then
-            IMAGE="registry-write.opensource.zalan.do/aruha/nakadi-oss-pr:${CDP_BUILD_VERSION}"
+            IMAGE="container-registry-test.zalando.net/aruha/nakadi-oss-pr:${CDP_BUILD_VERSION}"
           fi
-          docker build -t ${IMAGE} .
-          docker push ${IMAGE}
+
+          docker buildx create \
+                --config /etc/cdp-buildkitd.toml \
+                --driver-opt network=host \
+                --name cdpbuildx \
+                --bootstrap \
+                --use
+
+          docker buildx build \
+            --platform linux/amd64,linux/arm64 \
+            -t ${IMAGE} \
+            --push .
