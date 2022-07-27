@@ -88,36 +88,37 @@ public class KafkaRepositoryAT extends BaseAT {
     @Before
     public void setup() {
         nakadiSettings = new NakadiSettings(
-            MAX_TOPIC_PARTITION_COUNT,
-            DEFAULT_PARTITION_COUNT,
-            DEFAULT_REPLICA_FACTOR,
-            DEFAULT_TOPIC_RETENTION,
-            DEFAULT_TOPIC_ROTATION,
-            DEFAULT_COMMIT_TIMEOUT,
-            NAKADI_POLL_TIMEOUT,
-            NAKADI_SEND_TIMEOUT,
-            TIMELINE_WAIT_TIMEOUT,
-            NAKADI_EVENT_MAX_BYTES,
-            NAKADI_SUBSCRIPTION_MAX_PARTITIONS,
-            DEFAULT_ADMIN_DATA_TYPE,
-            DEFAULT_ADMIN_VALUE,
-            DEFAULT_WARN_ALL_DATA_ACCESS_MESSAGE,
-            DEFAULT_WARN_LOG_COMPACTION_MESSAGE,
-            DEFAULT_EVENT_TYPE_DELETABLE_SUBSCRIPTION_OWNING_APPLICATION,
-            DEFAULT_EVENT_TYPE_DELETABLE_SUBSCRIPTION_CONSUMER_GROUP,
-            DEFAULT_CURATOR_MAX_LIFETIME_MS,
-            DEFAULT_CURATOR_ROTATION_MS);
+                MAX_TOPIC_PARTITION_COUNT,
+                DEFAULT_PARTITION_COUNT,
+                DEFAULT_REPLICA_FACTOR,
+                DEFAULT_TOPIC_RETENTION,
+                DEFAULT_TOPIC_ROTATION,
+                DEFAULT_COMMIT_TIMEOUT,
+                NAKADI_POLL_TIMEOUT,
+                NAKADI_SEND_TIMEOUT,
+                TIMELINE_WAIT_TIMEOUT,
+                NAKADI_EVENT_MAX_BYTES,
+                NAKADI_SUBSCRIPTION_MAX_PARTITIONS,
+                DEFAULT_ADMIN_DATA_TYPE,
+                DEFAULT_ADMIN_VALUE,
+                DEFAULT_WARN_ALL_DATA_ACCESS_MESSAGE,
+                DEFAULT_WARN_LOG_COMPACTION_MESSAGE,
+                DEFAULT_EVENT_TYPE_DELETABLE_SUBSCRIPTION_OWNING_APPLICATION,
+                DEFAULT_EVENT_TYPE_DELETABLE_SUBSCRIPTION_CONSUMER_GROUP,
+                DEFAULT_CURATOR_MAX_LIFETIME_MS,
+                DEFAULT_CURATOR_ROTATION_MS);
 
         kafkaSettings = new KafkaSettings(KAFKA_RETRIES, KAFKA_REQUEST_TIMEOUT, KAFKA_BATCH_SIZE, KAFKA_BUFFER_MEMORY,
-            KAFKA_LINGER_MS, KAFKA_MAX_IN_FLIGHT_REQUESTS_PER_CONNECTION, KAFKA_ENABLE_AUTO_COMMIT,
-            KAFKA_MAX_REQUEST_SIZE, KAFKA_DELIVERY_TIMEOUT, KAFKA_MAX_BLOCK_TIMEOUT, "", KAFKA_COMPRESSION_TYPE,
-            SECURITY_PROTOCOL, SASL_MECHANISM, "", "", "", MIN_INSYNC_REPLICAS);
+                KAFKA_LINGER_MS, KAFKA_MAX_IN_FLIGHT_REQUESTS_PER_CONNECTION, KAFKA_ENABLE_AUTO_COMMIT,
+                KAFKA_MAX_REQUEST_SIZE, KAFKA_DELIVERY_TIMEOUT, KAFKA_MAX_BLOCK_TIMEOUT, "",
+                KAFKA_COMPRESSION_TYPE, SECURITY_PROTOCOL, SASL_MECHANISM, "", "", "",
+                MIN_INSYNC_REPLICAS);
         kafkaHelper = new KafkaTestHelper(KAFKA_URL);
         defaultTopicConfig = new NakadiTopicConfig(DEFAULT_PARTITION_COUNT, DEFAULT_CLEANUP_POLICY,
-            Optional.of(DEFAULT_RETENTION_TIME));
+                Optional.of(DEFAULT_RETENTION_TIME));
         kafkaTopicConfigFactory = new KafkaTopicConfigFactory(new UUIDGenerator(), DEFAULT_REPLICA_FACTOR,
-            DEFAULT_TOPIC_ROTATION, COMPACTED_TOPIC_ROTATION, COMPACTED_TOPIC_SEGMENT_BYTES,
-            COMPACTED_TOPIC_COMPACTION_LAG);
+                DEFAULT_TOPIC_ROTATION, COMPACTED_TOPIC_ROTATION, COMPACTED_TOPIC_SEGMENT_BYTES,
+                COMPACTED_TOPIC_COMPACTION_LAG);
         kafkaTopicRepository = createKafkaTopicRepository();
     }
 
@@ -129,31 +130,31 @@ public class KafkaRepositoryAT extends BaseAT {
 
         // ASSERT //
         executeWithRetry(() -> {
-                final Map<String, List<PartitionInfo>> topics = getAllTopics();
-                assertThat(topics.keySet(), hasItem(topicName));
+                    final Map<String, List<PartitionInfo>> topics = getAllTopics();
+                    assertThat(topics.keySet(), hasItem(topicName));
 
-                final List<PartitionInfo> partitionInfos = topics.get(topicName);
-                assertThat(partitionInfos, hasSize(DEFAULT_PARTITION_COUNT));
+                    final List<PartitionInfo> partitionInfos = topics.get(topicName);
+                    assertThat(partitionInfos, hasSize(DEFAULT_PARTITION_COUNT));
 
-                partitionInfos.forEach(pInfo ->
-                    assertThat(pInfo.replicas(), arrayWithSize(DEFAULT_REPLICA_FACTOR)));
+                    partitionInfos.forEach(pInfo ->
+                            assertThat(pInfo.replicas(), arrayWithSize(DEFAULT_REPLICA_FACTOR)));
 
-                final Long retentionTime;
-                try {
-                    retentionTime = KafkaTestHelper.getTopicRetentionTime(topicName);
-                    assertThat(retentionTime, equalTo(DEFAULT_RETENTION_TIME));
+                    final Long retentionTime;
+                    try {
+                        retentionTime = KafkaTestHelper.getTopicRetentionTime(topicName);
+                        assertThat(retentionTime, equalTo(DEFAULT_RETENTION_TIME));
 
-                    final String cleanupPolicy = KafkaTestHelper.getTopicCleanupPolicy(topicName);
-                    assertThat(cleanupPolicy, equalTo("delete"));
+                        final String cleanupPolicy = KafkaTestHelper.getTopicCleanupPolicy(topicName);
+                        assertThat(cleanupPolicy, equalTo("delete"));
 
-                    final String segmentMs = KafkaTestHelper.getTopicProperty(topicName, "segment.ms");
-                    assertThat(segmentMs, equalTo(String.valueOf(DEFAULT_TOPIC_ROTATION)));
-                } catch (final Exception e) {
-                    throw new RuntimeException(e);
-                }
-            },
-            new RetryForSpecifiedTimeStrategy<Void>(5000).withExceptionsThatForceRetry(AssertionError.class)
-                .withWaitBetweenEachTry(500));
+                        final String segmentMs = KafkaTestHelper.getTopicProperty(topicName, "segment.ms");
+                        assertThat(segmentMs, equalTo(String.valueOf(DEFAULT_TOPIC_ROTATION)));
+                    } catch (final Exception e) {
+                        throw new RuntimeException(e);
+                    }
+                },
+                new RetryForSpecifiedTimeStrategy<Void>(5000).withExceptionsThatForceRetry(AssertionError.class)
+                        .withWaitBetweenEachTry(500));
     }
 
     @Test(timeout = 10000)
@@ -161,40 +162,40 @@ public class KafkaRepositoryAT extends BaseAT {
     public void whenCreateCompactedTopicThenTopicIsCreated() {
         // ACT //
         final NakadiTopicConfig compactedTopicConfig = new NakadiTopicConfig(DEFAULT_PARTITION_COUNT,
-            CleanupPolicy.COMPACT, Optional.empty());
+                CleanupPolicy.COMPACT, Optional.empty());
         final String topicName = kafkaTopicRepository.createTopic(compactedTopicConfig);
 
         // ASSERT //
         executeWithRetry(() -> {
-                final Map<String, List<PartitionInfo>> topics = getAllTopics();
-                assertThat(topics.keySet(), hasItem(topicName));
+                    final Map<String, List<PartitionInfo>> topics = getAllTopics();
+                    assertThat(topics.keySet(), hasItem(topicName));
 
-                final List<PartitionInfo> partitionInfos = topics.get(topicName);
-                assertThat(partitionInfos, hasSize(DEFAULT_PARTITION_COUNT));
+                    final List<PartitionInfo> partitionInfos = topics.get(topicName);
+                    assertThat(partitionInfos, hasSize(DEFAULT_PARTITION_COUNT));
 
-                partitionInfos.forEach(pInfo ->
-                    assertThat(pInfo.replicas(), arrayWithSize(DEFAULT_REPLICA_FACTOR)));
+                    partitionInfos.forEach(pInfo ->
+                            assertThat(pInfo.replicas(), arrayWithSize(DEFAULT_REPLICA_FACTOR)));
 
-                try {
-                    final String cleanupPolicy = KafkaTestHelper.getTopicCleanupPolicy(topicName);
-                    assertThat(cleanupPolicy, equalTo("compact"));
+                    try {
+                        final String cleanupPolicy = KafkaTestHelper.getTopicCleanupPolicy(topicName);
+                        assertThat(cleanupPolicy, equalTo("compact"));
 
-                    final String segmentMs = KafkaTestHelper.getTopicProperty(topicName, "segment.ms");
-                    assertThat(segmentMs, equalTo(String.valueOf(COMPACTED_TOPIC_ROTATION)));
+                        final String segmentMs = KafkaTestHelper.getTopicProperty(topicName, "segment.ms");
+                        assertThat(segmentMs, equalTo(String.valueOf(COMPACTED_TOPIC_ROTATION)));
 
-                    final String segmentBytes = KafkaTestHelper.getTopicProperty(topicName,
-                        "segment.bytes");
-                    assertThat(segmentBytes, equalTo(String.valueOf(COMPACTED_TOPIC_SEGMENT_BYTES)));
+                        final String segmentBytes = KafkaTestHelper.getTopicProperty(topicName,
+                                "segment.bytes");
+                        assertThat(segmentBytes, equalTo(String.valueOf(COMPACTED_TOPIC_SEGMENT_BYTES)));
 
-                    final String compactionLag = KafkaTestHelper.getTopicProperty(topicName,
-                        "min.compaction.lag.ms");
-                    assertThat(compactionLag, equalTo(String.valueOf(COMPACTED_TOPIC_COMPACTION_LAG)));
-                } catch (final Exception e) {
-                    throw new RuntimeException(e);
-                }
-            },
-            new RetryForSpecifiedTimeStrategy<Void>(5000).withExceptionsThatForceRetry(AssertionError.class)
-                .withWaitBetweenEachTry(500));
+                        final String compactionLag = KafkaTestHelper.getTopicProperty(topicName,
+                                "min.compaction.lag.ms");
+                        assertThat(compactionLag, equalTo(String.valueOf(COMPACTED_TOPIC_COMPACTION_LAG)));
+                    } catch (final Exception e) {
+                        throw new RuntimeException(e);
+                    }
+                },
+                new RetryForSpecifiedTimeStrategy<Void>(5000).withExceptionsThatForceRetry(AssertionError.class)
+                        .withWaitBetweenEachTry(500));
     }
 
     @Test(timeout = 20000)
@@ -207,10 +208,10 @@ public class KafkaRepositoryAT extends BaseAT {
 
         // wait for topic to be created
         executeWithRetry(() -> {
-                return getAllTopics().containsKey(topicName);
-            },
-            new RetryForSpecifiedTimeStrategy<Boolean>(5000).withResultsThatForceRetry(false)
-                .withWaitBetweenEachTry(500));
+                    return getAllTopics().containsKey(topicName);
+                },
+                new RetryForSpecifiedTimeStrategy<Boolean>(5000).withResultsThatForceRetry(false)
+                        .withWaitBetweenEachTry(500));
 
         // ACT //
         kafkaTopicRepository.deleteTopic(topicName);
@@ -218,10 +219,10 @@ public class KafkaRepositoryAT extends BaseAT {
         // ASSERT //
         // check that topic was deleted
         executeWithRetry(() -> {
-                assertThat(getAllTopics().keySet(), Matchers.not(hasItem(topicName)));
-            },
-            new RetryForSpecifiedTimeStrategy<Void>(5000).withExceptionsThatForceRetry(AssertionError.class)
-                .withWaitBetweenEachTry(500));
+                    assertThat(getAllTopics().keySet(), Matchers.not(hasItem(topicName)));
+                },
+                new RetryForSpecifiedTimeStrategy<Void>(5000).withExceptionsThatForceRetry(AssertionError.class)
+                        .withWaitBetweenEachTry(500));
     }
 
     @Test(timeout = 10000)
@@ -278,22 +279,22 @@ public class KafkaRepositoryAT extends BaseAT {
         Mockito.when(factory.getConsumer()).thenReturn(consumer);
         final KafkaLocationManager kafkaLocationManager = Mockito.mock(KafkaLocationManager.class);
         Mockito
-            .when(kafkaLocationManager.getProperties())
-            .thenReturn(createKafkaProperties());
+                .when(kafkaLocationManager.getProperties())
+                .thenReturn(createKafkaProperties());
 
         Mockito
-            .doReturn(kafkaHelper.createProducer())
-            .when(factory)
-            .takeProducer();
+                .doReturn(kafkaHelper.createProducer())
+                .when(factory)
+                .takeProducer();
 
         return new KafkaTopicRepository.Builder()
-            .setKafkaZookeeper(kafkaZookeeper)
-            .setKafkaFactory(factory)
-            .setNakadiSettings(nakadiSettings)
-            .setKafkaSettings(kafkaSettings)
-            .setKafkaTopicConfigFactory(kafkaTopicConfigFactory)
-            .setKafkaLocationManager(kafkaLocationManager)
-            .build();
+                .setKafkaZookeeper(kafkaZookeeper)
+                .setKafkaFactory(factory)
+                .setNakadiSettings(nakadiSettings)
+                .setKafkaSettings(kafkaSettings)
+                .setKafkaTopicConfigFactory(kafkaTopicConfigFactory)
+                .setKafkaLocationManager(kafkaLocationManager)
+                .build();
     }
 
 }
