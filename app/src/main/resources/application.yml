@@ -8,168 +8,7 @@ jetty:
     minThreads: 8
     idleTimeout: 60000
 
----
 spring:
-  config:
-    activate:
-      on-profile: dev
-  datasource:
-    url: jdbc:postgresql://sharedaurorapsql-epdcs-dev-use1.cluster-chxkh4p9th7p.us-east-1.rds.amazonaws.com:5432/nakadi
-    username: nakadi_user
-    driverClassName: org.postgresql.Driver
-    tomcat:
-      initial-size: 2
-      max-active: 2
-      min-idle: 1
-      max-idle: 1
-      test-on-borrow: true
-      validation-query: SELECT 1
-      test-while-idle: true
-      time-between-eviction-runs-millis: 5000
-      min-evictable-idle-time-millis: 60000
-      connection-properties: socketTimeout=10;connectTimeout=10;loginTimeout=5
-
-nakadi:
-  admin.default:
-    dataType: service
-    value: stups_nakadi
-  authz.warnAllDataAccessMessage: "Data access warning"
-  eventType.deletableSubscription:
-    owningApplication: "nakadi_archiver"
-    consumerGroup: "nakadi_to_s3"
-  features.defaultFeatures:
-    DISABLE_EVENT_TYPE_CREATION: false
-    DISABLE_EVENT_TYPE_DELETION: false
-    DISABLE_SUBSCRIPTION_CREATION: false
-    REMOTE_TOKENINFO: true
-    KPI_COLLECTION: true
-    DISABLE_DB_WRITE_OPERATIONS: false
-    FORCE_EVENT_TYPE_AUTHZ: false
-    FORCE_SUBSCRIPTION_AUTHZ: false
-    EVENT_OWNER_SELECTOR_AUTHZ: false
-    ACCESS_LOG_ENABLED: true
-  topic:
-    min:
-      retentionMs: 10800000 # 3 hours
-    max:
-      partitionNum: 8
-      retentionMs: 345600000 # 4 days
-    default:
-      partitionNum: 1
-      replicaFactor: 2
-      retentionMs: 172800000 # 2 days
-      rotationMs: 10800000 # 3 hours
-    compacted:
-      rotationMs: 10800000 # 3 hours
-      segmentBytes: 1073741824 # 1 GB
-      compactionLagMs: 10800000 # 3 hours
-      warnMessage: "Compaction warning"
-  stream:
-    timeoutMs: 31536000000 # 1 year :-P
-    max.commitTimeout: 60 # 1 minute
-    maxConnections: 5
-    maxStreamMemoryBytes: 50000000 # ~50 MB
-  kafka:
-    bootstrap.servers: b-2.epdcs-nakadi-msk-kafk.uwqhdz.c23.kafka.us-east-1.amazonaws.com:9098,b-3.epdcs-nakadi-msk-kafk.uwqhdz.c23.kafka.us-east-1.amazonaws.com:9098,b-1.epdcs-nakadi-msk-kafk.uwqhdz.c23.kafka.us-east-1.amazonaws.com:9098
-    min.insync.replicas: 2
-    retries: 5
-    request.timeout.ms: 50000
-    instanceType: t2.large
-    poll.timeoutMs: 100
-    send.timeoutMs: 5000
-    batch.size: 5242880
-    max.request.size: 2098152
-    buffer.memory: 83886080
-    linger.ms: 0
-    max.in.flight.requests.per.connection: 5
-    enable.auto.commit: false
-    delivery.timeout.ms: 50000 # request.timeout.ms + linger.ms
-    max.block.ms: 60000 # kafka default 60000
-    security.protocol: SASL_SSL
-    sasl.mechanism: AWS_MSK_IAM
-    sasl.jaas.config: software.amazon.msk.auth.iam.IAMLoginModule required awsProfileName="tc-dev";
-    sasl.client.callback.handler.class: software.amazon.msk.auth.iam.IAMClientCallbackHandler
-  zookeeper:
-    connectionString: zookeeper://z-3.epdcs-nakadi-msk-kafk.uwqhdz.c23.kafka.us-east-1.amazonaws.com:2181,z-2.epdcs-nakadi-msk-kafk.uwqhdz.c23.kafka.us-east-1.amazonaws.com:2181,z-1.epdcs-nakadi-msk-kafk.uwqhdz.c23.kafka.us-east-1.amazonaws.com:2181
-    sessionTimeoutMs: 10000
-    connectionTimeoutMs: 3000
-    maxInFlightRequests: 1000
-
-  oauth2:
-    mode: OFF
-    adminClientId: adminClientId
-    tokenInfoUrl: https://example.com/tokeninfo
-    localTokenInfoUrl: "http://localhost:9021/oauth2/tokeninfo"
-    clientId: stups_aruha-event-store-poc
-    realms: '/arealm, /anotherone'
-    scopes:
-      uid: uid
-      nakadiAdmin: nakadi.config.write
-      eventTypeWrite: nakadi.event_type.write
-      eventStreamRead: nakadi.event_stream.read
-      eventStreamWrite: nakadi.event_stream.write
-  plugins:
-    auth:
-      factory: org.zalando.nakadi.plugin.auth.DefaultApplicationServiceFactory
-    authz:
-      factory: org.zalando.nakadi.plugin.auth.DefaultAuthorizationServiceFactory
-  event.max.bytes: 999000
-  timeline.wait.timeoutMs: 40000
-  subscription:
-    maxPartitions: 100
-    maxStreamMemoryBytes: 50000000 # ~50 MB
-  jobs:
-    checkRunMs: 600000 # 10 min
-    timelineCleanup:
-      runPeriodMs: 3600000 # 1 hour
-      deletionDelayMs: 2000 # 2 seconds, to be on the safe side
-    disk-usage-stats:
-      runPeriodMs: 3600000 # 1 hour
-      authDataType: "*"
-      authValue: "*"
-      owningApplication: "stups_nakadi"
-      eventTypeName: "nakadi.disk.usage"
-    consumerNodesCleanup.runPeriodMs: 21600000 # 6 hours
-  http.pool.connection:
-    max.total: 20
-    max.per.route: 10
-    request.timeout: 2000
-    connect.timeout: 1000
-    socket.timeout: 2000
-  timelines.storage:
-    default: "default"
-    compacted: "default"
-  audit:
-    eventType: "nakadi.audit.log"
-    owningApplication: "stups_nakadi"
-    authDataType: "*"
-    authValue: "*"
-  kpi:
-    config:
-      batch-collection-timeout: 1000
-      batch-size: 100
-      workers: 1
-      poll-timeout: 100
-      events-queue-size: 100
-      stream-data-collection-frequency-ms: 30000 # every half minute
-    event-types:
-      nakadiAccessLog: "nakadi.access.log"
-      nakadiEventTypeLog: "nakadi.event.type.log"
-      nakadiSubscriptionLog: "nakadi.subscription.log"
-      nakadiBatchPublished: "nakadi.batch.published"
-      nakadiDataStreamed: "nakadi.data.streamed"
-      owning_application: "stups_nakadi"
-  hasher.salt: "salt"
-
-twintip:
-  mapping: /api
-  yaml: "file:api/nakadi-event-bus-api.yaml"
-
----
-spring:
-  config:
-    activate:
-      on-profile: local, test
   datasource:
     url: jdbc:postgresql://localhost:5432/local_nakadi_db
     username: nakadi
@@ -195,17 +34,6 @@ nakadi:
   eventType.deletableSubscription:
     owningApplication: "nakadi_archiver"
     consumerGroup: "nakadi_to_s3"
-  features.defaultFeatures:
-    DISABLE_EVENT_TYPE_CREATION: false
-    DISABLE_EVENT_TYPE_DELETION: false
-    DISABLE_SUBSCRIPTION_CREATION: false
-    REMOTE_TOKENINFO: true
-    KPI_COLLECTION: true
-    DISABLE_DB_WRITE_OPERATIONS: false
-    FORCE_EVENT_TYPE_AUTHZ: false
-    FORCE_SUBSCRIPTION_AUTHZ: false
-    EVENT_OWNER_SELECTOR_AUTHZ: false
-    ACCESS_LOG_ENABLED: true
   topic:
     min:
       retentionMs: 10800000 # 3 hours
@@ -330,35 +158,24 @@ twintip:
 spring:
   config:
     activate:
-      on-profile: acceptanceTest
+      on-profile: dev
   datasource:
-    url: jdbc:postgresql://localhost:5432/local_nakadi_db
-    username: nakadi
-    password: nakadi
-    driverClassName: org.postgresql.Driver
-    tomcat:
-      initial-size: 2
-      max-active: 2
-      min-idle: 1
-      max-idle: 1
-      test-on-borrow: true
-      validation-query: SELECT 1
-      test-while-idle: true
-      time-between-eviction-runs-millis: 5000
-      min-evictable-idle-time-millis: 60000
-      connection-properties: socketTimeout=10;connectTimeout=10;loginTimeout=5
+    url: jdbc:postgresql://sharedaurorapsql-epdcs-dev-use1.cluster-chxkh4p9th7p.us-east-1.rds.amazonaws.com:5432/nakadi
+    username: nakadi_user
 
 nakadi:
-  eventType.deletableSubscription:
-    owningApplication: "deletable_owning_app"
-    consumerGroup: "deletable_consumer_group"
-  stream:
-    maxStreamMemoryBytes: 10_000 # ~10 Kb
-    max.commitTimeout: 5 # seconds
-    timeoutMs: 31536000000 # 1 year
-  subscription:
-    maxPartitions: 30
-    maxStreamMemoryBytes: 50000000 # ~50 MB
+  topic:
+    default:
+      replicaFactor: 2
+  kafka:
+    bootstrap.servers: b-2.epdcs-nakadi-msk-kafk.uwqhdz.c23.kafka.us-east-1.amazonaws.com:9098,b-3.epdcs-nakadi-msk-kafk.uwqhdz.c23.kafka.us-east-1.amazonaws.com:9098,b-1.epdcs-nakadi-msk-kafk.uwqhdz.c23.kafka.us-east-1.amazonaws.com:9098
+    min.insync.replicas: 2
+    security.protocol: SASL_SSL
+    sasl.mechanism: AWS_MSK_IAM
+    sasl.jaas.config: software.amazon.msk.auth.iam.IAMLoginModule required awsProfileName="tc-dev";
+    sasl.client.callback.handler.class: software.amazon.msk.auth.iam.IAMClientCallbackHandler
+  zookeeper:
+    connectionString: zookeeper://z-3.epdcs-nakadi-msk-kafk.uwqhdz.c23.kafka.us-east-1.amazonaws.com:2181,z-2.epdcs-nakadi-msk-kafk.uwqhdz.c23.kafka.us-east-1.amazonaws.com:2181,z-1.epdcs-nakadi-msk-kafk.uwqhdz.c23.kafka.us-east-1.amazonaws.com:2181
   features.defaultFeatures:
     DISABLE_EVENT_TYPE_CREATION: false
     DISABLE_EVENT_TYPE_DELETION: false
@@ -369,119 +186,56 @@ nakadi:
     AUDIT_LOG_COLLECTION: true
     EVENT_OWNER_SELECTOR_AUTHZ: false
     ACCESS_LOG_ENABLED: true
-  admin.default:
-    dataType: service
-    value: stups_nakadi
-  authz.warnAllDataAccessMessage: "Data access warning"
-  topic:
-    min:
-      retentionMs: 10800000 # 3 hours
-    max:
-      partitionNum: 8
-      retentionMs: 345600000 # 4 days
-    default:
-      partitionNum: 1
-      replicaFactor: 1
-      retentionMs: 172800000 # 2 days
-      rotationMs: 10800000 # 3 hours
-    compacted:
-      rotationMs: 10800000 # 3 hours
-      segmentBytes: 1073741824 # 1 GB
-      compactionLagMs: 10800000 # 3 hours
-      warnMessage: "Compaction warning"
-  kafka:
-    bootstrap.servers: localhost:9092
-    min.insync.replicas: 1
-    retries: 5
-    request.timeout.ms: 30000
-    instanceType: t2.large
-    poll.timeoutMs: 100
-    send.timeoutMs: 5000
-    batch.size: 5242880
-    max.request.size: 2098152
-    buffer.memory: 83886080
-    linger.ms: 0
-    max.in.flight.requests.per.connection: 5
-    enable.auto.commit: false
-    delivery.timeout.ms: 30000 # request.timeout.ms + linger.ms
-    max.block.ms: 5000 # kafka default 60000
-    security.protocol: PLAINTEXT
-    sasl.mechanism: PLAIN
-    sasl.jaas.config: software.amazon.msk.auth.iam.IAMLoginModule required awsProfileName="tc-dev";
-    sasl.client.callback.handler.class: software.amazon.msk.auth.iam.IAMClientCallbackHandler
-  zookeeper:
-    connectionString: zookeeper://localhost:2181
-    sessionTimeoutMs: 10000
-    connectionTimeoutMs: 3000
-    maxInFlightRequests: 1000
 
-  oauth2:
-    mode: OFF
-    adminClientId: adminClientId
-    tokenInfoUrl: https://example.com/tokeninfo
-    localTokenInfoUrl: "http://localhost:9021/oauth2/tokeninfo"
-    clientId: stups_aruha-event-store-poc
-    realms: '/arealm, /anotherone'
-    scopes:
-      uid: uid
-      nakadiAdmin: nakadi.config.write
-      eventTypeWrite: nakadi.event_type.write
-      eventStreamRead: nakadi.event_stream.read
-      eventStreamWrite: nakadi.event_stream.write
-  plugins:
-    auth:
-      factory: org.zalando.nakadi.plugin.auth.DefaultApplicationServiceFactory
-    authz:
-      factory: org.zalando.nakadi.plugin.auth.DefaultAuthorizationServiceFactory
-  event.max.bytes: 999000
-  timeline.wait.timeoutMs: 40000
-  jobs:
-    checkRunMs: 600000 # 10 min
-    timelineCleanup:
-      runPeriodMs: 3600000 # 1 hour
-      deletionDelayMs: 2000 # 2 seconds, to be on the safe side
-    disk-usage-stats:
-      runPeriodMs: 3600000 # 1 hour
-      authDataType: "*"
-      authValue: "*"
-      owningApplication: "stups_nakadi"
-      eventTypeName: "nakadi.disk.usage"
-    consumerNodesCleanup.runPeriodMs: 21600000 # 6 hours
-  http.pool.connection:
-    max.total: 20
-    max.per.route: 10
-    request.timeout: 2000
-    connect.timeout: 1000
-    socket.timeout: 2000
-  timelines.storage:
-    default: "default"
-    compacted: "default"
-  audit:
-    eventType: "nakadi.audit.log"
-    owningApplication: "stups_nakadi"
-    authDataType: "*"
-    authValue: "*"
+
+---
+spring:
+  config:
+    activate:
+      on-profile: local
+
+nakadi.features.defaultFeatures:
+  DISABLE_EVENT_TYPE_CREATION: false
+  DISABLE_EVENT_TYPE_DELETION: false
+  DISABLE_SUBSCRIPTION_CREATION: false
+  REMOTE_TOKENINFO: true
+  KPI_COLLECTION: true
+  DISABLE_DB_WRITE_OPERATIONS: false
+  FORCE_EVENT_TYPE_AUTHZ: false
+  FORCE_SUBSCRIPTION_AUTHZ: false
+  EVENT_OWNER_SELECTOR_AUTHZ: false
+  ACCESS_LOG_ENABLED: true
+
+---
+spring:
+  config:
+    activate:
+      on-profile: test
+---
+spring:
+  config:
+    activate:
+      on-profile: acceptanceTest
+
+nakadi:
+  eventType.deletableSubscription:
+    owningApplication: "deletable_owning_app"
+    consumerGroup: "deletable_consumer_group"
+  stream:
+    maxStreamMemoryBytes: 10_000 # ~10 Kb
+    max.commitTimeout: 5 # seconds
+  subscription:
+    maxPartitions: 30
+  features.defaultFeatures:
+    DISABLE_EVENT_TYPE_CREATION: false
+    DISABLE_EVENT_TYPE_DELETION: false
+    DISABLE_SUBSCRIPTION_CREATION: false
+    REMOTE_TOKENINFO: true
+    KPI_COLLECTION: true
+    DISABLE_DB_WRITE_OPERATIONS: false
+    AUDIT_LOG_COLLECTION: true
+    EVENT_OWNER_SELECTOR_AUTHZ: false
+    ACCESS_LOG_ENABLED: true
   kpi:
     config:
-      batch-collection-timeout: 1000
-      batch-size: 100
-      workers: 1
-      poll-timeout: 100
-      events-queue-size: 100
-      stream-data-collection-frequency-ms: 30000 # every half minute
-    event-types:
-      nakadiAccessLog: "nakadi.access.log"
-      nakadiEventTypeLog: "nakadi.event.type.log"
-      nakadiSubscriptionLog: "nakadi.subscription.log"
-      nakadiBatchPublished: "nakadi.batch.published"
-      nakadiDataStreamed: "nakadi.data.streamed"
-      owning_application: "stups_nakadi"
-  hasher.salt: "salt"
-
-kpi:
-  config:
-    stream-data-collection-frequency-ms: 100
-
-twintip:
-  mapping: /api
-  yaml: "file:api/nakadi-event-bus-api.yaml"
+      stream-data-collection-frequency-ms: 100
