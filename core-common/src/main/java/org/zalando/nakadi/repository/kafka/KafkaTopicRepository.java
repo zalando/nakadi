@@ -54,6 +54,7 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
+import java.util.function.Function;
 import java.util.HashMap;
 import java.util.LinkedList;
 import java.util.List;
@@ -63,7 +64,6 @@ import java.util.Optional;
 import java.util.Set;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
@@ -168,6 +168,7 @@ public class KafkaTopicRepository implements TopicRepository {
             }
 
             item.setStep(EventPublishingStep.PUBLISHING);
+
             producer.send(kafkaRecord, ((metadata, exception) -> {
                 if (null != exception) {
                     LOG.warn("Failed to publish to kafka topic {}", topicId, exception);
@@ -302,47 +303,35 @@ public class KafkaTopicRepository implements TopicRepository {
 
         final Producer<byte[], byte[]> producer = kafkaFactory.takeProducer();
         try {
-            final Map<String, String> partitionToBroker = producer.partitionsFor(topicId).stream()
-                    .filter(partitionInfo -> partitionInfo.leader() != null)
-                    .collect(
-                            Collectors.toMap(
-                                    p -> String.valueOf(p.partition()),
-                                    p -> p.leader().idString() + "_" + p.leader().host()));
             batch.forEach(item -> {
                 Preconditions.checkNotNull(
                         item.getPartition(), "BatchItem partition can't be null at the moment of publishing!");
-                item.setBrokerId(partitionToBroker.get(item.getPartition()));
             });
+
+            final Function<BatchItem, CompletableFuture<Exception>> sendItem =
+                    item -> publishItem(producer, topicId, eventType, item, delete);
 
             final List<CompletableFuture<Exception>> futures = new LinkedList<>();
             final Map<String, CompletableFuture<Exception>> futuresByKey = new HashMap<>();
 
             for (final BatchItem item : batch) {
-                if (item.getBrokerId() == null) {
-                    item.updateStatusAndDetail(EventPublishingStatus.FAILED,
-                            String.format("No leader for partition: %s, topic: %s.", item.getPartition(), topicId));
-                    LOG.error("Failed to publish to kafka. No leader for ({}:{}).",
-                            topicId, item.getPartition());
-                    continue;
-                }
-
                 final String itemKey = item.getEventKey();
                 if (itemKey == null) {
                     // items without a key go out of order
-                    futures.add(publishItem(producer, topicId, eventType, item, delete));
+                    futures.add(sendItem.apply(item));
                 } else {
                     // items for a single key are composed together for sequential publishing
                     CompletableFuture<Exception> fut = futuresByKey.get(itemKey);
                     if (fut == null) {
-                        fut = publishItem(producer, topicId, eventType, item, delete);
+                        fut = sendItem.apply(item);
                     } else {
-                        fut = fut.thenCompose((e) -> {
+                        fut = fut.thenCompose(e -> {
                                     if (e != null) {
                                         item.updateStatusAndDetail(EventPublishingStatus.ABORTED,
                                                 "earlier item failed for key: " + itemKey);
                                         return CompletableFuture.completedStage(e);
                                     } else {
-                                        return publishItem(producer, topicId, eventType, item, delete);
+                                        return sendItem.apply(item);
                                     }
                                 });
                     }
@@ -358,15 +347,14 @@ public class KafkaTopicRepository implements TopicRepository {
 
             // Now lets check for errors
             final Optional<Exception> needReset = futures.stream()
-                    .filter(fut -> isExceptionShouldLeadToReset(fut.getNow(null)))
                     .map(fut -> fut.getNow(null))
+                    .filter(KafkaTopicRepository::isExceptionShouldLeadToReset)
                     .findAny();
             if (needReset.isPresent()) {
                 LOG.info("Terminating producer while publishing to topic {} because of unrecoverable exception",
                         topicId, needReset.get());
                 kafkaFactory.terminateProducer(producer);
             }
-
         } catch (final TimeoutException ex) {
             kafkaFactory.terminateProducer(producer);
             failUnpublished(topicId, eventType, batch, "timed out");
@@ -430,62 +418,106 @@ public class KafkaTopicRepository implements TopicRepository {
     public List<NakadiRecordResult> sendEvents(final String topic,
                                                final List<NakadiRecord> nakadiRecords) {
         final Producer<byte[], byte[]> producer = kafkaFactory.takeProducer();
-        final CountDownLatch latch = new CountDownLatch(nakadiRecords.size());
         final Map<NakadiRecord, NakadiRecordResult> responses = new ConcurrentHashMap<>();
+
+        final Function<NakadiRecord, CompletableFuture<NakadiRecordResult>> sendItem = nakadiRecord ->
+                sendRecord(producer, topic, nakadiRecord)
+                .thenApply(result -> {
+                            responses.put(nakadiRecord, result);
+                            return result;
+                        });
+
+        final List<CompletableFuture<NakadiRecordResult>> futures = new LinkedList<>();
+        final Map<String, CompletableFuture<NakadiRecordResult>> futuresByKey = new HashMap<>();
         try {
             for (final NakadiRecord nakadiRecord : nakadiRecords) {
-                final ProducerRecord<byte[], byte[]> producerRecord =
-                        nakadiRecordMapper.mapToProducerRecord(nakadiRecord, topic);
-
-                if (null != nakadiRecord.getOwner()) {
-                    nakadiRecord.getOwner().serialize(producerRecord);
-                }
-
-                producer.send(producerRecord, ((metadata, exception) -> {
-                    try {
-                        final NakadiRecordResult result;
-                        if (exception != null) {
-                            result = new NakadiRecordResult(
-                                    nakadiRecord.getMetadata(),
-                                    NakadiRecordResult.Status.FAILED,
-                                    NakadiRecordResult.Step.PUBLISHING,
-                                    exception);
-                        } else {
-                            result = new NakadiRecordResult(
-                                    nakadiRecord.getMetadata(),
-                                    NakadiRecordResult.Status.SUCCEEDED,
-                                    NakadiRecordResult.Step.PUBLISHING);
-                        }
-                        responses.put(nakadiRecord, result);
-                    } finally {
-                        latch.countDown();
+                final String eventKey = nakadiRecord.getEventKey();
+                if (eventKey == null) {
+                    futures.add(sendItem.apply(nakadiRecord));
+                } else {
+                    CompletableFuture<NakadiRecordResult> fut = futuresByKey.get(eventKey);
+                    if (fut == null) {
+                        fut = sendItem.apply(nakadiRecord);
+                    } else {
+                        fut = fut.thenCompose(r -> {
+                                    if (r.getStatus() != NakadiRecordResult.Status.SUCCEEDED) {
+                                        return CompletableFuture.completedStage(
+                                                new NakadiRecordResult(
+                                                        nakadiRecord.getMetadata(),
+                                                        NakadiRecordResult.Status.ABORTED,
+                                                        NakadiRecordResult.Step.PUBLISHING,
+                                                        r.getException()));
+                                    } else {
+                                        return sendItem.apply(nakadiRecord);
+                                    }
+                                });
                     }
-                }));
+                    futuresByKey.put(eventKey, fut);
+                }
             }
-            final boolean recordsPublished = latch.await(createSendTimeout(), TimeUnit.MILLISECONDS);
+
+            futures.addAll(futuresByKey.values());
+
+            final CompletableFuture<Void> multiFuture = CompletableFuture.allOf(
+                    futures.toArray(new CompletableFuture<?>[futures.size()]));
+            multiFuture.get(createSendTimeout(), TimeUnit.MILLISECONDS);
+
             final boolean shouldResetProducer = responses.values().stream()
-                    .filter(nrm -> nrm.getStatus() == NakadiRecordResult.Status.FAILED)
+                    .filter(r -> r.getStatus() == NakadiRecordResult.Status.FAILED)
                     .map(NakadiRecordResult::getException)
                     .anyMatch(KafkaTopicRepository::isExceptionShouldLeadToReset);
             if (shouldResetProducer) {
                 kafkaFactory.terminateProducer(producer);
             }
 
-            return prepareResponse(nakadiRecords, responses,
-                    recordsPublished ? null : new TimeoutException("timeout waiting for events to be sent to kafka"));
-        } catch (final InterruptException | InterruptedException e) {
+            return prepareResponse(nakadiRecords, responses, null);
+
+        } catch (final InterruptedException e) {
             Thread.currentThread().interrupt();
             return prepareResponse(nakadiRecords, responses, e);
-        } catch (final RuntimeException e) {
+        } catch (final TimeoutException te) {
             kafkaFactory.terminateProducer(producer);
-            LOG.debug("RuntimeException:{}", e.getMessage(), e);
-            return prepareResponse(nakadiRecords, responses, e);
-        } catch (final IOException ioe) {
-            LOG.debug("IOException:{}", ioe.getMessage(), ioe);
-            return prepareResponse(nakadiRecords, responses, ioe);
+            return prepareResponse(nakadiRecords, responses, te);
+        } catch (final ExecutionException ee) {
+            return prepareResponse(nakadiRecords, responses, ee);
+        } catch (final RuntimeException re) {
+            return prepareResponse(nakadiRecords, responses, re);
         } finally {
             kafkaFactory.releaseProducer(producer);
         }
+    }
+
+    private CompletableFuture<NakadiRecordResult> sendRecord(
+            final Producer<byte[], byte[]> producer, final String topic, final NakadiRecord nakadiRecord) {
+
+        final ProducerRecord<byte[], byte[]> producerRecord;
+        try {
+            producerRecord = nakadiRecordMapper.mapToProducerRecord(nakadiRecord, topic);
+        } catch (final IOException ioe) {
+            throw new RuntimeException("Failed to serialize a record for publishing to Kafka", ioe);
+        }
+        if (null != nakadiRecord.getOwner()) {
+            nakadiRecord.getOwner().serialize(producerRecord);
+        }
+
+        final CompletableFuture<NakadiRecordResult> future = new CompletableFuture<>();
+        producer.send(producerRecord, (metadata, exception) -> {
+                    final NakadiRecordResult result;
+                    if (exception != null) {
+                        result = new NakadiRecordResult(
+                                nakadiRecord.getMetadata(),
+                                NakadiRecordResult.Status.FAILED,
+                                NakadiRecordResult.Step.PUBLISHING,
+                                exception);
+                    } else {
+                        result = new NakadiRecordResult(
+                                nakadiRecord.getMetadata(),
+                                NakadiRecordResult.Status.SUCCEEDED,
+                                NakadiRecordResult.Step.PUBLISHING);
+                    }
+                    future.complete(result);
+                });
+        return future;
     }
 
     private List<NakadiRecordResult> prepareResponse(
