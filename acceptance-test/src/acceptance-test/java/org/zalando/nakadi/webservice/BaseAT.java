@@ -3,10 +3,13 @@ package org.zalando.nakadi.webservice;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.jayway.restassured.RestAssured;
 import com.jayway.restassured.parsing.Parser;
+import java.io.IOException;
 import org.apache.http.params.CoreConnectionPNames;
 import org.junit.BeforeClass;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.jdbc.datasource.DriverManagerDataSource;
+import org.zalando.nakadi.config.Configuration;
+import org.zalando.nakadi.config.TestConfigurationContext;
 import org.zalando.nakadi.config.JsonConfig;
 import org.zalando.nakadi.domain.storage.KafkaConfiguration;
 import org.zalando.nakadi.domain.storage.Storage;
@@ -36,6 +39,7 @@ public abstract class BaseAT {
     protected static final ObjectMapper MAPPER = (new JsonConfig()).jacksonObjectMapper();
     protected static final StorageDbRepository STORAGE_DB_REPOSITORY = new StorageDbRepository(JDBC_TEMPLATE, MAPPER);
     protected static final TimelineDbRepository TIMELINE_REPOSITORY = new TimelineDbRepository(JDBC_TEMPLATE, MAPPER);
+    public static Configuration configs;
 
     static {
         RestAssured.port = PORT;
@@ -58,4 +62,10 @@ public abstract class BaseAT {
         } catch (final DuplicatedStorageException ignore) {
         }
     }
+
+    @BeforeClass
+    public static void loadExternalConfigs() throws IOException {
+        configs = new TestConfigurationContext().load();
+    }
+
 }

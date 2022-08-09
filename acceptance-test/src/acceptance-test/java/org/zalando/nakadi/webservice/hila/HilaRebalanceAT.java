@@ -256,7 +256,7 @@ public class HilaRebalanceAT extends BaseAT {
         assertThat(client2.getResponseCode(), Matchers.is(HttpStatus.CONFLICT.value()));
     }
 
-    @Test(timeout = 15000)
+    @Test(timeout = 60000)
     public void whenNotCommittedThenEventsAreReplayedAfterRebalance() {
         publishBusinessEventWithUserDefinedPartition(
                 eventType.getName(), 2, x -> "blah" + x, x -> String.valueOf(x % 8));
@@ -271,7 +271,7 @@ public class HilaRebalanceAT extends BaseAT {
                 .start();
 
         // after commit_timeout of first client exceeds it is closed and all events are resent to second client
-        waitFor(() -> assertThat(clientB.getJsonBatches(), hasSize(2)), 10000);
+        waitFor(() -> assertThat(clientB.getJsonBatches(), hasSize(2)), configs.getStream().maxCommitTimeout);
     }
 
     @Test(timeout = 15000)

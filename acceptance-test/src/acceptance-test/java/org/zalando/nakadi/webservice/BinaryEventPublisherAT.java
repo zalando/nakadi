@@ -164,7 +164,8 @@ public class BinaryEventPublisherAT extends BaseAT {
 
     private List<Map> consumeEvent(final TestStreamingClient client) {
         TestUtils.waitFor(() -> MatcherAssert.assertThat(
-                client.getJsonBatches().size(), Matchers.greaterThanOrEqualTo(1)), 10000);
+                client.getJsonBatches().size(), Matchers.greaterThanOrEqualTo(1)),
+            configs.getStream().maxCommitTimeout);
         return client.getJsonBatches().get(0).getEvents();
     }
 

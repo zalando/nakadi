@@ -211,7 +211,9 @@ public class SubscriptionAT extends BaseAT {
 
     @Test
     public void testSubscriptionWithManyEventTypesIsNotCreated() {
-        final List<String> eventTypes = IntStream.range(0, 31).mapToObj(i -> createEventType())
+
+        int exceededPartitionCount = configs.getSubscription().getMaxPartitions() + 1;
+        final List<String> eventTypes = IntStream.range(0, exceededPartitionCount).mapToObj(i -> createEventType())
                 .map(EventTypeBase::getName)
                 .collect(Collectors.toList());
         final String subscription = "{\"owning_application\":\"app\",\"event_types\":" +
@@ -221,13 +223,15 @@ public class SubscriptionAT extends BaseAT {
                 .contentType(JSON)
                 .post(SUBSCRIPTIONS_URL);
         // assert response
+        String bodyDetail = new StringBuilder("total partition count for subscription is ")
+            .append(exceededPartitionCount).append(", but the maximum partition count is ")
+            .append(configs.getSubscription().getMaxPartitions()).toString();
         response
                 .then()
                 .statusCode(HttpStatus.SC_UNPROCESSABLE_ENTITY)
                 .contentType(JSON)
                 .body("title", equalTo("Unprocessable Entity"))
-                .body("detail", equalTo(
-                        "total partition count for subscription is 31, but the maximum partition count is 30"));
+                .body("detail", equalTo(bodyDetail));
 
     }
 
@@ -450,9 +454,9 @@ public class SubscriptionAT extends BaseAT {
 
         final SubscriptionBase subscriptionBase = RandomSubscriptionBuilder.builder()
                 .withEventType(etName)
-                .withOwningApplication(DELETABLE_OWNING_APP)
-                .withConsumerGroup(DELETABLE_CONSUMER_GROUP)
-                .buildSubscriptionBase();
+            .withOwningApplication(configs.getEventTypeDeletableSubscription().getOwningApplication())
+            .withConsumerGroup(configs.getEventTypeDeletableSubscription().getConsumerGroup())
+            .buildSubscriptionBase();
         NakadiTestUtils.createSubscription(subscriptionBase);
 
         NakadiTestUtils.switchFeature(Feature.DELETE_EVENT_TYPE_WITH_SUBSCRIPTIONS, false);
