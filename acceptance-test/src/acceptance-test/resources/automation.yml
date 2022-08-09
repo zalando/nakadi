@@ -1,0 +1,67 @@
+environments:
+  local:
+    eventTypeDeletableSubscription:
+      owningApplication: "nakadi_archiver"
+      consumerGroup: "nakadi_to_s3"
+    subscription:
+      maxPartitions: 100
+    stream:
+      maxStreamMemoryBytes: 50000000 # ~50 MB
+      maxCommitTimeout: 60000 # 1 minute
+    kpiConfig:
+        streamDataCollectionFrequencyMs: 30000 # every half minute
+  review:
+    eventTypeDeletableSubscription:
+      owningApplication: "deletable_owning_app"
+      consumerGroup: "deletable_consumer_group"
+    subscription:
+      maxPartitions: 30
+    stream:
+      maxStreamMemoryBytes: 10_000 # ~10 Kb
+      maxCommitTimeout: 10000 # 10 seconds
+    kpiConfig:
+        streamDataCollectionFrequencyMs: 100
+  dev:
+    eventTypeDeletableSubscription:
+      owningApplication: "nakadi_archiver"
+      consumerGroup: "nakadi_to_s3"
+    subscription:
+      maxPartitions: 100
+    stream:
+      maxStreamMemoryBytes: 50000000 # ~50 MB
+      maxCommitTimeout: 60000 # 1 minute
+    kpiConfig:
+      streamDataCollectionFrequencyMs: 30000 # every half minute
+  qa:
+    eventTypeDeletableSubscription:
+      owningApplication: "nakadi_archiver"
+      consumerGroup: "nakadi_to_s3"
+    subscription:
+      maxPartitions: 100
+    stream:
+      maxStreamMemoryBytes: 50000000 # ~50 MB
+      maxCommitTimeout: 60000 # 1 minute
+    kpiConfig:
+      streamDataCollectionFrequencyMs: 30000 # every half minute
+  uat:
+    eventTypeDeletableSubscription:
+      owningApplication: "nakadi_archiver"
+      consumerGroup: "nakadi_to_s3"
+    subscription:
+      maxPartitions: 100
+    stream:
+      maxStreamMemoryBytes: 50000000 # ~50 MB
+      maxCommitTimeout: 60000 # 1 minute
+    kpiConfig:
+      streamDataCollectionFrequencyMs: 30000 # every half minute
+  prod:
+    eventTypeDeletableSubscription:
+      owningApplication: "nakadi_archiver"
+      consumerGroup: "nakadi_to_s3"
+    subscription:
+      maxPartitions: 100
+    stream:
+      maxStreamMemoryBytes: 50000000 # ~50 MB
+      maxCommitTimeout: 60000 # 1 minute
+    kpiConfig:
+      streamDataCollectionFrequencyMs: 30000 # every half minute
