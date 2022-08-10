@@ -1,8 +1,13 @@
 buildscript {
+    repositories {
+        mavenCentral()
+    }
     dependencies {
         classpath "org.springframework.boot:spring-boot-gradle-plugin:${springBootVersion}"
         classpath 'org.yaml:snakeyaml:1.21'
         classpath 'org.owasp:dependency-check-gradle:5.3.2.1'
+        classpath 'org.liquibase:liquibase-core:3.4.1'
+        classpath "org.liquibase:liquibase-gradle-plugin:1.1.1"
     }
 }
 
@@ -13,6 +18,7 @@ apply plugin: 'project-report'
 apply plugin: 'org.springframework.boot'
 apply plugin: 'io.spring.dependency-management'
 apply plugin: 'org.owasp.dependencycheck'
+apply plugin: 'liquibase'
 
 group 'org.zalando'
 
@@ -84,6 +90,9 @@ dependencies {
     }
     compile 'org.apache.tomcat:tomcat-jdbc'
     compile 'org.postgresql:postgresql:42.3.2'
+
+    //liquibase
+    compile('org.liquibase:liquibase-core')
 
     // misc
     compile 'org.apache.httpcomponents:httpclient'

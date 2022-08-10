@@ -25,6 +25,12 @@ spring:
       time-between-eviction-runs-millis: 5000
       min-evictable-idle-time-millis: 60000
       connection-properties: socketTimeout=10;connectTimeout=10;loginTimeout=5
+  liquibase:
+    enabled: true
+    url: ${spring.datasource.url}
+    user: ${spring.datasource.username}
+    password: ${spring.datasource.password}
+    change-log: classpath:/db/changelog-master.xml
 
 nakadi:
   admin.default:
