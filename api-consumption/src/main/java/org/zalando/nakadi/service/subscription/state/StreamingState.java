@@ -293,7 +293,7 @@ class StreamingState extends State {
                     events,
                     Optional.of("Stream parameters are causing overflow"));
             messagesAllowedToSend -= events.size();
-            getLog().warn("Memory limit reached: {} bytes. Dumped events from {}. Freed: {} bytes, {} messages",
+            getLog().info("Memory limit reached: {} bytes. Dumped events from {}. Freed: {} bytes, {} messages",
                     memoryConsumed, heaviestPartition.getKey(), deltaSize, events.size());
             memoryConsumed -= deltaSize;
         }
@@ -685,7 +685,7 @@ class StreamingState extends State {
         if (null != data) {
             try {
                 if (data.getUnconfirmed() > 0) {
-                    getLog().warn("Skipping commits: {}, commit={}, sent={}",
+                    getLog().info("Skipping commits: {}, commit={}, sent={}",
                             key, data.getCommitOffset(), data.getSentOffset());
                 }
                 data.getSubscription().close();
