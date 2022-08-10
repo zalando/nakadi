@@ -242,8 +242,8 @@ public class HilaAT extends BaseAT {
                 .create(subscription.getId()) // commit_timeout is 5 seconds for test
                 .start();
 
-        waitFor(() -> assertThat(client.getJsonBatches(), Matchers.hasSize(2)), configs.getStream().maxCommitTimeout + 5000);
-        waitFor(() -> assertThat(client.isRunning(), is(false)), configs.getStream().maxCommitTimeout + 5000);
+        waitFor(() -> assertThat(client.getJsonBatches(), Matchers.hasSize(2)), configs.getStream().maxCommitTimeout);
+        waitFor(() -> assertThat(client.isRunning(), is(false)), configs.getStream().maxCommitTimeout);
         assertThat(client.getJsonBatches().get(1), equalToBatchIgnoringToken(singleEventBatch("0",
                 "001-0001-000000000000000000", eventType.getName(), ImmutableMap.of(), "Commit timeout reached")));
     }

@@ -193,7 +193,7 @@ public class HilaRebalanceAT extends BaseAT {
         waitFor(() -> assertThat(autoClient2.getJsonBatches(), hasSize(6)));
     }
 
-    @Test(timeout = 15000)
+    @Test
     public void checkDirectAssignmentCorrectlyCapturesAndReleasesPartition() throws IOException, InterruptedException {
         // launch two clients: one using auto-rebalance, second one directly reading from partition 6
         final TestStreamingClient autoClient = new TestStreamingClient(URL, subscription.getId(),
@@ -264,7 +264,7 @@ public class HilaRebalanceAT extends BaseAT {
         final TestStreamingClient clientA = TestStreamingClient
                 .create(URL, subscription.getId(), "")
                 .start();
-        waitFor(() -> assertThat(clientA.getJsonBatches(), hasSize(2)));
+        waitFor(() -> assertThat(clientA.getJsonBatches(), hasSize(2)), configs.getStream().maxCommitTimeout);
 
         final TestStreamingClient clientB = TestStreamingClient
                 .create(URL, subscription.getId(), "")
