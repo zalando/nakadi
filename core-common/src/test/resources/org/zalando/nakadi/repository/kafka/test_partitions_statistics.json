@@ -1,6 +1,6 @@
 [
   {
-    "name": "t2.large",
+    "name": "m5.large",
     "stats": [
       {
         "message_size": 10000,

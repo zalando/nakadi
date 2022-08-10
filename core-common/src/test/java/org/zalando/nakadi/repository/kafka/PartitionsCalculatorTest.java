@@ -19,7 +19,7 @@ public class PartitionsCalculatorTest {
     private static final int MAX_PARTITION_COUNT = 1000;
 
     private static PartitionsCalculator buildTest() throws IOException {
-        return PartitionsCalculator.load(TestUtils.OBJECT_MAPPER, "t2.large", getTestStream(), 0, MAX_PARTITION_COUNT);
+        return PartitionsCalculator.load(TestUtils.OBJECT_MAPPER, "m5.large", getTestStream(), 0, MAX_PARTITION_COUNT);
     }
 
     private static InputStream getTestStream() {
@@ -33,7 +33,7 @@ public class PartitionsCalculatorTest {
 
     @Test
     public void testLoadCorrectForCorrectName() throws IOException {
-        for (final String name : new String[]{"t2.large", "c4.xlarge"}) {
+        for (final String name : new String[]{"m5.large", "c4.xlarge"}) {
             final PartitionsCalculator calculatorMap = PartitionsCalculator.load(TestUtils.OBJECT_MAPPER, name,
                     getTestStream(), 0, MAX_PARTITION_COUNT);
             assertThat(calculatorMap, notNullValue());
