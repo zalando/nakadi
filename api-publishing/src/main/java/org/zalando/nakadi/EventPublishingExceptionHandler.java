@@ -50,7 +50,8 @@ public class EventPublishingExceptionHandler implements AdviceTrait {
                     message + exception.getMessage()), request);
         }
 
-        return create(Problem.valueOf(Status.BAD_REQUEST), request);
+        return create(Problem.valueOf(Status.BAD_REQUEST,
+                message + exception.getCause().getMessage()), request);
     }
 
 
