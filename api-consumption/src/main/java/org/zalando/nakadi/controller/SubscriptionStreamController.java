@@ -152,7 +152,11 @@ public class SubscriptionStreamController {
             //
             // FIXME: maybe these should not be exceptions in the first place?..
             //
-            LOG.warn("Exception occurred while streaming: {}: {}", ex.getClass().getName(), ex.getMessage());
+            if (ex instanceof InternalNakadiException) {
+                LOG.error("Internal error occurred while streaming", ex);
+            } else {
+                LOG.info("Exception occurred while streaming: {}: {}", ex.getClass().getName(), ex.getMessage());
+            }
             if (!headersSent) {
                 headersSent = true;
                 try {

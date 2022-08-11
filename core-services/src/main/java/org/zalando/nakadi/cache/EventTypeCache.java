@@ -217,7 +217,8 @@ public class EventTypeCache {
         try {
             getUpdatesAndRegisterListener();
         } catch (Exception ex) {
-            LOG.warn("Failed to register listener and process updates", ex);
+            // avoid logging the stacktrace: it happens often, but it's not that interesting
+            LOG.warn("Failed to register listener and process updates: {}", ex.toString());
             this.scheduledExecutorService.schedule(this::reprocessUntilExceptionDisappears, 5, TimeUnit.SECONDS);
         }
     }
@@ -242,7 +243,7 @@ public class EventTypeCache {
             haveChanges = !currentChangeSet.getUpdatedEventTypes(currentChanges).isEmpty()
                     || !currentChangeSet.getChangesToRemove(currentChanges, zkChangesTTL).isEmpty();
         } catch (final Exception e) {
-            LOG.warn("Failed to run periodic check, will retry soon", e);
+            LOG.warn("Failed to run periodic check, will retry soon", e.toString());
             scheduledExecutorService.schedule(this::periodicCheck, 1, TimeUnit.SECONDS);
             return;
         }

@@ -179,10 +179,10 @@ public class StreamingContext implements SubscriptionStreamer {
                     task.run();
                 }
             } catch (final NakadiRuntimeException ex) {
-                log.error("Failed to process task " + task + ", will rethrow original error", ex);
+                log.warn("Failed to process task " + task + ", will rethrow original error");
                 switchStateImmediately(new CleanupState(ex.getException()));
             } catch (final RuntimeException ex) {
-                log.error("Failed to process task " + task + ", code carefully!", ex);
+                log.warn("Failed to process task " + task + ", code carefully!");
                 switchStateImmediately(new CleanupState(ex));
             }
         }
