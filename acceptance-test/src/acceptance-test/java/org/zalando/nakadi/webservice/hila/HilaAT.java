@@ -95,6 +95,14 @@ public class HilaAT extends BaseAT {
         Assert.assertEquals(HttpStatus.SC_NO_CONTENT, statusCode);
     }
 
+    @Test(timeout = 10000)
+    public void whenConsumingAvroFromJsonEventTypeThen406() throws Exception {
+        final TestStreamingClient client = TestStreamingClient
+                .create(URL, subscription.getId(), "batch_limit=1&stream_limit=2&stream_timeout=1")
+                .startBinary();
+        waitFor(() ->  Assert.assertEquals(HttpStatus.SC_NOT_ACCEPTABLE, client.getResponseCode()));
+    }
+
     @Test(timeout = 30000)
     public void whenEventTypeRepartitionedTheNewSubscriptionShouldHaveUpdatedPartition() throws Exception {
         final EventType eventType = NakadiTestUtils.createBusinessEventTypeWithPartitions(1);

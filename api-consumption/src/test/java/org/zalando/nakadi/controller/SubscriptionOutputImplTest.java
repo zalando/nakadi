@@ -17,7 +17,7 @@ public class SubscriptionOutputImplTest {
         final SubscriptionStreamController ssc =
                 new SubscriptionStreamController(null, new ObjectMapper(), null,
                         null, null, null,
-                        null, null);
+                        null, null, null);
 
         final SubscriptionStreamController.SubscriptionOutputImpl impl =
                 ssc.new SubscriptionOutputImpl(

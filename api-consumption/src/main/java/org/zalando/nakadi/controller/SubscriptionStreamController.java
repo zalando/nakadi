@@ -21,8 +21,10 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.servlet.mvc.method.annotation.StreamingResponseBody;
 import org.zalando.nakadi.ShutdownHooks;
+import org.zalando.nakadi.cache.EventTypeCache;
 import org.zalando.nakadi.cache.SubscriptionCache;
 import org.zalando.nakadi.config.NakadiSettings;
+import org.zalando.nakadi.domain.EventTypeSchemaBase;
 import org.zalando.nakadi.domain.Subscription;
 import org.zalando.nakadi.exceptions.runtime.AccessDeniedException;
 import org.zalando.nakadi.exceptions.runtime.ConflictException;
@@ -56,11 +58,13 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.function.Function;
+import java.util.stream.Collectors;
 
 import static org.zalando.nakadi.metrics.MetricUtils.metricNameForSubscription;
 import static org.zalando.problem.Status.CONFLICT;
 import static org.zalando.problem.Status.FORBIDDEN;
 import static org.zalando.problem.Status.INTERNAL_SERVER_ERROR;
+import static org.zalando.problem.Status.NOT_ACCEPTABLE;
 import static org.zalando.problem.Status.NOT_FOUND;
 import static org.zalando.problem.Status.PRECONDITION_FAILED;
 import static org.zalando.problem.Status.SERVICE_UNAVAILABLE;
@@ -80,6 +84,7 @@ public class SubscriptionStreamController {
     private final SubscriptionCache subscriptionCache;
     private final SubscriptionValidationService subscriptionValidationService;
     private final ShutdownHooks shutdownHooks;
+    private final EventTypeCache eventTypeCache;
 
     @Autowired
     public SubscriptionStreamController(final SubscriptionStreamerFactory subscriptionStreamerFactory,
@@ -89,7 +94,8 @@ public class SubscriptionStreamController {
                                         @Qualifier("perPathMetricRegistry") final MetricRegistry metricRegistry,
                                         final SubscriptionCache subscriptionCache,
                                         final SubscriptionValidationService subscriptionValidationService,
-                                        final ShutdownHooks shutdownHooks) {
+                                        final ShutdownHooks shutdownHooks,
+                                        final EventTypeCache eventTypeCache) {
         this.subscriptionStreamerFactory = subscriptionStreamerFactory;
         this.jsonMapper = objectMapper;
         this.nakadiSettings = nakadiSettings;
@@ -98,6 +104,7 @@ public class SubscriptionStreamController {
         this.subscriptionCache = subscriptionCache;
         this.subscriptionValidationService = subscriptionValidationService;
         this.shutdownHooks = shutdownHooks;
+        this.eventTypeCache = eventTypeCache;
     }
 
     class SubscriptionOutputImpl implements SubscriptionOutput {
@@ -253,6 +260,21 @@ public class SubscriptionStreamController {
                     return;
                 }
                 final Subscription subscription = subscriptionCache.getSubscription(subscriptionId);
+
+                if(streamContentType == StreamContentType.BINARY){
+                    final var incompatibleEts = subscription.getEventTypes().stream().
+                            filter(et -> eventTypeCache.getEventType(et).
+                                    getSchema().getType() != EventTypeSchemaBase.Type.AVRO_SCHEMA).
+                            collect(Collectors.toList());
+
+                    if(!incompatibleEts.isEmpty()){
+                        writeProblemResponse(response, outputStream,
+                                Problem.valueOf(NOT_ACCEPTABLE, "Cannot accept application/avro-binary" +
+                                        " due to incompatible event-types " + incompatibleEts));
+                        return;
+                    }
+                }
+
                 subscriptionValidationService.validatePartitionsToStream(subscription,
                         streamParameters.getPartitions());
 
