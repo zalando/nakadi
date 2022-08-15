@@ -20,7 +20,7 @@ review:
   variables:
     KUBE_NAMESPACE: epdcs-review
     K8S_SECRET_SPRING_PROFILES_ACTIVE: review
-    HELM_UPGRADE_VALUES_FILE: .gitlab/auto-deploy-values-review.yaml
+    HELM_UPGRADE_EXTRA_ARGS: '--values .gitlab/auto-deploy-values-review.yaml'
 
 dev:
   extends: .auto-deploy
