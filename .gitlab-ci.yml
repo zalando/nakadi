@@ -1,5 +1,3 @@
-image: alpine:latest
-
 include:
   - project: wiley-sons/tc-gitlab-templates
     file: autodevops-gradle.gitlab-ci.yml
@@ -8,146 +6,13 @@ variables:
   APP_NAME: eventhub
   AUTO_DEVOPS_DEPLOY_DEBUG: "true"
   TEST_DISABLED: "true"
-
-  POSTGRES_ENABLED: "false"
-  BROWSER_PERFORMANCE_DISABLED: "false"
-  LOAD_PERFORMANCE_DISABLED: "false"
-
-  DOCKER_DRIVER: overlay2
-  ROLLOUT_RESOURCE_TYPE: deployment
-  DOCKER_TLS_CERTDIR: ""  # https://gitlab.com/gitlab-org/gitlab-runner/issues/4501
-  DOCKER_VERSION: "20.10.6"
-
-  CI_REGISTRY: "artifactory.aws.wiley.com/docker"
-  CI_REGISTRY_IMAGE: "$CI_REGISTRY/tc/$APP_NAME"
-
-  SONAR_HOST_URL: "https://sonarqube.aws.wiley.com"
-
-  AUTO_DEVOPS_BUILD_IMAGE_CNB_ENABLED: "true"
-  # AUTO_DEVOPS_BUILD_IMAGE_CNB_BUILDER: artifactory.aws.wiley.com/docker/tc/heroku/buildpacks:20 # disabling since artifactory is unstable
-  # AUTO_DEVOPS_BUILD_IMAGE_CNB_BUILDER: heroku/buildpacks:20
-  AUTO_DEVOPS_BUILD_IMAGE_CNB_BUILDER: "gcr.io/paketo-buildpacks/builder:base"
-
-  AUTO_DEVOPS_ATOMIC_RELEASE: "false"
-  AUTO_DEVOPS_CHART_REPOSITORY: https://artifactory.aws.wiley.com/artifactory/helm
-  AUTO_DEVOPS_CHART: helm/tc-auto-deploy-app
-  AUTO_DEVOPS_CHART_REPOSITORY_NAME: helm
-
-  SAST_DISABLED: "true"
-
-stages:
-  - test
-  - build
-  - dev
-
-workflow:
-  rules:
-    - if: '$CI_COMMIT_BRANCH != $CI_DEFAULT_BRANCH'  # run only on default branch
-      when: never
-    - if: '$BUILDPACK_URL || $AUTO_DEVOPS_EXPLICITLY_ENABLED == "1" || $DOCKERFILE_PATH'
-
-    # https://github.com/heroku/heroku-buildpack-gradle
-    - exists:
-        - gradlew
-        - build.gradle
-        - settings.gradle
-
-test:
-  variables:
-    # Instruct Testcontainers to use the daemon of DinD.
-    DOCKER_HOST: "tcp://docker:2375"
-    # Instruct Docker not to start over TLS.
-    DOCKER_TLS_CERTDIR: ""
-    # Improve performance with overlayfs.
-    DOCKER_DRIVER: overlay2
-  tags:
-    - dev  # gitlab runner tag. Always run tests in dev
-  services:
-    # - name: 'artifactory.aws.wiley.com/docker/docker:${DOCKER_VERSION}-dind' # disabling since artifactory is unstable
-    - name: "docker:${DOCKER_VERSION}-dind"
-      alias: docker  # this will be the DOCKER_HOST
-  stage: test
-  image: artifactory.aws.wiley.com/docker/tc/gliderlabs/herokuish:latest-20
-  script:
-    # Point maven at our custom maven settings.xml configured to use the Artifactory maven repository
-    # Note that this is done here rather than in variables above due to
-    # https://gitlab.com/gitlab-org/gitlab-foss/-/issues/65763
-    - export MAVEN_SETTINGS_PATH=$MAVEN_SETTINGS_XML
-    - cat $MAVEN_SETTINGS_PATH
-    - export
-    - cp -R . /tmp/app
-    - /bin/herokuish buildpack test
-  rules:
-    - if: "$TEST_DISABLED"
-      when: never
-    - if: "$CI_COMMIT_TAG"
-      when: never
-    - if: "$CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH"  # run on default branch
-    - if: "$CI_EXTERNAL_PULL_REQUEST_TARGET_BRANCH_NAME == $CI_DEFAULT_BRANCH"  # run on default branch pull requests
+  DEV_DISABLED: "true"
 
 build:
-  stage: build
-  image: 'registry.gitlab.com/gitlab-org/cluster-integration/auto-build-image:v1.12.0'
-  tags:
-    - dev  # gitlab runner tag. Always run build in dev
   variables:
-    # Instruct Docker not to start over TLS.
-    DOCKER_TLS_CERTDIR: ""
-    # Improve performance with overlayfs.
-    DOCKER_DRIVER: overlay2
-    BP_GRADLE_BUILT_ARTIFACT: "app/build/libs/*.[jw]ar"
-    BP_GRADLE_BUILD_ARGUMENTS: ":app:bootJar"
-    #JAVA_TOOL_OPTIONS: "-XX:MaxMetaspaceSize=200M"
-    AUTO_DEVOPS_BUILD_IMAGE_FORWARDED_CI_VARIABLES: "BP_GRADLE_BUILT_ARTIFACT,BP_GRADLE_BUILD_ARGUMENTS"
-  services:
-    - name: 'artifactory.aws.wiley.com/docker/tc/docker:${DOCKER_VERSION}-dind'
-      command: ['--tls=false', '--host=tcp://0.0.0.0:2375']
-  before_script:
-    - export
-    - |
-      export CI_APPLICATION_REPOSITORY=${CI_APPLICATION_REPOSITORY:-$CI_REGISTRY_IMAGE}
-      export CI_APPLICATION_TAG=${CI_APPLICATION_TAG:-v$(cat VERSION)}
-  script:
-    - /build/build.sh
-  rules:
-    - if: '$CI_COMMIT_TAG'
-      when: never
-    - if: '$CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH'  # run on default branch
-    - if: '$CI_EXTERNAL_PULL_REQUEST_TARGET_BRANCH_NAME == $CI_DEFAULT_BRANCH'  # run on default branch pull requests
-
-.auto-deploy-base:
-  image: "registry.gitlab.com/gitlab-org/cluster-integration/auto-deploy-image:v2.11.2"
-  dependencies: []
-
-.auto-deploy:
-  extends: .auto-deploy-base
-  variables:
-    HELM_RELEASE_NAME: $APP_NAME  # to ensure unique release names when deploying multiple apps to a single namespace
-  script:
-    - |
-      export CI_APPLICATION_REPOSITORY=${CI_APPLICATION_REPOSITORY:-$CI_REGISTRY_IMAGE}
-      export CI_APPLICATION_TAG=${CI_APPLICATION_TAG:-v$(cat VERSION)}
-    - auto-deploy check_kube_domain
-    - auto-deploy download_chart
-    - auto-deploy ensure_namespace
-    - auto-deploy create_secret
-    - auto-deploy deploy
-    - auto-deploy persist_environment_url
-  artifacts:
-    paths: [environment_url.txt]
-    when: always
-
-.default-deploy-rules:
-  rules:
-    - if: '$KUBE_NAMESPACE == null || $KUBE_NAMESPACE == ""'
-      when: never
-    - if: '$CI_KUBERNETES_ACTIVE == null || $CI_KUBERNETES_ACTIVE == ""'
-      when: never
-    - if: '$CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH'  # run on default branch
+    BP_JVM_VERSION: "8.*"
 
 review:
-  environment:
-    name: review
   variables:
     KUBE_NAMESPACE: epdcs-review
     K8S_SECRET_SPRING_PROFILES_ACTIVE: review
