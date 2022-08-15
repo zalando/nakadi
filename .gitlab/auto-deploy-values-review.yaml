@@ -3,7 +3,7 @@ service:
   externalPort: 5000
 ingress:
   enabled: true
-  path: ""
+  path: "/"
   tls:
     enabled: false
 livenessProbe:
@@ -24,6 +24,13 @@ serviceAccount:
   annotations:
     eks.amazonaws.com/role-arn: arn:aws:iam::281595016440:role/epdcs-review-dev-use1
   createNew: true
+resources:
+  limits:
+    cpu: 1
+    memory: 3Gi
+  requests:
+    cpu: 400m
+    memory: 2Gi
 sidecars:
   - name: postgres
       image: postgres:9.6.16
