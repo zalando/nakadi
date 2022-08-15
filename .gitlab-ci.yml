@@ -11,6 +11,10 @@ variables:
 build:
   variables:
     BP_JVM_VERSION: "8.*"
+    BP_GRADLE_BUILT_ARTIFACT: "app/build/libs/*.[jw]ar"
+    BP_GRADLE_BUILD_ARGUMENTS: ":app:bootJar"
+    AUTO_DEVOPS_BUILD_IMAGE_FORWARDED_CI_VARIABLES: "BP_GRADLE_BUILT_ARTIFACT,BP_GRADLE_BUILD_ARGUMENTS"
+
 
 review:
   variables:
