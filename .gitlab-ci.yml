@@ -1,5 +1,9 @@
 image: alpine:latest
 
+include:
+  - project: wiley-sons/tc-gitlab-templates
+    file: autodevops-gradle.gitlab-ci.yml
+
 variables:
   APP_NAME: nakadi
   AUTO_DEVOPS_DEPLOY_DEBUG: "true"
@@ -142,8 +146,11 @@ build:
     - if: '$CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH'  # run on default branch
 
 review:
+  environment:
+    name: review
   variables:
     KUBE_NAMESPACE: epdcs-review
+    K8S_SECRET_SPRING_PROFILES_ACTIVE: review
     HELM_UPGRADE_VALUES_FILE: .gitlab/auto-deploy-values-review.yaml
 
 dev:
