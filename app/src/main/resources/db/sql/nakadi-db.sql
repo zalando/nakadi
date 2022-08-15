@@ -1,13 +1,13 @@
-CREATE SCHEMA IF NOT EXISTS zn_data AUTHORIZATION zalando_nakadi_data_owner;
+CREATE SCHEMA IF NOT EXISTS zn_data;
 
 -- Create az_operation type if it does not exist
 CREATE OR REPLACE FUNCTION create_az_operation_type() RETURNS integer AS $$
 DECLARE v_exists INTEGER;
 
 BEGIN
-    SELECT into v_exists (SELECT 1 FROM pg_type WHERE typname = 'az_operation');
+    SELECT into v_exists (SELECT 1 FROM pg_type WHERE typname = 'zn_data.az_operation');
     IF v_exists IS NULL THEN
-        CREATE TYPE az_operation AS ENUM ('ADMIN', 'READ', 'WRITE');
+        CREATE TYPE zn_data.az_operation AS ENUM ('ADMIN', 'READ', 'WRITE');
     END IF;
     RETURN v_exists;
 END;
