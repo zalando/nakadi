@@ -221,7 +221,7 @@ spring:
 spring:
   config:
     activate:
-      on-profile: acceptanceTest
+      on-profile: review
 
 nakadi:
   eventType.deletableSubscription:

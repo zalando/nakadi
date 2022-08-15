@@ -141,6 +141,11 @@ build:
       when: never
     - if: '$CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH'  # run on default branch
 
+review:
+  variables:
+    KUBE_NAMESPACE: epdcs-review
+    HELM_UPGRADE_VALUES_FILE: .gitlab/auto-deploy-values-review.yaml
+
 dev:
   extends: .auto-deploy
   stage: dev
