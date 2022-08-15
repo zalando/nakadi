@@ -5,7 +5,7 @@ include:
     file: autodevops-gradle.gitlab-ci.yml
 
 variables:
-  APP_NAME: nakadi
+  APP_NAME: eventhub
   AUTO_DEVOPS_DEPLOY_DEBUG: "true"
   TEST_DISABLED: "true"
 
