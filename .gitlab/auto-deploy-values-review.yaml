@@ -33,27 +33,27 @@ resources:
     memory: 2Gi
 sidecars:
   - name: postgres
-      image: postgres:9.6.16
-      imagePullPolicy: Always
-      env:
-        - name: POSTGRES_USER
-          value: nakadi
-        - name: POSTGRES_PASSWORD
-          value: nakadi
-        - name: POSTGRES_DB
-          value: local_nakadi_db
-      ports:
-        - name: postgresport
-          containerPort: 5432
+    image: postgres:9.6.16
+    imagePullPolicy: IfNotPresent
+    env:
+      - name: POSTGRES_USER
+        value: nakadi
+      - name: POSTGRES_PASSWORD
+        value: nakadi
+      - name: POSTGRES_DB
+        value: local_nakadi_db
+    ports:
+      - name: postgresport
+        containerPort: 5432
   - name: zookeeper
     image: zookeeper:3.6
-    imagePullPolicy: Always
+    imagePullPolicy: IfNotPresent
     ports:
       - name: zookeeperport
         containerPort: 2181
   - name: kafka
     image: "registry.opensource.zalan.do/aruha/nakadi-kafka:2.7.1"
-    imagePullPolicy: Always
+    imagePullPolicy: IfNotPresent
     ports:
       - name: kafkaintport
         containerPort: 9092
