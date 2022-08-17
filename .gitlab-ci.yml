@@ -25,7 +25,8 @@ review:
 
 
 review-integrationtest:
-  extends: .review-integration-test
+  variables:
+    ENVIRONMENT_HOST: environment_url.txt
   script:
     - ./gradlew :acceptance-test:acceptanceTest
 
