@@ -6,7 +6,7 @@ include:
 variables:
   APP_NAME: eventhub
   AUTO_DEVOPS_DEPLOY_DEBUG: "true"
-  TEST_DISABLED: "true"
+  # TEST_DISABLED: "true"
   DEV_DISABLED: "true"
 
 build:
