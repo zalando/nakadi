@@ -1,5 +1,4 @@
 package org.zalando.nakadi.util;
-
 import javax.servlet.Filter;
 import javax.servlet.FilterChain;
 import javax.servlet.FilterConfig;
@@ -9,10 +8,8 @@ import javax.servlet.ServletResponse;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
 import java.io.IOException;
-
 public class FlowIdRequestFilter implements Filter {
-    public static final String X_FLOW_ID_HEADER = "X-Flow-Id";
-
+    public static final String TRANSACTION_ID = "Transaction-ID";
     @Override
     public void init(final FilterConfig filterConfig) throws ServletException {
         // This constructor is intentionally empty, because something something
@@ -23,10 +20,9 @@ public class FlowIdRequestFilter implements Filter {
             throws IOException, ServletException {
         FlowIdUtils.clear();
         String flowId = null;
-
         if (request instanceof HttpServletRequest) {
             final HttpServletRequest httpServletRequest = (HttpServletRequest) request;
-            flowId = httpServletRequest.getHeader(X_FLOW_ID_HEADER);
+            flowId = httpServletRequest.getHeader(TRANSACTION_ID);
         }
 
         if (flowId == null) {
@@ -34,15 +30,13 @@ public class FlowIdRequestFilter implements Filter {
         }
 
         FlowIdUtils.push(flowId);
-
         if (response instanceof HttpServletResponse) {
             final HttpServletResponse httpServletResponse = (HttpServletResponse) response;
-            httpServletResponse.setHeader(X_FLOW_ID_HEADER, flowId);
+            httpServletResponse.setHeader(TRANSACTION_ID, flowId);
         }
 
         try {
             chain.doFilter(request, response);
-
         } finally {
             FlowIdUtils.clear();
         }
