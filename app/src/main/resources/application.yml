@@ -217,6 +217,8 @@ spring:
   config:
     activate:
       on-profile: test
+  liquibase:
+    enabled : false
 ---
 spring:
   config:
