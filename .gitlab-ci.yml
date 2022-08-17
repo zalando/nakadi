@@ -29,6 +29,8 @@ review-integrationtest:
   variables:
     ENVIRONMENT_HOST: environment_url.txt
   script:
+    - echo "${JAVA_HOME}"
+    - java --version
     - ./gradlew :acceptance-test:acceptanceTest
 
 dev:
