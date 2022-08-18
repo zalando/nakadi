@@ -11,7 +11,6 @@ public abstract class RealEnvironmentAT {
 
     protected final Optional<String> oauthToken;
     protected final String owningApp;
-    protected static int DEFAULT_PORT = 8081;
 
     public RealEnvironmentAT() {
         oauthToken = ofNullable(System.getenv("NAKADI_OAUTH_TOKEN"));
@@ -21,7 +20,7 @@ public abstract class RealEnvironmentAT {
                 .orElse(RestAssured.DEFAULT_URI);
 
         RestAssured.port = Integer.parseInt(ofNullable(System.getenv("NAKADI_PORT"))
-                .orElse(Integer.toString(DEFAULT_PORT)));
+                .orElse("8081"));
     }
 
     protected RequestSpecification requestSpec() {
