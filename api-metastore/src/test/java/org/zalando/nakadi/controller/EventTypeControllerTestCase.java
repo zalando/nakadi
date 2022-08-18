@@ -107,7 +107,7 @@ public class EventTypeControllerTestCase {
                 NAKADI_SUBSCRIPTION_MAX_PARTITIONS, "service", "org/zalando/nakadi", "I am warning you",
                 "I am warning you, even more", "nakadi_archiver", "nakadi_to_s3", 100, 10000);
         final PartitionsCalculator partitionsCalculator = new KafkaConfig().createPartitionsCalculator(
-                "t2.large", TestUtils.OBJECT_MAPPER, nakadiSettings);
+                "m5.large", TestUtils.OBJECT_MAPPER, nakadiSettings);
         when(timelineService.getTopicRepository((Timeline) any())).thenReturn(topicRepository);
         when(timelineService.getTopicRepository((EventTypeBase) any())).thenReturn(topicRepository);
         when(authorizationService.getSubject()).thenReturn(Optional.empty());
