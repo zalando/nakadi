@@ -1,0 +1,50 @@
+include:
+  - project: wiley-sons/tc-gitlab-templates
+    file: autodevops-gradle.gitlab-ci.yml
+    ref: latest_image
+
+variables:
+  APP_NAME: eventhub
+  AUTO_DEVOPS_DEPLOY_DEBUG: "true"
+  # TEST_DISABLED: "true"
+
+build:
+  variables:
+    BP_JVM_VERSION: "11.*"
+    BP_GRADLE_BUILT_ARTIFACT: "app/build/libs/*.[jw]ar"
+    BP_GRADLE_BUILD_ARGUMENTS: ":app:bootJar"
+    AUTO_DEVOPS_BUILD_IMAGE_FORWARDED_CI_VARIABLES: "BP_GRADLE_BUILT_ARTIFACT,BP_GRADLE_BUILD_ARGUMENTS,BP_JVM_VERSION"
+
+
+review:
+  variables:
+    KUBE_NAMESPACE: epdcs-review
+    K8S_SECRET_SPRING_PROFILES_ACTIVE: review
+    HELM_UPGRADE_VALUES_FILE: .gitlab/auto-deploy-values-review.yaml
+
+
+review-integrationtest:
+  when: manual
+  image: artifactory.aws.wiley.com/docker/openjdk:11-jdk
+  extends: .review-integration-test
+  variables:
+    ENVIRONMENT_HOST: environment_url.txt
+  script:
+    - ./gradlew :acceptance-test:acceptanceTest
+
+dev:
+  variables:
+    KUBE_NAMESPACE: epdcs-dev
+    K8S_SECRET_SPRING_PROFILES_ACTIVE: dev
+    KUBE_INGRESS_BASE_DOMAIN: dev.tc.private.wiley.host
+    HELM_UPGRADE_VALUES_FILE: .gitlab/auto-deploy-values-dev.yaml
+
+dev-integrationtest:
+  when: manual
+  image: artifactory.aws.wiley.com/docker/openjdk:11-jdk
+  variables:
+    APP_ENVIRONMENT: dev
+  allow_failure: true
+  extends: .dev-integration-test
+  script:
+    - ./gradlew :acceptance-test:acceptanceTest

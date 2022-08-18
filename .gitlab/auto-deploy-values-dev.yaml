@@ -1,0 +1,43 @@
+service:
+  internalPort: 8081
+  externalPort: 5000
+ingress:
+  enabled: true
+  path: "/"
+  tls:
+    enabled: false
+livenessProbe:
+  path: "/health"
+  initialDelaySeconds: 120
+  timeoutSeconds: 3
+  scheme: "HTTP"
+  probeType: "httpGet"
+readinessProbe:
+  path: "/health"
+  initialDelaySeconds: 30
+  periodSeconds: 10
+  timeoutSeconds: 3
+  failureThreshold: 10
+  scheme: "HTTP"
+  probeType: "httpGet"
+serviceAccount:
+  annotations:
+    eks.amazonaws.com/role-arn: arn:aws:iam::281595016440:role/epdcs-dev-dev-use1
+  createNew: true
+resources:
+  limits:
+    cpu: 500m
+    memory: 2Gi
+  requests:
+    cpu: 200m
+    memory: 1Gi
+externalSecrets:
+  enabled: true
+  data:
+    - secretKey: SPRING_DATASOURCE_PASSWORD
+      remoteRef:
+        key: sharedaurorapsql-epdcs-dev-event_hub_user
+application:
+  env:
+    - name: SPRING_PROFILES_ACTIVE
+      value: dev

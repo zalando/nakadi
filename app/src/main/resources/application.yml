@@ -1,5 +1,5 @@
 server:
-  port: 8080
+  port: 8081
 management:
   port: 7979
 jetty:
@@ -7,6 +7,7 @@ jetty:
     maxThreads: 200
     minThreads: 8
     idleTimeout: 60000
+
 spring:
   datasource:
     url: jdbc:postgresql://localhost:5432/local_nakadi_db
@@ -23,7 +24,13 @@ spring:
       test-while-idle: true
       time-between-eviction-runs-millis: 5000
       min-evictable-idle-time-millis: 60000
-      connection-properties: socketTimeout=2;connectTimeout=2;loginTimeout=2
+      connection-properties: socketTimeout=10;connectTimeout=10;loginTimeout=5
+  liquibase:
+    enabled: true
+    url: ${spring.datasource.url}
+    user: ${spring.datasource.username}
+    password: ${spring.datasource.password}
+    change-log: classpath:/db/changelog-master.xml
 
 nakadi:
   admin.default:
@@ -55,9 +62,11 @@ nakadi:
     maxConnections: 5
     maxStreamMemoryBytes: 50000000 # ~50 MB
   kafka:
-    retries: 0
+    bootstrap.servers: localhost:9092
+    min.insync.replicas: 1
+    retries: 5
     request.timeout.ms: 30000
-    instanceType: t2.large
+    instanceType: m5.large
     poll.timeoutMs: 100
     send.timeoutMs: 5000
     batch.size: 5242880
@@ -71,14 +80,19 @@ nakadi:
     enable.auto.commit: false
     delivery.timeout.ms: 30000 # request.timeout.ms + linger.ms
     max.block.ms: 5000 # kafka default 60000
+    security.protocol: PLAINTEXT
+    sasl.mechanism: PLAIN
+    sasl.jaas.config: software.amazon.msk.auth.iam.IAMLoginModule required awsProfileName="tc-dev";
+    sasl.client.callback.handler.class: software.amazon.msk.auth.iam.IAMClientCallbackHandler
   zookeeper:
-    connectionString: zookeeper://zookeeper:2181
+    connectionString: zookeeper://localhost:2181
     sessionTimeoutMs: 10000
     connectionTimeoutMs: 3000
     maxInFlightRequests: 1000
 
   oauth2:
-    mode: BASIC
+    mode: OFF
+    adminClientId: adminClientId
     tokenInfoUrl: https://example.com/tokeninfo
     localTokenInfoUrl: "http://localhost:9021/oauth2/tokeninfo"
     clientId: stups_aruha-event-store-poc
@@ -150,7 +164,66 @@ twintip:
 spring:
   config:
     activate:
-      on-profile: acceptanceTest
+      on-profile: dev
+  datasource:
+    url: jdbc:postgresql://sharedaurorapsql-epdcs-dev-use1.cluster-chxkh4p9th7p.us-east-1.rds.amazonaws.com:5432/event_hub
+    username: event_hub_user
+
+nakadi:
+  topic:
+    default:
+      replicaFactor: 2
+  kafka:
+    bootstrap.servers: b-2.epdcs-nakadi-msk-kafk.uwqhdz.c23.kafka.us-east-1.amazonaws.com:9098,b-3.epdcs-nakadi-msk-kafk.uwqhdz.c23.kafka.us-east-1.amazonaws.com:9098,b-1.epdcs-nakadi-msk-kafk.uwqhdz.c23.kafka.us-east-1.amazonaws.com:9098
+    min.insync.replicas: 2
+    security.protocol: SASL_SSL
+    sasl.mechanism: AWS_MSK_IAM
+    sasl.jaas.config: software.amazon.msk.auth.iam.IAMLoginModule required awsProfileName="tc-dev";
+    sasl.client.callback.handler.class: software.amazon.msk.auth.iam.IAMClientCallbackHandler
+  zookeeper:
+    connectionString: zookeeper://z-3.epdcs-nakadi-msk-kafk.uwqhdz.c23.kafka.us-east-1.amazonaws.com:2181,z-2.epdcs-nakadi-msk-kafk.uwqhdz.c23.kafka.us-east-1.amazonaws.com:2181,z-1.epdcs-nakadi-msk-kafk.uwqhdz.c23.kafka.us-east-1.amazonaws.com:2181
+  features.defaultFeatures:
+    DISABLE_EVENT_TYPE_CREATION: false
+    DISABLE_EVENT_TYPE_DELETION: false
+    DISABLE_SUBSCRIPTION_CREATION: false
+    REMOTE_TOKENINFO: true
+    KPI_COLLECTION: true
+    DISABLE_DB_WRITE_OPERATIONS: false
+    AUDIT_LOG_COLLECTION: true
+    EVENT_OWNER_SELECTOR_AUTHZ: false
+    ACCESS_LOG_ENABLED: true
+
+
+---
+spring:
+  config:
+    activate:
+      on-profile: local
+
+nakadi.features.defaultFeatures:
+  DISABLE_EVENT_TYPE_CREATION: false
+  DISABLE_EVENT_TYPE_DELETION: false
+  DISABLE_SUBSCRIPTION_CREATION: false
+  REMOTE_TOKENINFO: true
+  KPI_COLLECTION: true
+  DISABLE_DB_WRITE_OPERATIONS: false
+  FORCE_EVENT_TYPE_AUTHZ: false
+  FORCE_SUBSCRIPTION_AUTHZ: false
+  EVENT_OWNER_SELECTOR_AUTHZ: false
+  ACCESS_LOG_ENABLED: true
+
+---
+spring:
+  config:
+    activate:
+      on-profile: test
+  liquibase:
+    enabled : false
+---
+spring:
+  config:
+    activate:
+      on-profile: review
 
 nakadi:
   eventType.deletableSubscription:
@@ -171,30 +244,6 @@ nakadi:
     AUDIT_LOG_COLLECTION: true
     EVENT_OWNER_SELECTOR_AUTHZ: false
     ACCESS_LOG_ENABLED: true
-kpi:
-  config:
-    stream-data-collection-frequency-ms: 100
-
----
-spring:
-  config:
-    activate:
-      on-profile: test
-
----
-spring:
-  config:
-    activate:
-      on-profile: local
-
-nakadi.features.defaultFeatures:
-  DISABLE_EVENT_TYPE_CREATION: false
-  DISABLE_EVENT_TYPE_DELETION: false
-  DISABLE_SUBSCRIPTION_CREATION: false
-  REMOTE_TOKENINFO: true
-  KPI_COLLECTION: true
-  DISABLE_DB_WRITE_OPERATIONS: false
-  FORCE_EVENT_TYPE_AUTHZ: false
-  FORCE_SUBSCRIPTION_AUTHZ: false
-  EVENT_OWNER_SELECTOR_AUTHZ: false
-  ACCESS_LOG_ENABLED: true
+  kpi:
+    config:
+      stream-data-collection-frequency-ms: 100

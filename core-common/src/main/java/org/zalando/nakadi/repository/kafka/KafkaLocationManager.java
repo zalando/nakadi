@@ -1,5 +1,6 @@
 package org.zalando.nakadi.repository.kafka;
 
+import org.apache.commons.lang3.StringUtils;
 import org.apache.curator.framework.CuratorFramework;
 import org.apache.curator.framework.api.GetChildrenBuilder;
 import org.apache.kafka.clients.CommonClientConfigs;
@@ -39,9 +40,15 @@ public class KafkaLocationManager {
         this.kafkaProperties = new Properties();
         this.kafkaSettings = kafkaSettings;
         this.ipAddressChangeListeners = ConcurrentHashMap.newKeySet();
-        this.updateBootstrapServers(true);
         this.scheduledExecutor = Executors.newSingleThreadScheduledExecutor();
-        this.scheduledExecutor.scheduleAtFixedRate(() -> updateBootstrapServersSafe(false), 1, 1, TimeUnit.MINUTES);
+
+        if (StringUtils.isEmpty(kafkaSettings.getBootstrapServers())) {
+            this.updateBootstrapServers(true);
+            this.scheduledExecutor.scheduleAtFixedRate(() -> updateBootstrapServersSafe(false), 1, 1, TimeUnit.MINUTES);
+        } else {
+            kafkaProperties.setProperty(CommonClientConfigs.BOOTSTRAP_SERVERS_CONFIG,
+                kafkaSettings.getBootstrapServers());
+        }
     }
 
     private void updateBootstrapServersSafe(final boolean createWatcher) {
@@ -53,7 +60,12 @@ public class KafkaLocationManager {
     }
 
     public Properties getProperties() {
-        return (Properties) kafkaProperties.clone();
+        final Properties properties = (Properties) kafkaProperties.clone();
+        properties.put("security.protocol", kafkaSettings.getSecurityProtocol());
+        properties.put("sasl.mechanism", kafkaSettings.getSaslMechanism());
+        properties.put("sasl.jaas.config", kafkaSettings.getJassConfig());
+        properties.put("sasl.client.callback.handler.class", kafkaSettings.getSaslCallback());
+        return properties;
     }
 
     private void updateBootstrapServers(final boolean createWatcher) {
@@ -105,7 +117,7 @@ public class KafkaLocationManager {
     }
 
     public Properties getKafkaConsumerProperties() {
-        final Properties properties = (Properties) kafkaProperties.clone();
+        final Properties properties = getProperties();
         properties.put(ConsumerConfig.ENABLE_AUTO_COMMIT_CONFIG, kafkaSettings.getEnableAutoCommit());
         properties.put(ConsumerConfig.KEY_DESERIALIZER_CLASS_CONFIG,
                 "org.apache.kafka.common.serialization.ByteArrayDeserializer");
@@ -117,13 +129,14 @@ public class KafkaLocationManager {
     }
 
     public Properties getKafkaProducerProperties() {
-        final Properties producerProps = (Properties) kafkaProperties.clone();
+        final Properties producerProps = getProperties();
         producerProps.put(ProducerConfig.KEY_SERIALIZER_CLASS_CONFIG,
                 "org.apache.kafka.common.serialization.ByteArraySerializer");
         producerProps.put(ProducerConfig.VALUE_SERIALIZER_CLASS_CONFIG,
                 "org.apache.kafka.common.serialization.ByteArraySerializer");
         producerProps.put(ProducerConfig.ACKS_CONFIG, "all");
-        producerProps.put(ProducerConfig.ENABLE_IDEMPOTENCE_CONFIG, false);
+        producerProps.put(ProducerConfig.ENABLE_IDEMPOTENCE_CONFIG, true);
+        producerProps.put("min.insync.replicas", kafkaSettings.getMinInsyncReplicas());
 
         producerProps.put(ProducerConfig.RETRIES_CONFIG, kafkaSettings.getRetries());
         producerProps.put(ProducerConfig.REQUEST_TIMEOUT_MS_CONFIG, kafkaSettings.getRequestTimeoutMs());
