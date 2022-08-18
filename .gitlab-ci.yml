@@ -7,7 +7,6 @@ variables:
   APP_NAME: eventhub
   AUTO_DEVOPS_DEPLOY_DEBUG: "true"
   # TEST_DISABLED: "true"
-  DEV_DISABLED: "true"
 
 build:
   variables:
@@ -34,20 +33,18 @@ review-integrationtest:
     - ./gradlew :acceptance-test:acceptanceTest
 
 dev:
-  extends: .auto-deploy
-  stage: dev
-  tags:
-    - dev  # gitlab runner tag, correspond to a environment
   variables:
     KUBE_NAMESPACE: epdcs-dev
+    K8S_SECRET_SPRING_PROFILES_ACTIVE: dev
     KUBE_INGRESS_BASE_DOMAIN: dev.tc.private.wiley.host
     HELM_UPGRADE_VALUES_FILE: .gitlab/auto-deploy-values-dev.yaml
-  environment:
-    name: dev
-    kubernetes:
-      namespace: ${KUBE_NAMESPACE}
-    url: https://$APP_NAME.$KUBE_INGRESS_BASE_DOMAIN
-  rules:
-    - if: '$DEV_DISABLED == "true"'
-      when: never
-    - !reference [.default-deploy-rules, rules]
+
+dev-integrationtest:
+  when: manual
+  image: artifactory.aws.wiley.com/docker/openjdk:11-jdk
+  variables:
+    APP_ENVIRONMENT: dev
+  allow_failure: true
+  extends: .dev-integration-test
+  script:
+    - ./gradlew :acceptance-test:acceptanceTest

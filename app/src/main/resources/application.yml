@@ -166,8 +166,8 @@ spring:
     activate:
       on-profile: dev
   datasource:
-    url: jdbc:postgresql://sharedaurorapsql-epdcs-dev-use1.cluster-chxkh4p9th7p.us-east-1.rds.amazonaws.com:5432/nakadi
-    username: nakadi_user
+    url: jdbc:postgresql://sharedaurorapsql-epdcs-dev-use1.cluster-chxkh4p9th7p.us-east-1.rds.amazonaws.com:5432/event_hub
+    username: event_hub_user
 
 nakadi:
   topic:
