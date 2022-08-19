@@ -22,26 +22,52 @@ import java.util.concurrent.TimeUnit;
 
 public abstract class BaseAT {
 
-    public static final String POSTGRES_URL = "jdbc:postgresql://localhost:5432/local_nakadi_db";
-    public static final String POSTGRES_USER = "nakadi";
-    public static final String POSTGRES_PWD = "nakadi";
+    public static final String POSTGRES_URL;
+    public static final String POSTGRES_USER;
+    public static final String POSTGRES_PWD;
 
-    protected static final int PORT = 8081;
-    public static final String URL = "http://localhost:" + PORT;
+    protected static final int PORT;
+    public static final String URL;
 
-    protected static final String ZOOKEEPER_URL = "localhost:2181";
-    protected static final ZookeeperConnection ZOOKEEPER_CONNECTION =
-            ZookeeperConnection.valueOf("zookeeper://" + ZOOKEEPER_URL);
-    protected static final String KAFKA_URL = "localhost:29092";
+    protected static final String ZOOKEEPER_URL;
+    protected static final ZookeeperConnection ZOOKEEPER_CONNECTION;
+    protected static final String KAFKA_URL;
 
-    private static final JdbcTemplate JDBC_TEMPLATE = new JdbcTemplate(
-            new DriverManagerDataSource(POSTGRES_URL, POSTGRES_USER, POSTGRES_PWD));
-    protected static final ObjectMapper MAPPER = (new JsonConfig()).jacksonObjectMapper();
-    protected static final StorageDbRepository STORAGE_DB_REPOSITORY = new StorageDbRepository(JDBC_TEMPLATE, MAPPER);
-    protected static final TimelineDbRepository TIMELINE_REPOSITORY = new TimelineDbRepository(JDBC_TEMPLATE, MAPPER);
+    protected static final ObjectMapper MAPPER;
+    protected static final StorageDbRepository STORAGE_DB_REPOSITORY;
+    protected static final TimelineDbRepository TIMELINE_REPOSITORY;
+
     public static Configuration configs;
 
     static {
+
+        // Get configs from environment variables or else assign default values
+        String dbUrl = System.getenv("POSTGRES_URL");
+        POSTGRES_URL = dbUrl != null ? dbUrl : "jdbc:postgresql://localhost:5431/local_nakadi_db";
+        String user = System.getenv("POSTGRES_USER");
+        POSTGRES_USER = user != null ? user : "nakadi";
+        String pwd = System.getenv("POSTGRES_PWD");
+        POSTGRES_PWD = pwd != null ? pwd : "nakadi";
+
+        JdbcTemplate jdbcTemplate =
+            new JdbcTemplate(new DriverManagerDataSource(POSTGRES_URL, POSTGRES_USER, POSTGRES_PWD));
+        MAPPER = (new JsonConfig()).jacksonObjectMapper();
+        STORAGE_DB_REPOSITORY = new StorageDbRepository(jdbcTemplate, MAPPER);
+        TIMELINE_REPOSITORY = new TimelineDbRepository(jdbcTemplate, MAPPER);
+
+        String port = System.getenv("NAKADI_PORT");
+        PORT = (port != null) ? Integer.parseInt(port) : 8081;
+
+        String baseUrl = System.getenv("NAKADI_BASE_URL");
+        URL = baseUrl != null ? baseUrl : "http://localhost" + ":" + PORT;
+
+        String zookeeperUrl = System.getenv("ZOOKEEPER_URL");
+        ZOOKEEPER_URL = zookeeperUrl != null ? zookeeperUrl : "localhost:2181";
+        ZOOKEEPER_CONNECTION = ZookeeperConnection.valueOf("zookeeper://" + ZOOKEEPER_URL);
+
+        String kafkaUrl = System.getenv("KAFKA_URL");
+        KAFKA_URL = kafkaUrl != null ? kafkaUrl : "localhost:29092";
+
         RestAssured.port = PORT;
         RestAssured.defaultParser = Parser.JSON;
         RestAssured.config().getHttpClientConfig()
