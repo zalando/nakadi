@@ -1,0 +1,82 @@
+service:
+  internalPort: 8081
+  externalPort: 5000
+ingress:
+  enabled: true
+  path: "/"
+  tls:
+    enabled: false
+livenessProbe:
+  path: "/health"
+  initialDelaySeconds: 120
+  timeoutSeconds: 15
+  scheme: "HTTP"
+  probeType: "httpGet"
+readinessProbe:
+  path: "/health"
+  initialDelaySeconds: 30
+  periodSeconds: 15
+  timeoutSeconds: 3
+  failureThreshold: 10
+  scheme: "HTTP"
+  probeType: "httpGet"
+serviceAccount:
+  annotations:
+    eks.amazonaws.com/role-arn: arn:aws:iam::281595016440:role/epdcs-review-dev-use1
+  createNew: true
+resources:
+  limits:
+    cpu: 1
+    memory: 3Gi
+  requests:
+    cpu: 400m
+    memory: 2Gi
+sidecars:
+  - name: postgres
+    image: postgres:9.6.16
+    imagePullPolicy: IfNotPresent
+    env:
+      - name: POSTGRES_USER
+        value: nakadi
+      - name: POSTGRES_PASSWORD
+        value: nakadi
+      - name: POSTGRES_DB
+        value: local_nakadi_db
+    ports:
+      - name: postgresport
+        containerPort: 5432
+  - name: zookeeper
+    image: zookeeper:3.6
+    imagePullPolicy: IfNotPresent
+    ports:
+      - name: zookeeperport
+        containerPort: 2181
+  - name: kafka
+    image: "registry.opensource.zalan.do/aruha/nakadi-kafka:2.7.1"
+    imagePullPolicy: IfNotPresent
+    ports:
+      - name: kafkaintport
+        containerPort: 9092
+      - name: kafkaextport
+        containerPort: 29092
+    env:
+      - name: KAFKA_LISTENERS
+        value: "INTERNAL://localhost:9092,EXTERNAL://0.0.0.0:29092"
+      - name: KAFKA_ADVERTISED_LISTENERS
+        value: "INTERNAL://localhost:9092,EXTERNAL://localhost:29092"
+      - name: KAFKA_LISTENER_SECURITY_PROTOCOL_MAP
+        value: "INTERNAL:PLAINTEXT,EXTERNAL:PLAINTEXT"
+      - name: KAFKA_INTER_BROKER_LISTENER_NAME
+        value: "INTERNAL"
+      - name: KAFKA_ZOOKEEPER_CONNECT
+        value: "localhost:2181"
+      - name: KAFKA_AUTO_CREATE_TOPICS_ENABLE
+        value: "false"
+      - name: KAFKA_DELETE_TOPIC_ENABLE
+        value: "true"
+      - name: KAFKA_BROKER_ID
+        value: "0"
+application:
+  env:
+    - name: SPRING_PROFILES_ACTIVE
+      value: review

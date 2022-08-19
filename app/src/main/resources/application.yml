@@ -1,5 +1,5 @@
 server:
-  port: 8080
+  port: 8081
 management:
   port: 7979
 jetty:
@@ -25,6 +25,12 @@ spring:
       time-between-eviction-runs-millis: 5000
       min-evictable-idle-time-millis: 60000
       connection-properties: socketTimeout=10;connectTimeout=10;loginTimeout=5
+  liquibase:
+    enabled: true
+    url: ${spring.datasource.url}
+    user: ${spring.datasource.username}
+    password: ${spring.datasource.password}
+    change-log: classpath:/db/changelog-master.xml
 
 nakadi:
   admin.default:
@@ -60,7 +66,7 @@ nakadi:
     min.insync.replicas: 1
     retries: 5
     request.timeout.ms: 30000
-    instanceType: t2.large
+    instanceType: m5.large
     poll.timeoutMs: 100
     send.timeoutMs: 5000
     batch.size: 5242880
@@ -160,8 +166,8 @@ spring:
     activate:
       on-profile: dev
   datasource:
-    url: jdbc:postgresql://sharedaurorapsql-epdcs-dev-use1.cluster-chxkh4p9th7p.us-east-1.rds.amazonaws.com:5432/nakadi
-    username: nakadi_user
+    url: jdbc:postgresql://sharedaurorapsql-epdcs-dev-use1.cluster-chxkh4p9th7p.us-east-1.rds.amazonaws.com:5432/event_hub
+    username: event_hub_user
 
 nakadi:
   topic:
@@ -211,11 +217,13 @@ spring:
   config:
     activate:
       on-profile: test
+  liquibase:
+    enabled : false
 ---
 spring:
   config:
     activate:
-      on-profile: acceptanceTest
+      on-profile: review
 
 nakadi:
   eventType.deletableSubscription:

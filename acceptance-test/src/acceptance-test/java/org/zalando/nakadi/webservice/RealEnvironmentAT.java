@@ -20,7 +20,7 @@ public abstract class RealEnvironmentAT {
                 .orElse(RestAssured.DEFAULT_URI);
 
         RestAssured.port = Integer.parseInt(ofNullable(System.getenv("NAKADI_PORT"))
-                .orElse(Integer.toString(RestAssured.DEFAULT_PORT)));
+                .orElse("8081"));
     }
 
     protected RequestSpecification requestSpec() {
