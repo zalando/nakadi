@@ -43,7 +43,7 @@ public abstract class BaseAT {
 
         // Get configs from environment variables or else assign default values
         String dbUrl = System.getenv("POSTGRES_URL");
-        POSTGRES_URL = dbUrl != null ? dbUrl : "jdbc:postgresql://localhost:5431/local_nakadi_db";
+        POSTGRES_URL = dbUrl != null ? dbUrl : "jdbc:postgresql://localhost:5432/local_nakadi_db";
         String user = System.getenv("POSTGRES_USER");
         POSTGRES_USER = user != null ? user : "nakadi";
         String pwd = System.getenv("POSTGRES_PWD");
