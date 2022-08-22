@@ -29,8 +29,8 @@ public class TestConfigurationContext {
 
     try (FileReader automationConfiguration = new FileReader(automationConfigFile.getFile())) {
       configurationContext = yaml.load(automationConfiguration);
-      String environmentName = System.getProperty("test.env");
-      String url = System.getProperty("test.url");
+      String environmentName = System.getenv("TEST_ENV");
+      String url = System.getenv("NAKADI_BASE_URL");
       Configuration configuration = configurationContext.environments.get(environmentName);
 
       if (Objects.isNull(configuration) || (environmentName.equalsIgnoreCase("review") && url.isBlank())) {
