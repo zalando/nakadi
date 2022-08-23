@@ -200,7 +200,7 @@ spring:
     activate:
       on-profile: qa
   datasource:
-    url: sharedaurorapsql-epdcs-qa-use1.cluster-chxkh4p9th7p.us-east-1.rds.amazonaws.com
+    url: jdbc:postgresql://sharedaurorapsql-epdcs-qa-use1.cluster-chxkh4p9th7p.us-east-1.rds.amazonaws.com/event_hub
     username: event_hub_user
 
 nakadi:
