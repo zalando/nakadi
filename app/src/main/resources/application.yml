@@ -82,7 +82,7 @@ nakadi:
     max.block.ms: 5000 # kafka default 60000
     security.protocol: PLAINTEXT
     sasl.mechanism: PLAIN
-    sasl.jaas.config: software.amazon.msk.auth.iam.IAMLoginModule required awsProfileName="tc-dev";
+    sasl.jaas.config: software.amazon.msk.auth.iam.IAMLoginModule required;
     sasl.client.callback.handler.class: software.amazon.msk.auth.iam.IAMClientCallbackHandler
   zookeeper:
     connectionString: zookeeper://localhost:2181
@@ -178,7 +178,7 @@ nakadi:
     min.insync.replicas: 2
     security.protocol: SASL_SSL
     sasl.mechanism: AWS_MSK_IAM
-    sasl.jaas.config: software.amazon.msk.auth.iam.IAMLoginModule required awsProfileName="tc-dev";
+    sasl.jaas.config: software.amazon.msk.auth.iam.IAMLoginModule required;
     sasl.client.callback.handler.class: software.amazon.msk.auth.iam.IAMClientCallbackHandler
   zookeeper:
     connectionString: zookeeper://z-3.epdcs-nakadi-msk-kafk.uwqhdz.c23.kafka.us-east-1.amazonaws.com:2181,z-2.epdcs-nakadi-msk-kafk.uwqhdz.c23.kafka.us-east-1.amazonaws.com:2181,z-1.epdcs-nakadi-msk-kafk.uwqhdz.c23.kafka.us-east-1.amazonaws.com:2181
@@ -212,7 +212,7 @@ nakadi:
     min.insync.replicas: 2
     security.protocol: SASL_SSL
     sasl.mechanism: AWS_MSK_IAM
-    sasl.jaas.config: software.amazon.msk.auth.iam.IAMLoginModule required awsProfileName="tc-dev";
+    sasl.jaas.config: software.amazon.msk.auth.iam.IAMLoginModule required;
     sasl.client.callback.handler.class: software.amazon.msk.auth.iam.IAMClientCallbackHandler
   zookeeper:
     connectionString: zookeeper://z-3.epdcs-nakadi-msk-kafk.uwqhdz.c23.kafka.us-east-1.amazonaws.com:2181,z-2.epdcs-nakadi-msk-kafk.uwqhdz.c23.kafka.us-east-1.amazonaws.com:2181,z-1.epdcs-nakadi-msk-kafk.uwqhdz.c23.kafka.us-east-1.amazonaws.com:2181
