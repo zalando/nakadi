@@ -51,9 +51,7 @@ sidecars:
     image: zookeeper:3.6
     imagePullPolicy: IfNotPresent
     ports:
-      - name: zookeeperintport
-        containerPort: 2181
-      - name: zookeeperextport
+      - name: zookeeperport
         containerPort: 2181
   - name: kafka
     image: "registry.opensource.zalan.do/aruha/nakadi-kafka:2.7.1"
