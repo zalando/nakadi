@@ -198,6 +198,39 @@ nakadi:
 spring:
   config:
     activate:
+      on-profile: qa
+  datasource:
+    url: sharedaurorapsql-epdcs-qa-use1.cluster-chxkh4p9th7p.us-east-1.rds.amazonaws.com
+    username: event_hub_user
+
+nakadi:
+  topic:
+    default:
+      replicaFactor: 2
+  kafka:
+    bootstrap.servers: b-2.epdcs-nakadi-msk-kafk.uwqhdz.c23.kafka.us-east-1.amazonaws.com:9098,b-3.epdcs-nakadi-msk-kafk.uwqhdz.c23.kafka.us-east-1.amazonaws.com:9098,b-1.epdcs-nakadi-msk-kafk.uwqhdz.c23.kafka.us-east-1.amazonaws.com:9098
+    min.insync.replicas: 2
+    security.protocol: SASL_SSL
+    sasl.mechanism: AWS_MSK_IAM
+    sasl.jaas.config: software.amazon.msk.auth.iam.IAMLoginModule required awsProfileName="tc-dev";
+    sasl.client.callback.handler.class: software.amazon.msk.auth.iam.IAMClientCallbackHandler
+  zookeeper:
+    connectionString: zookeeper://z-3.epdcs-nakadi-msk-kafk.uwqhdz.c23.kafka.us-east-1.amazonaws.com:2181,z-2.epdcs-nakadi-msk-kafk.uwqhdz.c23.kafka.us-east-1.amazonaws.com:2181,z-1.epdcs-nakadi-msk-kafk.uwqhdz.c23.kafka.us-east-1.amazonaws.com:2181
+  features.defaultFeatures:
+    DISABLE_EVENT_TYPE_CREATION: false
+    DISABLE_EVENT_TYPE_DELETION: false
+    DISABLE_SUBSCRIPTION_CREATION: false
+    REMOTE_TOKENINFO: true
+    KPI_COLLECTION: true
+    DISABLE_DB_WRITE_OPERATIONS: false
+    AUDIT_LOG_COLLECTION: true
+    EVENT_OWNER_SELECTOR_AUTHZ: false
+    ACCESS_LOG_ENABLED: true
+
+---
+spring:
+  config:
+    activate:
       on-profile: local
 
 nakadi.features.defaultFeatures:

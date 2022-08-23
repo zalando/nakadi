@@ -1,14 +1,14 @@
 --- !<Application>
-id: "a6841750-21e9-11ed-861d-0242ac120002"
+id: "077a600f-29ce-443a-92b4-6d8656ae11ff"
 modelType: "Application"
 appCode: "eventhub"
-atlasId: ""
+atlasId: "APP-9793"
 name: "EdPub Event Hub"
 appType: "Built"
 description: "Event Hub for manage events"
 state: "Active"
 hostedBy: "aws"
 functionalArea: "technology-academic-professional"
-systemId: "077a600f-29ce-443a-92b4-6d8656ae11ff"
+systemId: "9c03c346-31c8-11ec-8d3d-0242ac130003"
 shortCode: "eventhub"
 isSystem: false
