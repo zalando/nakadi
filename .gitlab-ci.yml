@@ -47,3 +47,20 @@ dev-integrationtest:
   extends: .dev-integration-test
   script:
     - ./gradlew :acceptance-test:acceptanceTest
+
+qa:
+  variables:
+    KUBE_NAMESPACE: epdcs-qa
+    K8S_SECRET_SPRING_PROFILES_ACTIVE: qa
+    KUBE_INGRESS_BASE_DOMAIN: qa.tc.wiley.host
+    HELM_UPGRADE_VALUES_FILE: .gitlab/auto-deploy-values-qa.yaml
+
+qa-integrationtest:
+  when: manual
+  image: artifactory.aws.wiley.com/docker/openjdk:11-jdk
+  variables:
+    APP_ENVIRONMENT: qa
+  allow_failure: true
+  extends: .qa-integration-test
+  script:
+    - ./gradlew :acceptance-test:acceptanceTest
