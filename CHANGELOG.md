@@ -1,3 +1,10 @@
+## [1.0.4](https://github.com/wiley/nakadi/compare/v1.0.3...v1.0.4) (2022-08-23)
+
+
+### Bug Fixes
+
+* remove awsProfileName tc-dev ([44093e4](https://github.com/wiley/nakadi/commit/44093e4f260486cfe2c704520fecf943ae8bf66c))
+
 ## [1.0.3](https://github.com/wiley/nakadi/compare/v1.0.2...v1.0.3) (2022-08-23)
 
 
