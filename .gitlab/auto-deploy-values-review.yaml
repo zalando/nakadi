@@ -43,13 +43,17 @@ sidecars:
       - name: POSTGRES_DB
         value: local_nakadi_db
     ports:
-      - name: postgresport
+      - name: postgresintport
+        containerPort: 5432
+      - name: postgresextport
         containerPort: 5432
   - name: zookeeper
     image: zookeeper:3.6
     imagePullPolicy: IfNotPresent
     ports:
-      - name: zookeeperport
+      - name: zookeeperintport
+        containerPort: 2181
+      - name: zookeeperextport
         containerPort: 2181
   - name: kafka
     image: "registry.opensource.zalan.do/aruha/nakadi-kafka:2.7.1"
