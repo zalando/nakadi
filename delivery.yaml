@@ -39,7 +39,6 @@ pipeline:
       - desc: Build and push to repo
         cmd: |
           ./gradlew clean app:bootJar
-          BASE_IMAGE="container-registry.zalando.net/library/eclipse-temurin-11-jre:latest"
           MULTI_ARCH_IMAGE="container-registry-test.zalando.net/aruha/nakadi-oss:${CDP_BUILD_VERSION}"
           IMAGE="registry-write.opensource.zalan.do/aruha/nakadi-oss:${CDP_BUILD_VERSION}"
           if [ "$CDP_PULL_REQUEST_NUMBER" ]; then
@@ -58,10 +57,9 @@ pipeline:
           docker buildx build \
             --platform linux/amd64,linux/arm64 \
             -t ${MULTI_ARCH_IMAGE} \
-            --build-arg BASE_IMAGE=${BASE_IMAGE} \
             --push .
           cdp-promote-image ${MULTI_ARCH_IMAGE}
 
           #echo "Building oss image"
-          docker build -t ${IMAGE} --build-arg BASE_IMAGE=${BASE_IMAGE} .
+          docker build -t ${IMAGE} .
           docker push ${IMAGE}
