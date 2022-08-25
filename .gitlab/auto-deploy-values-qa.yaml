@@ -8,13 +8,13 @@ ingress:
   tls:
     enabled: false
 livenessProbe:
-  path: "/health/liveness"
+  path: "/health"
   initialDelaySeconds: 120
   timeoutSeconds: 15
   scheme: "HTTP"
   probeType: "httpGet"
 readinessProbe:
-  path: "/health/readiness"
+  path: "/health"
   initialDelaySeconds: 30
   periodSeconds: 15
   timeoutSeconds: 3
