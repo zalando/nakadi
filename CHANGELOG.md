@@ -1,3 +1,10 @@
+## [1.0.6](https://github.com/wiley/nakadi/compare/v1.0.5...v1.0.6) (2022-08-25)
+
+
+### Bug Fixes
+
+* revert changes on health endpoint path for livenessProbe and readinessProbe ([6b63063](https://github.com/wiley/nakadi/commit/6b630637cf3fb4175c41a163f587cb829cd470da))
+
 ## [1.0.5](https://github.com/wiley/nakadi/compare/v1.0.4...v1.0.5) (2022-08-25)
 
 
