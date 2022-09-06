@@ -3,19 +3,20 @@ service:
   externalPort: 5000
 ingress:
   enabled: true
+  ingressClass: "nginx-external"
   path: "/"
   tls:
     enabled: false
 livenessProbe:
   path: "/health"
   initialDelaySeconds: 120
-  timeoutSeconds: 3
+  timeoutSeconds: 15
   scheme: "HTTP"
   probeType: "httpGet"
 readinessProbe:
   path: "/health"
   initialDelaySeconds: 30
-  periodSeconds: 10
+  periodSeconds: 15
   timeoutSeconds: 3
   failureThreshold: 10
   scheme: "HTTP"
