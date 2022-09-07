@@ -26,7 +26,7 @@ public abstract class BaseAT {
     public static final String POSTGRES_USER;
     public static final String POSTGRES_PWD;
 
-    protected static final int PORT;
+    protected static final int PORT = 8081;
     public static final String URL;
 
     protected static final String ZOOKEEPER_URL;
@@ -54,9 +54,6 @@ public abstract class BaseAT {
         MAPPER = (new JsonConfig()).jacksonObjectMapper();
         STORAGE_DB_REPOSITORY = new StorageDbRepository(jdbcTemplate, MAPPER);
         TIMELINE_REPOSITORY = new TimelineDbRepository(jdbcTemplate, MAPPER);
-
-        String port = System.getenv("NAKADI_PORT");
-        PORT = (port != null) ? Integer.parseInt(port) : 8081;
 
         String baseUrl = System.getenv("NAKADI_BASE_URL");
         URL = baseUrl != null ? baseUrl : "http://localhost" + ":" + PORT;
