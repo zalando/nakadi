@@ -29,7 +29,7 @@ review-integrationtest:
   variables:
     ENVIRONMENT_HOST: environment_url.txt
   script:
-    - "TEST_ENV=review NAKADI_BASE_URL=$DYNAMIC_ENVIRONMENT_URL NAKADI_PORT=8081 ./gradlew :acceptance-test:acceptanceTest"
+    - "TEST_ENV=review NAKADI_BASE_URL=$DYNAMIC_ENVIRONMENT_URL ./gradlew :acceptance-test:acceptanceTest"
 
 dev:
   variables:
