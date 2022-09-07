@@ -152,3 +152,19 @@ bootJar {
     }
     mainClassName = 'org.zalando.nakadi.Application'
 }
+
+task copyDatabaseSchemas() {
+
+//    copy {
+//        from "${rootProject.projectDir}/database/nakadi/10_data"
+//        into '/src/main/resources/database/nakadi'
+//    }
+
+    copy {
+        from "/../database/nakadi/10_data"
+        into '/src/main/resources/database/nakadi'
+    }
+
+}
+
+build.dependsOn copyDatabaseSchemas

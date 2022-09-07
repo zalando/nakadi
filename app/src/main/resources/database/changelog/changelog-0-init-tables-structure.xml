@@ -1,0 +1,64 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog
+        xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+        xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+        xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+                      http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-4.3.xsd">
+
+    <changeSet id="CL0-0" author="Dushan">
+        <sqlFile dbms="postgresql"
+                 path="classpath:/database/nakadi/00_create_schema.sql"
+                 relativeToChangelogFile="false"
+                 splitStatements="false"
+                 stripComments="true"/>
+    </changeSet>
+
+    <changeSet id="CL0-1" author="Dushan">
+        <sqlFile dbms="postgresql"
+                 path="classpath:/database/nakadi/04_tables/01_event_type.sql"
+                 relativeToChangelogFile="false"
+                 splitStatements="false"
+                 stripComments="true"/>
+    </changeSet>
+
+    <changeSet id="CL0-2" author="Dushan">
+        <sqlFile dbms="postgresql"
+                 path="classpath:/database/nakadi/04_tables/02_subscription.sql"
+                 relativeToChangelogFile="false"
+                 splitStatements="false"
+                 stripComments="true"/>
+    </changeSet>
+
+    <changeSet id="CL0-3" author="Dushan">
+        <sqlFile dbms="postgresql"
+                 path="classpath:/database/nakadi/04_tables/03_event_type_schema.sql"
+                 relativeToChangelogFile="false"
+                 splitStatements="false"
+                 stripComments="true"/>
+    </changeSet>
+
+    <changeSet id="CL0-4" author="Dushan">
+        <sqlFile dbms="postgresql"
+                 path="classpath:/database/nakadi/04_tables/04_storage.sql"
+                 relativeToChangelogFile="false"
+                 splitStatements="false"
+                 stripComments="true"/>
+    </changeSet>
+
+    <changeSet id="CL0-5" author="Dushan">
+        <sqlFile dbms="postgresql"
+                 path="classpath:/database/nakadi/04_tables/05_timeline.sql"
+                 relativeToChangelogFile="false"
+                 splitStatements="false"
+                 stripComments="true"/>
+    </changeSet>
+
+    <changeSet id="CL0-6" author="Dushan">
+        <sqlFile dbms="postgresql"
+                 path="classpath:/database/nakadi/04_tables/06_authorization.sql"
+                 relativeToChangelogFile="false"
+                 splitStatements="false"
+                 stripComments="true"/>
+    </changeSet>
+
+</databaseChangeLog>
