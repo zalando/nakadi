@@ -470,10 +470,18 @@ public class EventStreamReadingAT extends BaseAT {
         final int eventCount = 2 * (10000 / evt.length());
         NakadiTestUtils.publishEvents(loadEt.getName(), eventCount, i -> evt);
 
+        // Append port to baseURI only for local environment.
+        String envUrl;
+        if(System.getenv("TEST_ENV").equals("local")) {
+            envUrl = RestAssured.baseURI + ":" + RestAssured.port;
+        } else {
+            envUrl = RestAssured.baseURI;
+        }
+
         // Configure streaming so it will:(more than 10s and batch_limit
         // - definitely wait for more than test timeout (10s)
         // - collect batch, which size is greater than events published to this event type
-        final String url = RestAssured.baseURI + ":" + RestAssured.port + createStreamEndpointUrl(loadEt.getName())
+        final String url = envUrl + createStreamEndpointUrl(loadEt.getName())
                 + "?batch_limit=" + (10 * eventCount)
                 + "&stream_limit=" + (10 * eventCount)
                 + "&batch_flush_timeout=11"
