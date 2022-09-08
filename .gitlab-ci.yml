@@ -24,6 +24,7 @@ review:
   after_script:
     - echo "$APP_NAME-$CI_ENVIRONMENT_SLUG"
     - echo "HOST_NAME=$(kubectl get pods -l app=$APP_NAME-$CI_ENVIRONMENT_SLUG --template '{{(index .items 0).status.podIP}}' -n epdcs-review)" >> deploy.env
+    - echo "$HOST_NAME"
 
 
 review-integrationtest:
