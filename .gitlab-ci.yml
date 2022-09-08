@@ -23,7 +23,7 @@ review:
     HELM_UPGRADE_VALUES_FILE: .gitlab/auto-deploy-values-review.yaml
   after_script:
     - echo "${RELEASE_NAME}"
-    - echo "HOST_NAME=$(kubectl get pods -o=jsonpath='{range .items[?(@.metadata.labels.release==$RELEASE_NAME)]}{.status.podIP}' -n epdcs-review)" >> deploy.env
+    - echo "HOST_NAME=$(kubectl get pods -l app=$RELEASE_NAME --template '{{(index .items 0).status.podIP}}' -n epdcs-review)' -n epdcs-review)" >> deploy.env
 
 
 review-integrationtest:
