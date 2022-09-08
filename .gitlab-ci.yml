@@ -22,7 +22,7 @@ review:
     K8S_SECRET_SPRING_PROFILES_ACTIVE: review
     HELM_UPGRADE_VALUES_FILE: .gitlab/auto-deploy-values-review.yaml
   after_script:
-    - echo "${RELEASE_NAME}"
+    - echo $RELEASE_NAME
     - echo "HOST_NAME=$(kubectl get pods -l app=$RELEASE_NAME --template '{{(index .items 0).status.podIP}}' -n epdcs-review)' -n epdcs-review)" >> deploy.env
 
 
@@ -33,7 +33,7 @@ review-integrationtest:
   variables:
     ENVIRONMENT_HOST: environment_url.txt
   script:
-    - echo "${HOST_NAME}"
+    - echo $HOST_NAME
     - "TEST_ENV=review NAKADI_BASE_URL=$DYNAMIC_ENVIRONMENT_URL POSTGRES_URL=jdbc:postgresql://$HOST_NAME:5432/local_nakadi_db ZOOKEEPER_URL=$HOST_NAME:2181 KAFKA_URL=$HOST_NAME:29092 ./gradlew :acceptance-test:acceptanceTest"
 
 dev:
