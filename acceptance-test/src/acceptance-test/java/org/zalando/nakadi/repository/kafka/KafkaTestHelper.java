@@ -18,6 +18,7 @@ import java.util.Optional;
 import java.util.Properties;
 import java.util.concurrent.ExecutionException;
 import java.util.stream.Collectors;
+import org.zalando.nakadi.webservice.BaseAT;
 
 import static org.zalando.nakadi.repository.kafka.KafkaCursor.toKafkaOffset;
 import static org.zalando.nakadi.repository.kafka.KafkaCursor.toNakadiOffset;
@@ -41,7 +42,7 @@ public class KafkaTestHelper {
 
     protected static Properties createKafkaProperties() {
         final Properties props = new Properties();
-        props.put("bootstrap.servers", "localhost:29092");
+        props.put("bootstrap.servers", BaseAT.KAFKA_URL);
         props.put("value.serializer", "org.apache.kafka.common.serialization.ByteArraySerializer");
         props.put("key.serializer", "org.apache.kafka.common.serialization.ByteArraySerializer");
         props.put("value.deserializer", "org.apache.kafka.common.serialization.ByteArrayDeserializer");

@@ -31,7 +31,7 @@ public abstract class BaseAT {
 
     protected static final String ZOOKEEPER_URL;
     protected static final ZookeeperConnection ZOOKEEPER_CONNECTION;
-    protected static final String KAFKA_URL;
+    public static final String KAFKA_URL;
 
     protected static final ObjectMapper MAPPER;
     protected static final StorageDbRepository STORAGE_DB_REPOSITORY;
