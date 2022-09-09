@@ -23,8 +23,8 @@ review:
     HELM_UPGRADE_VALUES_FILE: .gitlab/auto-deploy-values-review.yaml
   after_script:
     - echo "$APP_NAME-$CI_ENVIRONMENT_SLUG"
-    - echo "HOST_NAME=$(kubectl get pods -l app=$APP_NAME-$CI_ENVIRONMENT_SLUG --template '{{(index .items 0).status.podIP}}' -n epdcs-review)" >> deploy.env
-    - echo "$HOST_NAME"
+    - echo "HOST_IP=$(kubectl get pods -l app=$APP_NAME-$CI_ENVIRONMENT_SLUG --sort-by=.metadata.creationTimestamp -o jsonpath='{.items[-1:]..status.podIP}' -n epdcs-review)" >> deploy.env
+    - echo "$HOST_IP"
 
 
 review-integrationtest:
@@ -34,8 +34,8 @@ review-integrationtest:
   variables:
     ENVIRONMENT_HOST: environment_url.txt
   script:
-    - echo "$HOST_NAME"
-    - "TEST_ENV=review NAKADI_BASE_URL=$DYNAMIC_ENVIRONMENT_URL POSTGRES_URL=jdbc:postgresql://$HOST_NAME:5432/local_nakadi_db ZOOKEEPER_URL=$HOST_NAME:2181 KAFKA_URL=$HOST_NAME:29092 ./gradlew :acceptance-test:acceptanceTest"
+    - echo "$HOST_IP"
+    - "TEST_ENV=review NAKADI_BASE_URL=$DYNAMIC_ENVIRONMENT_URL POSTGRES_URL=jdbc:postgresql://$HOST_IP:5432/local_nakadi_db ZOOKEEPER_URL=$HOST_IP:2181 KAFKA_URL=$HOST_IP:29092 ./gradlew :acceptance-test:acceptanceTest"
 
 dev:
   variables:
