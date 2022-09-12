@@ -24,7 +24,6 @@ review:
   after_script:
     - echo "$APP_NAME-$CI_ENVIRONMENT_SLUG"
     - echo "HOST_IP=$(kubectl get pods -l app=$APP_NAME-$CI_ENVIRONMENT_SLUG --sort-by=.metadata.creationTimestamp -o jsonpath='{.items[-1:]..status.podIP}' -n epdcs-review)" >> deploy.env
-    - echo "$HOST_IP"
 
 
 review-integrationtest:
@@ -35,7 +34,7 @@ review-integrationtest:
     ENVIRONMENT_HOST: environment_url.txt
   script:
     - echo "$HOST_IP"
-    - "TEST_ENV=review NAKADI_BASE_URL=$DYNAMIC_ENVIRONMENT_URL POSTGRES_URL=jdbc:postgresql://$HOST_IP:5432/local_nakadi_db ZOOKEEPER_URL=$HOST_IP:2181 KAFKA_URL=$HOST_IP:29092 ./gradlew :acceptance-test:acceptanceTest"
+    - "TEST_ENV=review NAKADI_BASE_URL=$DYNAMIC_ENVIRONMENT_URL POSTGRES_URL=jdbc:postgresql://$HOST_IP:5432/local_nakadi_db ZOOKEEPER_URL=$HOST_IP:2181 KAFKA_URL=$HOST_IP:9092 ./gradlew :acceptance-test:acceptanceTest"
 
 dev:
   variables:
