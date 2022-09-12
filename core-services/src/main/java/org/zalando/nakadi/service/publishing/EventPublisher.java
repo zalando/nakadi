@@ -1,6 +1,5 @@
 package org.zalando.nakadi.service.publishing;
 
-import com.google.common.collect.ImmutableMap;
 import io.opentracing.Span;
 import io.opentracing.Tracer;
 import io.opentracing.tag.Tags;
