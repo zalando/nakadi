@@ -160,6 +160,8 @@ task copyDatabaseSchemas() {
 //        into '/src/main/resources/database/nakadi'
 //    }
 
+    println "testing for the root project ${rootProject.projectDir}"
+
     copy {
         from "/../database/nakadi/10_data"
         into '/src/main/resources/database/nakadi'
