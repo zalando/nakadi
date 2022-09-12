@@ -155,16 +155,9 @@ bootJar {
 
 task copyDatabaseSchemas() {
 
-//    copy {
-//        from "${rootProject.projectDir}/database/nakadi/10_data"
-//        into '/src/main/resources/database/nakadi'
-//    }
-
-    println "testing for the root project ${rootProject.projectDir}"
-
     copy {
-        from "/../database/nakadi/10_data"
-        into '/src/main/resources/database/nakadi'
+        from "${rootProject.projectDir}/database/nakadi/10_data"
+        into "${rootProject.projectDir}/app/src/main/resources/database/nakadi"
     }
 
 }
