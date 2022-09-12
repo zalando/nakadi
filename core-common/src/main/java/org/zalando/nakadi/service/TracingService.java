@@ -23,6 +23,7 @@ public class TracingService {
 
     private static final long BUCKET_5_KB = 5000L;
     private static final long BUCKET_50_KB = 50000L;
+    public static final String ERROR_DESCRIPTION = "error.description";
 
     public static String getSLOBucketName(final long batchSize) {
         if (batchSize > BUCKET_50_KB) {
@@ -94,7 +95,7 @@ public class TracingService {
 
     public static void logError(final String error) {
         if (error != null) {
-            getActiveSpan().log(ImmutableMap.of("error.description", error));
+            getActiveSpan().log(ImmutableMap.of(ERROR_DESCRIPTION, error));
         }
     }
 
@@ -103,10 +104,11 @@ public class TracingService {
     }
 
     public static void logError(final Span span, final Exception ex) {
+        setErrorFlag(span);
         if (ex.getMessage() != null) {
-            span.log(ImmutableMap.of("error.description", ex.getMessage()));
+            span.log(ImmutableMap.of(ERROR_DESCRIPTION, ex.getMessage()));
         } else {
-            span.log(ImmutableMap.of("error.description", ex.toString()));
+            span.log(ImmutableMap.of(ERROR_DESCRIPTION, ex.toString()));
         }
     }
 

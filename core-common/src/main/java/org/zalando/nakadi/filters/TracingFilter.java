@@ -105,7 +105,6 @@ public class TracingFilter extends OncePerRequestFilter {
         try (Closeable ignored = TracingService.activateSpan(span)) {
             filterChain.doFilter(request, response);
         } catch (final Exception ex) {
-            TracingService.setErrorFlag(span);
             TracingService.logError(span, ex);
             throw ex;
         } finally {
