@@ -43,9 +43,7 @@ sidecars:
       - name: POSTGRES_DB
         value: local_nakadi_db
     ports:
-      - name: postgresintport
-        containerPort: 5432
-      - name: postgresextport
+      - name: postgresport
         containerPort: 5432
   - name: zookeeper
     image: zookeeper:3.6
