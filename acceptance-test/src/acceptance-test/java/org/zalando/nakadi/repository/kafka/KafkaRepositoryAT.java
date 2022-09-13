@@ -74,9 +74,12 @@ public class KafkaRepositoryAT extends BaseAT {
     private static final String DEFAULT_EVENT_TYPE_DELETABLE_SUBSCRIPTION_CONSUMER_GROUP = "nakadi_to_s3";
     private static final long DEFAULT_CURATOR_MAX_LIFETIME_MS = 1000;
     private static final long DEFAULT_CURATOR_ROTATION_MS = 10000;
-    private static final String SECURITY_PROTOCOL = "PLAINTEXT";
-    private static final String SASL_MECHANISM = "PLAIN";
-    private static final int MIN_INSYNC_REPLICAS = 1;
+    private static final String BOOTSTRAP_SERVERS = configs.getKafka().getBootstrapServers();
+    private static final String SECURITY_PROTOCOL = configs.getKafka().getSecurityProtocol();
+    private static final String SASL_MECHANISM = configs.getKafka().getSaslMechanism();
+    private static final int MIN_INSYNC_REPLICAS = configs.getKafka().getMinInSyncReplicas();
+    private static final String JAAS_CONFIG = configs.getKafka().getSaslJaasConfig();
+    private static final String CLIENT_CALLBACK_CLASS = configs.getKafka().getSaslClientCallbackHandlerClass();
 
     private NakadiSettings nakadiSettings;
     private KafkaSettings kafkaSettings;
@@ -111,8 +114,8 @@ public class KafkaRepositoryAT extends BaseAT {
         kafkaSettings = new KafkaSettings(KAFKA_RETRIES, KAFKA_REQUEST_TIMEOUT, KAFKA_BATCH_SIZE, KAFKA_BUFFER_MEMORY,
                 KAFKA_LINGER_MS, KAFKA_MAX_IN_FLIGHT_REQUESTS_PER_CONNECTION, KAFKA_ENABLE_AUTO_COMMIT,
                 KAFKA_MAX_REQUEST_SIZE, KAFKA_DELIVERY_TIMEOUT, KAFKA_MAX_BLOCK_TIMEOUT, "",
-                KAFKA_COMPRESSION_TYPE, SECURITY_PROTOCOL, SASL_MECHANISM, "", "", "",
-                MIN_INSYNC_REPLICAS);
+                KAFKA_COMPRESSION_TYPE, SECURITY_PROTOCOL, SASL_MECHANISM, JAAS_CONFIG ,CLIENT_CALLBACK_CLASS,
+                BOOTSTRAP_SERVERS, MIN_INSYNC_REPLICAS);
         kafkaHelper = new KafkaTestHelper(KAFKA_URL);
         defaultTopicConfig = new NakadiTopicConfig(DEFAULT_PARTITION_COUNT, DEFAULT_CLEANUP_POLICY,
                 Optional.of(DEFAULT_RETENTION_TIME));
