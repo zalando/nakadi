@@ -94,7 +94,6 @@ public class TracingService {
     }
 
     public static void logError(final String error) {
-        setErrorFlag();
         if (error != null) {
             getActiveSpan().log(ImmutableMap.of(ERROR_DESCRIPTION, error));
         }
@@ -104,13 +103,7 @@ public class TracingService {
         logError(getActiveSpan(), ex);
     }
 
-    public static void logAsError(final Map<String, String> fields) {
-        setErrorFlag();
-        log(fields);
-    }
-
     public static void logError(final Span span, final Exception ex) {
-        setErrorFlag(span);
         span.log(ImmutableMap.of(ERROR_DESCRIPTION, ex.getMessage() != null ? ex.getMessage() : ex.toString()));
     }
 
