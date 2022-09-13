@@ -38,6 +38,10 @@ externalSecrets:
     - secretKey: SPRING_DATASOURCE_PASSWORD
       remoteRef:
         key: sharedaurorapsql-epdcs-qa-event_hub_user
+prometheusOperator:
+  serviceMonitor:
+    enabled: true
+    path: "/prometheus"
 application:
   env:
     - name: SPRING_PROFILES_ACTIVE
