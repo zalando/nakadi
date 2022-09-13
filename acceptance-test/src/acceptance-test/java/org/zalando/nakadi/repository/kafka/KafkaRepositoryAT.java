@@ -125,7 +125,7 @@ public class KafkaRepositoryAT extends BaseAT {
         kafkaTopicRepository = createKafkaTopicRepository();
     }
 
-    @Test(timeout = 10000)
+    @Test(timeout = 60000)
     @SuppressWarnings("unchecked")
     public void whenCreateTopicThenTopicIsCreated() {
         // ACT //
@@ -160,7 +160,7 @@ public class KafkaRepositoryAT extends BaseAT {
                         .withWaitBetweenEachTry(500));
     }
 
-    @Test(timeout = 10000)
+    @Test(timeout = 60000)
     @SuppressWarnings("unchecked")
     public void whenCreateCompactedTopicThenTopicIsCreated() {
         // ACT //
@@ -201,7 +201,7 @@ public class KafkaRepositoryAT extends BaseAT {
                         .withWaitBetweenEachTry(500));
     }
 
-    @Test(timeout = 20000)
+    @Test(timeout = 60000)
     @SuppressWarnings("unchecked")
     public void whenDeleteTopicThenTopicIsDeleted() {
 
@@ -228,7 +228,7 @@ public class KafkaRepositoryAT extends BaseAT {
                         .withWaitBetweenEachTry(500));
     }
 
-    @Test(timeout = 10000)
+    @Test
     public void whenBulkSendSuccessfullyThenUpdateBatchItemStatus() {
         final List<BatchItem> items = new ArrayList<>();
         final String topicId = TestUtils.randomValidEventTypeName();
@@ -247,7 +247,7 @@ public class KafkaRepositoryAT extends BaseAT {
         }
     }
 
-    @Test(timeout = 10000)
+    @Test
     public void whenSendBatchWithItemHeadersThenCheckBatchStatus() {
         final List<BatchItem> items = new ArrayList<>();
         final String topicId = TestUtils.randomValidEventTypeName();

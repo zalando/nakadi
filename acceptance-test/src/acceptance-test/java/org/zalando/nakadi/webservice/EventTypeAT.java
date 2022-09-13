@@ -399,7 +399,7 @@ public class EventTypeAT extends BaseAT {
                 .statusCode(HttpStatus.SC_UNPROCESSABLE_ENTITY);
     }
 
-    @Test(timeout = 10000)
+    @Test(timeout = 60000)
     public void compactedEventTypeJourney() throws IOException, ExecutionException, InterruptedException {
         // create event type with 'compact' cleanup_policy
         final EventType eventType = EventTypeTestBuilder.builder()

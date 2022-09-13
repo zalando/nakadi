@@ -84,7 +84,7 @@ public class EventStreamReadingAT extends BaseAT {
         xNakadiCursors = jsonMapper.writeValueAsString(initialCursors);
     }
 
-    @Test(timeout = 10000)
+    @Test(timeout = 60000)
     @SuppressWarnings("unchecked")
     public void whenPushFewEventsAndReadThenGetEventsInStream()
             throws ExecutionException, InterruptedException {
@@ -126,7 +126,7 @@ public class EventStreamReadingAT extends BaseAT {
         validateBatch(batchToCheck, TEST_PARTITION, expectedOffset, eventsPushed);
     }
 
-    @Test(timeout = 10000)
+    @Test(timeout = 60000)
     public void whenAcceptEncodingGzipReceiveCompressedStream()
             throws ExecutionException, InterruptedException {
 
@@ -150,7 +150,7 @@ public class EventStreamReadingAT extends BaseAT {
         response.then().header("Content-Encoding", "gzip");
     }
 
-    @Test(timeout = 10000)
+    @Test(timeout = 60000)
     @SuppressWarnings("unchecked")
     public void whenPushedAmountOfEventsMoreThanBatchSizeAndReadThenGetEventsInMultipleBatches()
             throws ExecutionException, InterruptedException {
@@ -203,7 +203,7 @@ public class EventStreamReadingAT extends BaseAT {
         validateBatch(batchesToCheck.get(1), TEST_PARTITION, expectedOffset2, eventsPushed - batchLimit);
     }
 
-    @Test(timeout = 10000)
+    @Test(timeout = 60000)
     @SuppressWarnings("unchecked")
     public void whenReadFromTheEndThenLatestOffsetsInStream() {
 
@@ -236,7 +236,7 @@ public class EventStreamReadingAT extends BaseAT {
         Assert.assertThat(offsets, Matchers.equalTo(Sets.newHashSet(initialCursors)));
     }
 
-    @Test(timeout = 10000)
+    @Test(timeout = 60000)
     @SuppressWarnings("unchecked")
     public void whenReachKeepAliveLimitThenStreamIsClosed() {
         // ACT //
@@ -258,7 +258,7 @@ public class EventStreamReadingAT extends BaseAT {
         batches.forEach(batch -> validateBatchStructure(batch, null));
     }
 
-    @Test(timeout = 5000)
+    @Test(timeout = 60000)
     public void whenGetEventsWithUnknownTopicThenTopicNotFound() {
         RestAssured.given()
                 .when()
@@ -271,7 +271,7 @@ public class EventStreamReadingAT extends BaseAT {
                 .body("detail", Matchers.equalTo("topic not found"));
     }
 
-    @Test(timeout = 5000)
+    @Test(timeout = 60000)
     public void whenStreamLimitLowerThanBatchLimitThenUnprocessableEntity() {
         RestAssured.given()
                 .param("batch_limit", "10")
@@ -286,7 +286,7 @@ public class EventStreamReadingAT extends BaseAT {
                 .body("detail", Matchers.equalTo("stream_limit can't be lower than batch_limit"));
     }
 
-    @Test(timeout = 5000)
+    @Test(timeout = 60000)
     public void whenStreamTimeoutLowerThanBatchTimeoutThenUnprocessableEntity() {
         RestAssured.given()
                 .param("batch_timeout", "10")
@@ -301,7 +301,7 @@ public class EventStreamReadingAT extends BaseAT {
                 .body("detail", Matchers.equalTo("stream_timeout can't be lower than batch_flush_timeout"));
     }
 
-    @Test(timeout = 5000)
+    @Test(timeout = 60000)
     public void whenIncorrectCursorsFormatThenBadRequest() {
         RestAssured.given()
                 .header(new Header("X-nakadi-cursors", "this_is_definitely_not_a_json"))
@@ -315,7 +315,7 @@ public class EventStreamReadingAT extends BaseAT {
                 .body("detail", Matchers.equalTo("incorrect syntax of X-nakadi-cursors header"));
     }
 
-    @Test(timeout = 5000)
+    @Test(timeout = 60000)
     public void whenInvalidCursorsThenPreconditionFailed() {
         RestAssured.given()
                 .header(new Header("X-nakadi-cursors", "[{\"partition\":\"very_wrong_partition\",\"offset\":\"3\"}]"))
@@ -329,7 +329,7 @@ public class EventStreamReadingAT extends BaseAT {
                 .body("detail", Matchers.equalTo("non existing partition very_wrong_partition"));
     }
 
-    @Test(timeout = 10000)
+    @Test(timeout = 60000)
     public void whenReadEventsForBlockedConsumerThen403() throws Exception {
         readEvents()
                 .then()
@@ -431,7 +431,7 @@ public class EventStreamReadingAT extends BaseAT {
         return future;
     }
 
-    @Test(timeout = 10000)
+    @Test(timeout = 60000)
     public void whenReadEventsConsumerIsBlocked() throws Exception {
         // blocking streaming client after 3 seconds
         new Thread(() -> {
