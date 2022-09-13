@@ -1,5 +1,6 @@
 package org.zalando.nakadi.service.publishing;
 
+import com.google.common.collect.ImmutableMap;
 import io.opentracing.Span;
 import io.opentracing.Tracer;
 import io.opentracing.tag.Tags;
@@ -258,8 +259,12 @@ public class EventPublisher {
                 } catch (final EventValidationException e) {
                     item.updateStatusAndDetail(EventPublishingStatus.FAILED, e.getMessage());
                     if (eventType.getCategory() != EventCategory.UNDEFINED) {
-                        TracingService.setTag("event.id", item.getEvent().getJSONObject("metadata").getString("eid"));
-                        TracingService.logError(e);
+                        TracingService.logAsError(
+                                ImmutableMap.of(
+                                        "event.id", item.getEvent().getJSONObject("metadata").getString("eid"),
+                                        TracingService.ERROR_DESCRIPTION, e.getMessage()
+                                )
+                        );
                     }
                     throw e;
                 }
