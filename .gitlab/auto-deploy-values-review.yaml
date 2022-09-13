@@ -56,7 +56,7 @@ sidecars:
       - name: zkextport
         containerPort: 2181
   - name: kafka
-    image: "registry.opensource.zalan.do/aruha/nakadi-kafka:2.7.1"
+    image: "bitnami/kafka:3.1.1"
     imagePullPolicy: IfNotPresent
     ports:
       - name: kafkaintport
@@ -80,6 +80,8 @@ sidecars:
         value: "true"
       - name: KAFKA_BROKER_ID
         value: "0"
+      - name: ALLOW_PLAINTEXT_LISTENER
+        value: "yes"
 application:
   env:
     - name: SPRING_PROFILES_ACTIVE
