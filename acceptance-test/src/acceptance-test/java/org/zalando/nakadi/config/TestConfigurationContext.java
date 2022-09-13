@@ -30,16 +30,18 @@ public class TestConfigurationContext {
     try (FileReader automationConfiguration = new FileReader(automationConfigFile.getFile())) {
       configurationContext = yaml.load(automationConfiguration);
       String environmentName = System.getenv("TEST_ENV");
-      String url = System.getenv("NAKADI_BASE_URL");
+      String dbUrl = System.getenv("POSTGRES_URL");
       Configuration configuration = configurationContext.environments.get(environmentName);
 
-      if (Objects.isNull(configuration) || (environmentName.equalsIgnoreCase("review") && url.isBlank())) {
+      if (Objects.isNull(configuration)) {
         environmentName = "local";
         configuration = configurationContext.environments.get(environmentName);
 
-      } else if (!environmentName.equalsIgnoreCase("review")) {
-        configuration = configurationContext.environments.get(environmentName);
-
+      } else if (environmentName.equalsIgnoreCase("review") && !dbUrl.isBlank()) {
+        configuration.setApiUrl(System.getenv("NAKADI_BASE_URL"));
+        configuration.setZookeeperUrl(System.getenv("ZOOKEEPER_URL"));
+        configuration.getKafka().setBootstrapServers(System.getenv("KAFKA_URL"));
+        configuration.getDatabase().setUrl(dbUrl);
       }
       return configuration;
     }

@@ -41,13 +41,16 @@ public abstract class BaseAT {
 
     static {
 
-        // Get configs from environment variables or else assign default values
-        String dbUrl = System.getenv("POSTGRES_URL");
-        POSTGRES_URL = dbUrl != null ? dbUrl : "jdbc:postgresql://localhost:5432/local_nakadi_db";
-        String user = System.getenv("POSTGRES_USER");
-        POSTGRES_USER = user != null ? user : "nakadi";
-        String pwd = System.getenv("POSTGRES_PWD");
-        POSTGRES_PWD = pwd != null ? pwd : "nakadi";
+        // Get configurations from automation.yml file
+        try {
+            configs = new TestConfigurationContext().load();
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+
+        POSTGRES_URL = configs.getDatabase().getUrl();
+        POSTGRES_USER = configs.getDatabase().getUsername();
+        POSTGRES_PWD = configs.getDatabase().getPassword();
 
         JdbcTemplate jdbcTemplate =
             new JdbcTemplate(new DriverManagerDataSource(POSTGRES_URL, POSTGRES_USER, POSTGRES_PWD));
@@ -55,15 +58,11 @@ public abstract class BaseAT {
         STORAGE_DB_REPOSITORY = new StorageDbRepository(jdbcTemplate, MAPPER);
         TIMELINE_REPOSITORY = new TimelineDbRepository(jdbcTemplate, MAPPER);
 
-        String baseUrl = System.getenv("NAKADI_BASE_URL");
-        URL = baseUrl != null ? baseUrl : "http://localhost" + ":" + PORT;
 
-        String zookeeperUrl = System.getenv("ZOOKEEPER_URL");
-        ZOOKEEPER_URL = zookeeperUrl != null ? zookeeperUrl : "localhost:2181";
+        URL = configs.getApiUrl();
+        KAFKA_URL = configs.getKafka().getBootstrapServers();
+        ZOOKEEPER_URL = configs.getZookeeperUrl();
         ZOOKEEPER_CONNECTION = ZookeeperConnection.valueOf("zookeeper://" + ZOOKEEPER_URL);
-
-        String kafkaUrl = System.getenv("KAFKA_URL");
-        KAFKA_URL = kafkaUrl != null ? kafkaUrl : "localhost:29092";
 
         RestAssured.port = PORT;
         RestAssured.defaultParser = Parser.JSON;
@@ -84,11 +83,6 @@ public abstract class BaseAT {
             STORAGE_DB_REPOSITORY.createStorage(storage);
         } catch (final DuplicatedStorageException ignore) {
         }
-    }
-
-    @BeforeClass
-    public static void loadExternalConfigs() throws IOException {
-        configs = new TestConfigurationContext().load();
     }
 
 }
