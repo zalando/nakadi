@@ -27,7 +27,6 @@ review:
 
 
 review-integrationtest:
-  when: manual
   image: artifactory.aws.wiley.com/docker/openjdk:11-jdk
   extends: .review-integration-test
   variables:
