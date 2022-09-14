@@ -30,7 +30,7 @@ spring:
     url: ${spring.datasource.url}
     user: ${spring.datasource.username}
     password: ${spring.datasource.password}
-    change-log: classpath:/db/changelog-master.xml
+    change-log: classpath:/database/changelog/changelog-master.xml
 
 nakadi:
   admin.default:

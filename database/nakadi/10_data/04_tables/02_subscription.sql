@@ -1,6 +1,7 @@
 BEGIN;
 
-SET ROLE zalando_nakadi_data_owner;
+-- Commented as renamed this to eventhub_nakadi_data_owner role
+-- SET ROLE zalando_nakadi_data_owner;
 
 CREATE TABLE IF NOT EXISTS zn_data.subscription (
   s_id varchar(36) NOT NULL PRIMARY KEY CHECK (s_id <> ''),
