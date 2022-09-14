@@ -259,9 +259,10 @@ public class EventPublisher {
                 } catch (final EventValidationException e) {
                     item.updateStatusAndDetail(EventPublishingStatus.FAILED, e.getMessage());
                     if (eventType.getCategory() != EventCategory.UNDEFINED) {
+                        TracingService.setErrorFlag();
                         TracingService.log(ImmutableMap.of(
                                 "event.id", item.getEvent().getJSONObject("metadata").getString("eid"),
-                                "error", e.getMessage()));
+                                TracingService.ERROR_DESCRIPTION, e.getMessage()));
                     }
                     throw e;
                 }
