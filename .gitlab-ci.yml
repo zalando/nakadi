@@ -28,6 +28,8 @@ review:
 review-integrationtest:
   when: manual
   image: artifactory.aws.wiley.com/docker/openjdk:11-jdk
+  tags:
+    - dev
   extends: .review-integration-test
   variables:
     ENVIRONMENT_HOST: environment_url.txt
