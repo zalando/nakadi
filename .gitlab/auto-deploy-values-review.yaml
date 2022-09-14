@@ -64,10 +64,14 @@ sidecars:
       - name: kafkaextport
         containerPort: 29092
     env:
+      - name: KAFKA_POD_IP
+          valueFrom:
+            fieldRef:
+              fieldPath: status.podIP
       - name: KAFKA_LISTENERS
         value: "INTERNAL://localhost:9092,EXTERNAL://0.0.0.0:29092"
       - name: KAFKA_ADVERTISED_LISTENERS
-        value: "INTERNAL://localhost:9092,EXTERNAL://localhost:29092"
+        value: "INTERNAL://$(KAFKA_POD_IP):9092,EXTERNAL://$(KAFKA_POD_IP):29092"
       - name: KAFKA_LISTENER_SECURITY_PROTOCOL_MAP
         value: "INTERNAL:PLAINTEXT,EXTERNAL:PLAINTEXT"
       - name: KAFKA_INTER_BROKER_LISTENER_NAME
