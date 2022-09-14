@@ -37,7 +37,7 @@ public class TestConfigurationContext {
         environmentName = "local";
         configuration = configurationContext.environments.get(environmentName);
 
-      } else if (environmentName.equalsIgnoreCase("review") && !dbUrl.isBlank()) {
+      } else if (environmentName.equalsIgnoreCase("review") && dbUrl != null) {
         configuration.setApiUrl(System.getenv("NAKADI_BASE_URL"));
         configuration.setZookeeperUrl(System.getenv("ZOOKEEPER_URL"));
         configuration.getKafka().setBootstrapServers(System.getenv("KAFKA_URL"));
