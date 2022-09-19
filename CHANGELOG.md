@@ -59,3 +59,4 @@
 ### Bug Fixes
 
 * change test port to create new release ([f20c5e2](https://github.com/wiley/nakadi/commit/f20c5e2d9cd887f490d67810fafd0db5345092a6)) 
+ 
