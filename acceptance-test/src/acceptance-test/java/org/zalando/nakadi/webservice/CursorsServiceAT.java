@@ -98,7 +98,7 @@ public class CursorsServiceAT extends BaseAT {
         final ZooKeeperHolder zkHolder = mock(ZooKeeperHolder.class);
         when(zkHolder.get()).thenReturn(CURATOR);
         final CuratorFrameworkRotator curatorRotator = new CuratorFrameworkRotator(
-            () -> ZookeeperTestUtils.createCurator(ZOOKEEPER_URL), 300_000, 10_000);
+                () -> ZookeeperTestUtils.createCurator(ZOOKEEPER_URL), 300_000, 10_000);
         when(zkHolder.getSubscriptionCurator(anyLong()))
                 .thenReturn(new ZooKeeperHolder.RotatingCuratorFramework(curatorRotator));
 
