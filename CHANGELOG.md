@@ -1,3 +1,10 @@
+## [1.1.2](https://github.com/wiley/nakadi/compare/v1.1.1...v1.1.2) (2022-09-19)
+
+
+### Bug Fixes
+
+* test untrusted builder issue attempt 2 ([5a230a7](https://github.com/wiley/nakadi/commit/5a230a7b40ef2d712d04ab53fc7ede064cb31a5b))
+
 ## [1.1.1](https://github.com/wiley/nakadi/compare/v1.1.0...v1.1.1) (2022-09-19)
 
 
