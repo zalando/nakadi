@@ -17,10 +17,7 @@ import java.io.IOException;
 public class KafkaConfig {
 
     @Bean
-    public PartitionsCalculator createPartitionsCalculator(
-            @Value("${nakadi.kafka.instanceType}") final String instanceType,
-            final ObjectMapper objectMapper,
-            final NakadiSettings nakadiSettings) throws IOException {
-        return PartitionsCalculator.load(objectMapper, instanceType, nakadiSettings);
+    public PartitionsCalculator createPartitionsCalculator(final NakadiSettings nakadiSettings) {
+        return PartitionsCalculator.load(nakadiSettings);
     }
 }

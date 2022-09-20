@@ -107,9 +107,13 @@ dependencies {
     // tests
     testCompile 'org.hamcrest:hamcrest-all:1.3'
     testCompile("org.springframework.boot:spring-boot-starter-validation")
-    testCompile('org.junit.jupiter:junit-jupiter-api:5.5.2') {
+    testCompile('org.junit.jupiter:junit-jupiter:5.7.2') {
         exclude module: "hamcrest-core"
     }
+    testRuntimeOnly 'org.junit.vintage:junit-vintage-engine:5.7.2'
+    testCompile 'junit:junit:4.13.1'
+
+
     testCompile "org.springframework:spring-test"
     testCompile 'org.springframework.boot:spring-boot-test'
     testCompile 'org.springframework.boot:spring-boot-starter-test'
@@ -120,7 +124,6 @@ dependencies {
         exclude module: "hamcrest-library"
     }
     testCompile 'com.jayway.jsonpath:json-path'
-    testCompile 'junit:junit:4.13.1'
     testRuntime 'org.pegdown:pegdown:1.6.0'
 }
 // end::dependencies[]
@@ -143,6 +146,10 @@ bootJar {
 }
 jar {
     enabled = true
+}
+
+test {
+    useJUnitPlatform()
 }
 
 import com.github.davidmc24.gradle.plugin.avro.GenerateAvroJavaTask
