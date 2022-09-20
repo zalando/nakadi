@@ -20,8 +20,9 @@ public class PartitionsCalculatorTest {
 
     @ParameterizedTest
     @MethodSource("partitionTestCases")
-    public void test(int readParallelism, int writeParallelism,
-                                          int expectedBestPartitionCount) {
+    public void test(final int readParallelism,
+                     final int writeParallelism,
+                     final int expectedBestPartitionCount) {
         final PartitionsCalculator calculator = buildTest();
         final EventTypeStatistics statistics = new EventTypeStatistics();
         statistics.setReadParallelism(readParallelism);
