@@ -51,6 +51,9 @@ sidecars:
     ports:
       - name: zookeeperport
         containerPort: 2181
+    env:
+      - name: ZOOKEEPER_ADMIN_SERVER_PORT
+        value: "8090"
   - name: kafka
     image: "registry.opensource.zalan.do/aruha/nakadi-kafka:2.7.1"
     imagePullPolicy: IfNotPresent
