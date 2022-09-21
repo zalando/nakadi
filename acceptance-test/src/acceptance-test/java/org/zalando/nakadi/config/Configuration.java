@@ -3,6 +3,7 @@ package org.zalando.nakadi.config;
 public class Configuration {
 
   private String apiUrl;
+  private int apiPort;
   private String zookeeperUrl;
   private Kafka kafka;
   private Database database;
@@ -20,6 +21,14 @@ public class Configuration {
 
   public void setApiUrl(String apiUrl) {
     this.apiUrl = apiUrl;
+  }
+
+  public int getApiPort() {
+    return apiPort;
+  }
+
+  public void setApiPort(int apiPort) {
+    this.apiPort = apiPort;
   }
 
   public Kafka getKafka() {

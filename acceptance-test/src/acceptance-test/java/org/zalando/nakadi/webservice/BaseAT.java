@@ -26,7 +26,7 @@ public abstract class BaseAT {
     public static final String POSTGRES_USER;
     public static final String POSTGRES_PWD;
 
-    protected static final int PORT = 8080;
+    protected static final int PORT;
     public static final String URL;
 
     protected static final String ZOOKEEPER_URL;
@@ -59,7 +59,8 @@ public abstract class BaseAT {
         TIMELINE_REPOSITORY = new TimelineDbRepository(jdbcTemplate, MAPPER);
 
 
-        URL = configs.getApiUrl();
+        PORT = configs.getApiPort();
+        URL = configs.getApiUrl() + ":" + PORT;
         KAFKA_URL = configs.getKafka().getBootstrapServers();
         ZOOKEEPER_URL = configs.getZookeeperUrl();
         ZOOKEEPER_CONNECTION = ZookeeperConnection.valueOf("zookeeper://" + ZOOKEEPER_URL);

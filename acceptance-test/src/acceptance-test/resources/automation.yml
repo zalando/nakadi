@@ -1,6 +1,7 @@
 environments:
   local:
-    apiUrl: http://localhost:8080
+    apiUrl: http://localhost
+    apiPort: 8080
     zookeeperUrl: localhost:2181
     kafka:
       bootstrapServers: localhost:29092
@@ -24,7 +25,8 @@ environments:
     kpiConfig:
         streamDataCollectionFrequencyMs: 30000 # every half minute
   review:
-    apiUrl: http://localhost:8080
+    apiUrl: http://localhost
+    apiPort: 8080
     zookeeperUrl: localhost:2181
     kafka:
       bootstrapServers: localhost:29092
@@ -49,6 +51,7 @@ environments:
         streamDataCollectionFrequencyMs: 100
   dev:
     apiUrl: https://eventhub.dev.tc.private.wiley.host
+    apiPort: 443
     zookeeperUrl: z-3.epdcs-nakadi-msk-kafk.uwqhdz.c23.kafka.us-east-1.amazonaws.com:2181,z-2.epdcs-nakadi-msk-kafk.uwqhdz.c23.kafka.us-east-1.amazonaws.com:2181,z-1.epdcs-nakadi-msk-kafk.uwqhdz.c23.kafka.us-east-1.amazonaws.com:2181
     kafka:
       bootstrapServers: b-2.epdcs-nakadi-msk-kafk.uwqhdz.c23.kafka.us-east-1.amazonaws.com:9098,b-3.epdcs-nakadi-msk-kafk.uwqhdz.c23.kafka.us-east-1.amazonaws.com:9098,b-1.epdcs-nakadi-msk-kafk.uwqhdz.c23.kafka.us-east-1.amazonaws.com:9098
@@ -73,6 +76,7 @@ environments:
       streamDataCollectionFrequencyMs: 30000 # every half minute
   qa:
     apiUrl: https://eventhub.qa.tc.wiley.host
+    apiPort: 443
     zookeeperUrl: z-3.epdcs-nakadi-msk-kafk.uwqhdz.c23.kafka.us-east-1.amazonaws.com:2181,z-2.epdcs-nakadi-msk-kafk.uwqhdz.c23.kafka.us-east-1.amazonaws.com:2181,z-1.epdcs-nakadi-msk-kafk.uwqhdz.c23.kafka.us-east-1.amazonaws.com:2181
     kafka:
       bootstrapServers: b-2.epdcs-nakadi-msk-kafk.uwqhdz.c23.kafka.us-east-1.amazonaws.com:9098,b-3.epdcs-nakadi-msk-kafk.uwqhdz.c23.kafka.us-east-1.amazonaws.com:9098,b-1.epdcs-nakadi-msk-kafk.uwqhdz.c23.kafka.us-east-1.amazonaws.com:9098
@@ -96,7 +100,8 @@ environments:
     kpiConfig:
       streamDataCollectionFrequencyMs: 30000 # every half minute
   uat:
-    apiUrl: http://localhost:8080
+    apiUrl: http://localhost
+    apiPort: 443
     zookeeperUrl: localhost:2181
     kafka:
       bootstrapServers: localhost:29092
@@ -120,7 +125,8 @@ environments:
     kpiConfig:
       streamDataCollectionFrequencyMs: 30000 # every half minute
   prod:
-    apiUrl: http://localhost:8080
+    apiUrl: http://localhost
+    apiPort: 443
     zookeeperUrl: localhost:2181
     kafka:
       bootstrapServers: localhost:29092
