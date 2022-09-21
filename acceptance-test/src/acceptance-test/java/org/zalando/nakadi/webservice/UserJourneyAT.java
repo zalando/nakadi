@@ -337,17 +337,9 @@ public class UserJourneyAT extends RealEnvironmentAT {
                 .body("items.size()", equalTo(1))
                 .body("items[0].id", equalTo(subscription.getId()));
 
-        // Append port to the baseURI only for local environment.
-        String envUrl;
-        if(System.getenv("TEST_ENV").equals("local")) {
-            envUrl = RestAssured.baseURI + ":" + RestAssured.port;
-        } else {
-            envUrl = RestAssured.baseURI;
-        }
-
         // create client and wait till we receive all events
         final TestStreamingClient client = new TestStreamingClient(
-            envUrl, subscription.getId(), "", oauthToken).start();
+            RestAssured.baseURI + ":" + RestAssured.port, subscription.getId(), "", oauthToken).start();
         waitFor(() -> assertThat(client.getJsonBatches(), Matchers.hasSize(4)));
         final List<StreamBatch> batches = client.getJsonBatches();
 
@@ -446,17 +438,9 @@ public class UserJourneyAT extends RealEnvironmentAT {
                 .buildSubscriptionBase();
         final Subscription subscription = createSubscription(jsonRequestSpec(), subscriptionToCreate);
 
-        // Append port to baseURI only for local environment.
-        String envUrl;
-        if(System.getenv("TEST_ENV").equals("local")) {
-            envUrl = RestAssured.baseURI + ":" + RestAssured.port;
-        } else {
-            envUrl = RestAssured.baseURI;
-        }
-
         // create client and wait till we receive 4 events
         final TestStreamingClient client = new TestStreamingClient(
-            envUrl, subscription.getId(), "", oauthToken).start();
+            RestAssured.baseURI + ":" + RestAssured.port, subscription.getId(), "", oauthToken).start();
 
         waitFor(() -> assertThat(client.getJsonBatches(), Matchers.hasSize(4)));
         final List<StreamBatch> batches = client.getJsonBatches();
