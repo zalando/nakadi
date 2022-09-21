@@ -26,7 +26,7 @@ public abstract class BaseAT {
     public static final String POSTGRES_USER;
     public static final String POSTGRES_PWD;
 
-    protected static final int PORT = 8081;
+    protected static final int PORT = 8080;
     public static final String URL;
 
     protected static final String ZOOKEEPER_URL;

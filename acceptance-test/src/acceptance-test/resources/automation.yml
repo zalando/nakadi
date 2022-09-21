@@ -1,6 +1,6 @@
 environments:
   local:
-    apiUrl: http://localhost:8081
+    apiUrl: http://localhost:8080
     zookeeperUrl: localhost:2181
     kafka:
       bootstrapServers: localhost:29092
@@ -24,7 +24,7 @@ environments:
     kpiConfig:
         streamDataCollectionFrequencyMs: 30000 # every half minute
   review:
-    apiUrl: http://localhost:8081
+    apiUrl: http://localhost:8080
     zookeeperUrl: localhost:2181
     kafka:
       bootstrapServers: localhost:29092
@@ -96,7 +96,7 @@ environments:
     kpiConfig:
       streamDataCollectionFrequencyMs: 30000 # every half minute
   uat:
-    apiUrl: http://localhost:8081
+    apiUrl: http://localhost:8080
     zookeeperUrl: localhost:2181
     kafka:
       bootstrapServers: localhost:29092
@@ -120,7 +120,7 @@ environments:
     kpiConfig:
       streamDataCollectionFrequencyMs: 30000 # every half minute
   prod:
-    apiUrl: http://localhost:8081
+    apiUrl: http://localhost:8080
     zookeeperUrl: localhost:2181
     kafka:
       bootstrapServers: localhost:29092

@@ -34,7 +34,7 @@ review-integrationtest:
     ENVIRONMENT_HOST: environment_url.txt
   script:
     - echo "$HOST_IP"
-    - "TEST_ENV=review NAKADI_BASE_URL=http://$HOST_IP:8081 POSTGRES_URL=jdbc:postgresql://$HOST_IP:5432/local_nakadi_db ZOOKEEPER_URL=$HOST_IP:2181 KAFKA_URL=$HOST_IP:29092 ./gradlew :acceptance-test:acceptanceTest"
+    - "TEST_ENV=review NAKADI_BASE_URL=http://$HOST_IP:8080 POSTGRES_URL=jdbc:postgresql://$HOST_IP:5432/local_nakadi_db ZOOKEEPER_URL=$HOST_IP:2181 KAFKA_URL=$HOST_IP:29092 ./gradlew :acceptance-test:acceptanceTest"
 
 dev:
   variables:
