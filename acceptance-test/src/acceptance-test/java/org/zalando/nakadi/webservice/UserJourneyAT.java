@@ -339,7 +339,7 @@ public class UserJourneyAT extends RealEnvironmentAT {
 
         // create client and wait till we receive all events
         final TestStreamingClient client = new TestStreamingClient(
-            RestAssured.baseURI + ":" + RestAssured.port, subscription.getId(), "", oauthToken).start();
+                RestAssured.baseURI + ":" + RestAssured.port, subscription.getId(), "", oauthToken).start();
         waitFor(() -> assertThat(client.getJsonBatches(), Matchers.hasSize(4)));
         final List<StreamBatch> batches = client.getJsonBatches();
 
@@ -440,7 +440,7 @@ public class UserJourneyAT extends RealEnvironmentAT {
 
         // create client and wait till we receive 4 events
         final TestStreamingClient client = new TestStreamingClient(
-            RestAssured.baseURI + ":" + RestAssured.port, subscription.getId(), "", oauthToken).start();
+                RestAssured.baseURI + ":" + RestAssured.port, subscription.getId(), "", oauthToken).start();
 
         waitFor(() -> assertThat(client.getJsonBatches(), Matchers.hasSize(4)));
         final List<StreamBatch> batches = client.getJsonBatches();
