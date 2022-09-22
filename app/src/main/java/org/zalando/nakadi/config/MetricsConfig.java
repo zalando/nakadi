@@ -8,6 +8,8 @@ import com.codahale.metrics.jvm.ThreadStatesGaugeSet;
 import com.codahale.metrics.servlets.MetricsServlet;
 import com.ryantenney.metrics.spring.config.annotation.EnableMetrics;
 import com.ryantenney.metrics.spring.config.annotation.MetricsConfigurerAdapter;
+import io.prometheus.client.CollectorRegistry;
+import io.prometheus.client.dropwizard.DropwizardExports;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.boot.web.servlet.ServletRegistrationBean;
 import org.springframework.context.annotation.Bean;
@@ -72,6 +74,17 @@ public class MetricsConfig {
         final MetricRegistry metricRegistry = new MetricRegistry();
 
         return metricRegistry;
+    }
+
+    @Bean
+    public ServletRegistrationBean prometheusRegistrationBean(MetricRegistry metricRegistry,
+        @Qualifier("perPathMetricRegistry") final MetricRegistry perPathMetricRegistry,
+        @Qualifier("streamMetricsRegistry") final MetricRegistry streamMetricsRegistry) {
+        CollectorRegistry collectorRegistry = new CollectorRegistry();
+        collectorRegistry.register(new DropwizardExports(metricRegistry));
+        collectorRegistry.register(new DropwizardExports(perPathMetricRegistry));
+        collectorRegistry.register(new DropwizardExports(streamMetricsRegistry));
+        return new ServletRegistrationBean(new io.prometheus.client.exporter.MetricsServlet(collectorRegistry), "/prometheus/*");
     }
 
     @Bean

@@ -1,3 +1,42 @@
+## [1.1.3](https://github.com/wiley/nakadi/compare/v1.1.2...v1.1.3) (2022-09-19)
+
+
+### Bug Fixes
+
+* test untrusted builder issue attempt 3 ([090ca8c](https://github.com/wiley/nakadi/commit/090ca8c8cb81fe7434ba055fd07ffd23729e5c11))
+
+## [1.1.2](https://github.com/wiley/nakadi/compare/v1.1.1...v1.1.2) (2022-09-19)
+
+
+### Bug Fixes
+
+* test untrusted builder issue attempt 2 ([5a230a7](https://github.com/wiley/nakadi/commit/5a230a7b40ef2d712d04ab53fc7ede064cb31a5b))
+
+## [1.1.1](https://github.com/wiley/nakadi/compare/v1.1.0...v1.1.1) (2022-09-19)
+
+
+### Bug Fixes
+
+* test untrusted builder issue ([15f207c](https://github.com/wiley/nakadi/commit/15f207c9ac3225b94312738624b193dc71b52a1c))
+
+# [1.1.0](https://github.com/wiley/nakadi/compare/v1.0.6...v1.1.0) (2022-09-14)
+
+
+### Bug Fixes
+
+* add prometheus metrics ([7343347](https://github.com/wiley/nakadi/commit/73433471309460d6480bfdf6165225c41387a4ea))
+* enable application monitoring ([f8d1a99](https://github.com/wiley/nakadi/commit/f8d1a998ee3436f2903e082e11d7426cd75642ef))
+* update gradle ([81d1a2b](https://github.com/wiley/nakadi/commit/81d1a2bac3facae398affb68d3d969adba8eeee5))
+* use latest gitlab template ([425ec65](https://github.com/wiley/nakadi/commit/425ec6514e10a7f650b2d32022deee388aaf2d35))
+
+
+### Features
+
+* adding absolute path for copy task ([89f59ec](https://github.com/wiley/nakadi/commit/89f59ec1c0335c53d55bf164a3f489d7b271c8f6))
+* adding gradle task to execute liquibase scripts in app ([aca7bad](https://github.com/wiley/nakadi/commit/aca7bad22fab523477aa9721f3071a500c9f3dbc))
+* adding task to check root dir ([d815f06](https://github.com/wiley/nakadi/commit/d815f065a4f052b4b387edbd16fc4c36b0c96c60))
+* deleted nakadi-db sql file ([6b7724c](https://github.com/wiley/nakadi/commit/6b7724cb1cdd27ced33c791ff8303e06b69b4812))
+
 ## [1.0.6](https://github.com/wiley/nakadi/compare/v1.0.5...v1.0.6) (2022-08-25)
 
 

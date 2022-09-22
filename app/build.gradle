@@ -110,6 +110,8 @@ dependencies {
     }
     compile "io.dropwizard.metrics:metrics-servlets:$dropwizardVersion"
     compile "io.dropwizard.metrics:metrics-jvm:$dropwizardVersion"
+    compile 'io.prometheus:simpleclient_dropwizard:0.10.0'
+    compile 'io.prometheus:simpleclient_servlet:0.10.0'
     compile 'org.apache.commons:commons-lang3:3.8.1'
     compile 'org.zalando:nakadi-plugin-api:3.2.1'
     compile 'org.echocat.jomon:runtime:1.6.3'
@@ -152,3 +154,14 @@ bootJar {
     }
     mainClassName = 'org.zalando.nakadi.Application'
 }
+
+task copyDatabaseSchemas() {
+
+    copy {
+        from "${rootProject.projectDir}/database/nakadi/10_data"
+        into "${rootProject.projectDir}/app/src/main/resources/database/nakadi"
+    }
+
+}
+
+build.dependsOn copyDatabaseSchemas
