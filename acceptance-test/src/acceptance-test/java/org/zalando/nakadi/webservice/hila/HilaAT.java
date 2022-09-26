@@ -233,7 +233,7 @@ public class HilaAT extends BaseAT {
         waitFor(() -> assertThat(client.getJsonBatches(), Matchers.hasSize(12)));
     }
 
-    @Test(timeout = 15000)
+    @Test
     public void whenCommitTimeoutReachedSessionIsClosed() {
 
         publishEvent(eventType.getName(), "{\"foo\":\"bar\"}");
@@ -242,8 +242,8 @@ public class HilaAT extends BaseAT {
                 .create(subscription.getId()) // commit_timeout is 5 seconds for test
                 .start();
 
-        waitFor(() -> assertThat(client.getJsonBatches(), Matchers.hasSize(2)), 10000);
-        waitFor(() -> assertThat(client.isRunning(), is(false)), 10000);
+        waitFor(() -> assertThat(client.getJsonBatches(), Matchers.hasSize(2)), configs.getStream().maxCommitTimeout);
+        waitFor(() -> assertThat(client.isRunning(), is(false)), configs.getStream().maxCommitTimeout);
         assertThat(client.getJsonBatches().get(1), equalToBatchIgnoringToken(singleEventBatch("0",
                 "001-0001-000000000000000000", eventType.getName(), ImmutableMap.of(), "Commit timeout reached")));
     }
@@ -482,7 +482,7 @@ public class HilaAT extends BaseAT {
                         && streamBatch.getMetadata().getDebug().equals("Stream timeout reached")));
     }
 
-    @Test(timeout = 15000)
+    @Test
     public void whenResetCursorsThenStreamFromResetCursorOffset() throws Exception {
         publishEvents(eventType.getName(), 20, i -> "{\"foo\":\"bar\"}");
         final TestStreamingClient client1 = TestStreamingClient

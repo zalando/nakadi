@@ -1,0 +1,151 @@
+environments:
+  local:
+    apiUrl: http://localhost
+    apiPort: 8080
+    zookeeperUrl: localhost:2181
+    kafka:
+      bootstrapServers: localhost:29092
+      minInSyncReplicas: 1
+      securityProtocol: PLAINTEXT
+      saslMechanism: PLAIN
+      saslJaasConfig: software.amazon.msk.auth.iam.IAMLoginModule required;
+      saslClientCallbackHandlerClass: software.amazon.msk.auth.iam.IAMClientCallbackHandler
+    database:
+      url: jdbc:postgresql://localhost:5432/local_nakadi_db
+      username: nakadi
+      password: nakadi
+    eventTypeDeletableSubscription:
+      owningApplication: "nakadi_archiver"
+      consumerGroup: "nakadi_to_s3"
+    subscription:
+      maxPartitions: 100
+    stream:
+      maxStreamMemoryBytes: 50000000 # ~50 MB
+      maxCommitTimeout: 60000 # 1 minute
+    kpiConfig:
+        streamDataCollectionFrequencyMs: 30000 # every half minute
+  review:
+    apiUrl: http://localhost
+    apiPort: 8080
+    zookeeperUrl: localhost:2181
+    kafka:
+      bootstrapServers: localhost:29092
+      minInSyncReplicas: 1
+      securityProtocol: PLAINTEXT
+      saslMechanism: PLAIN
+      saslJaasConfig: software.amazon.msk.auth.iam.IAMLoginModule required;
+      saslClientCallbackHandlerClass: software.amazon.msk.auth.iam.IAMClientCallbackHandler
+    database:
+      url: jdbc:postgresql://localhost:5432/local_nakadi_db
+      username: nakadi
+      password: nakadi
+    eventTypeDeletableSubscription:
+      owningApplication: "deletable_owning_app"
+      consumerGroup: "deletable_consumer_group"
+    subscription:
+      maxPartitions: 30
+    stream:
+      maxStreamMemoryBytes: 10_000 # ~10 Kb
+      maxCommitTimeout: 10000 # 10 seconds
+    kpiConfig:
+        streamDataCollectionFrequencyMs: 100
+  dev:
+    apiUrl: https://eventhub.dev.tc.private.wiley.host
+    apiPort: 443
+    zookeeperUrl: z-3.epdcs-nakadi-msk-kafk.uwqhdz.c23.kafka.us-east-1.amazonaws.com:2181,z-2.epdcs-nakadi-msk-kafk.uwqhdz.c23.kafka.us-east-1.amazonaws.com:2181,z-1.epdcs-nakadi-msk-kafk.uwqhdz.c23.kafka.us-east-1.amazonaws.com:2181
+    kafka:
+      bootstrapServers: b-2.epdcs-nakadi-msk-kafk.uwqhdz.c23.kafka.us-east-1.amazonaws.com:9098,b-3.epdcs-nakadi-msk-kafk.uwqhdz.c23.kafka.us-east-1.amazonaws.com:9098,b-1.epdcs-nakadi-msk-kafk.uwqhdz.c23.kafka.us-east-1.amazonaws.com:9098
+      minInSyncReplicas: 1
+      securityProtocol: SASL_SSL
+      saslMechanism: AWS_MSK_IAM
+      saslJaasConfig: software.amazon.msk.auth.iam.IAMLoginModule required;
+      saslClientCallbackHandlerClass: software.amazon.msk.auth.iam.IAMClientCallbackHandler
+    database:
+      url: jdbc:postgresql://sharedaurorapsql-epdcs-dev-use1.cluster-chxkh4p9th7p.us-east-1.rds.amazonaws.com:5432/event_hub
+      username: event_hub_user
+      password: laOt11_zaekVaQTT
+    eventTypeDeletableSubscription:
+      owningApplication: "nakadi_archiver"
+      consumerGroup: "nakadi_to_s3"
+    subscription:
+      maxPartitions: 100
+    stream:
+      maxStreamMemoryBytes: 50000000 # ~50 MB
+      maxCommitTimeout: 60000 # 1 minute
+    kpiConfig:
+      streamDataCollectionFrequencyMs: 30000 # every half minute
+  qa:
+    apiUrl: https://eventhub.qa.tc.wiley.host
+    apiPort: 443
+    zookeeperUrl: z-3.epdcs-nakadi-msk-kafk.uwqhdz.c23.kafka.us-east-1.amazonaws.com:2181,z-2.epdcs-nakadi-msk-kafk.uwqhdz.c23.kafka.us-east-1.amazonaws.com:2181,z-1.epdcs-nakadi-msk-kafk.uwqhdz.c23.kafka.us-east-1.amazonaws.com:2181
+    kafka:
+      bootstrapServers: b-2.epdcs-nakadi-msk-kafk.uwqhdz.c23.kafka.us-east-1.amazonaws.com:9098,b-3.epdcs-nakadi-msk-kafk.uwqhdz.c23.kafka.us-east-1.amazonaws.com:9098,b-1.epdcs-nakadi-msk-kafk.uwqhdz.c23.kafka.us-east-1.amazonaws.com:9098
+      minInSyncReplicas: 2
+      securityProtocol: SASL_SSL
+      saslMechanism: AWS_MSK_IAM
+      saslJaasConfig: software.amazon.msk.auth.iam.IAMLoginModule required;
+      saslClientCallbackHandlerClass: software.amazon.msk.auth.iam.IAMClientCallbackHandler
+    database:
+      url: jdbc:postgresql://sharedaurorapsql-epdcs-qa-use1.cluster-chxkh4p9th7p.us-east-1.rds.amazonaws.com/event_hub
+      username: event_hub_user
+      password: N%SFtgjwGn7laEYS
+    eventTypeDeletableSubscription:
+      owningApplication: "nakadi_archiver"
+      consumerGroup: "nakadi_to_s3"
+    subscription:
+      maxPartitions: 100
+    stream:
+      maxStreamMemoryBytes: 50000000 # ~50 MB
+      maxCommitTimeout: 60000 # 1 minute
+    kpiConfig:
+      streamDataCollectionFrequencyMs: 30000 # every half minute
+  uat:
+    apiUrl: http://localhost
+    apiPort: 443
+    zookeeperUrl: localhost:2181
+    kafka:
+      bootstrapServers: localhost:29092
+      minInSyncReplicas: 1
+      securityProtocol: PLAINTEXT
+      saslMechanism: PLAIN
+      saslJaasConfig: software.amazon.msk.auth.iam.IAMLoginModule required;
+      saslClientCallbackHandlerClass: software.amazon.msk.auth.iam.IAMClientCallbackHandler
+    database:
+      url: jdbc:postgresql://localhost:5432/local_nakadi_db
+      username: nakadi
+      password: nakadi
+    eventTypeDeletableSubscription:
+      owningApplication: "nakadi_archiver"
+      consumerGroup: "nakadi_to_s3"
+    subscription:
+      maxPartitions: 100
+    stream:
+      maxStreamMemoryBytes: 50000000 # ~50 MB
+      maxCommitTimeout: 60000 # 1 minute
+    kpiConfig:
+      streamDataCollectionFrequencyMs: 30000 # every half minute
+  prod:
+    apiUrl: http://localhost
+    apiPort: 443
+    zookeeperUrl: localhost:2181
+    kafka:
+      bootstrapServers: localhost:29092
+      minInSyncReplicas: 1
+      securityProtocol: PLAINTEXT
+      saslMechanism: PLAIN
+      saslJaasConfig: software.amazon.msk.auth.iam.IAMLoginModule required;
+      saslClientCallbackHandlerClass: software.amazon.msk.auth.iam.IAMClientCallbackHandler
+    database:
+      url: jdbc:postgresql://localhost:5432/local_nakadi_db
+      username: nakadi
+      password: nakadi
+    eventTypeDeletableSubscription:
+      owningApplication: "nakadi_archiver"
+      consumerGroup: "nakadi_to_s3"
+    subscription:
+      maxPartitions: 100
+    stream:
+      maxStreamMemoryBytes: 50000000 # ~50 MB
+      maxCommitTimeout: 60000 # 1 minute
+    kpiConfig:
+      streamDataCollectionFrequencyMs: 30000 # every half minute

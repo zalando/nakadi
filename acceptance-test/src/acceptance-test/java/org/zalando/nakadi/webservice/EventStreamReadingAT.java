@@ -457,7 +457,7 @@ public class EventStreamReadingAT extends BaseAT {
         }
     }
 
-    @Test(timeout = 10000)
+    @Test
     public void whenMemoryOverflowEventsDumped() throws IOException {
         // Create event type
         final EventType loadEt = EventTypeTestBuilder.builder()

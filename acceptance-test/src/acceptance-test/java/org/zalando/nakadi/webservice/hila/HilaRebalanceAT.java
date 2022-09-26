@@ -193,7 +193,7 @@ public class HilaRebalanceAT extends BaseAT {
         waitFor(() -> assertThat(autoClient2.getJsonBatches(), hasSize(6)));
     }
 
-    @Test(timeout = 15000)
+    @Test
     public void checkDirectAssignmentCorrectlyCapturesAndReleasesPartition() throws IOException, InterruptedException {
         // launch two clients: one using auto-rebalance, second one directly reading from partition 6
         final TestStreamingClient autoClient = new TestStreamingClient(URL, subscription.getId(),
@@ -256,7 +256,7 @@ public class HilaRebalanceAT extends BaseAT {
         assertThat(client2.getResponseCode(), Matchers.is(HttpStatus.CONFLICT.value()));
     }
 
-    @Test(timeout = 15000)
+    @Test(timeout = 60000)
     public void whenNotCommittedThenEventsAreReplayedAfterRebalance() {
         publishBusinessEventWithUserDefinedPartition(
                 eventType.getName(), 2, x -> "blah" + x, x -> String.valueOf(x % 8));
@@ -264,14 +264,14 @@ public class HilaRebalanceAT extends BaseAT {
         final TestStreamingClient clientA = TestStreamingClient
                 .create(URL, subscription.getId(), "")
                 .start();
-        waitFor(() -> assertThat(clientA.getJsonBatches(), hasSize(2)));
+        waitFor(() -> assertThat(clientA.getJsonBatches(), hasSize(2)), configs.getStream().maxCommitTimeout);
 
         final TestStreamingClient clientB = TestStreamingClient
                 .create(URL, subscription.getId(), "")
                 .start();
 
         // after commit_timeout of first client exceeds it is closed and all events are resent to second client
-        waitFor(() -> assertThat(clientB.getJsonBatches(), hasSize(2)), 10000);
+        waitFor(() -> assertThat(clientB.getJsonBatches(), hasSize(2)), configs.getStream().maxCommitTimeout);
     }
 
     @Test(timeout = 15000)

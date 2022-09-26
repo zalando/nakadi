@@ -6,6 +6,7 @@ import org.apache.kafka.clients.admin.DescribeConfigsResult;
 import org.apache.kafka.clients.admin.NewTopic;
 import org.apache.kafka.clients.consumer.KafkaConsumer;
 import org.apache.kafka.clients.producer.KafkaProducer;
+import org.apache.kafka.clients.producer.ProducerConfig;
 import org.apache.kafka.clients.producer.ProducerRecord;
 import org.apache.kafka.common.TopicPartition;
 import org.apache.kafka.common.config.ConfigResource;
@@ -18,6 +19,7 @@ import java.util.Optional;
 import java.util.Properties;
 import java.util.concurrent.ExecutionException;
 import java.util.stream.Collectors;
+import org.zalando.nakadi.webservice.BaseAT;
 
 import static org.zalando.nakadi.repository.kafka.KafkaCursor.toKafkaOffset;
 import static org.zalando.nakadi.repository.kafka.KafkaCursor.toNakadiOffset;
@@ -36,12 +38,20 @@ public class KafkaTestHelper {
     }
 
     public KafkaProducer<byte[], byte[]> createProducer() {
-        return new KafkaProducer<>(createKafkaProperties());
+        Properties props = createKafkaProperties();
+        props.put(ProducerConfig.ENABLE_IDEMPOTENCE_CONFIG, true);
+        props.put("min.insync.replicas",  BaseAT.configs.getKafka().getMinInSyncReplicas());
+        props.put(ProducerConfig.ACKS_CONFIG, "all");
+        return new KafkaProducer<>(props);
     }
 
     protected static Properties createKafkaProperties() {
         final Properties props = new Properties();
-        props.put("bootstrap.servers", "localhost:29092");
+        props.put("bootstrap.servers", BaseAT.KAFKA_URL);
+        props.put("security.protocol", BaseAT.configs.getKafka().getSecurityProtocol());
+        props.put("sasl.mechanism", BaseAT.configs.getKafka().getSaslMechanism());
+        props.put("sasl.jaas.config", BaseAT.configs.getKafka().getSaslJaasConfig());
+        props.put("sasl.client.callback.handler.class", BaseAT.configs.getKafka().getSaslClientCallbackHandlerClass());
         props.put("value.serializer", "org.apache.kafka.common.serialization.ByteArraySerializer");
         props.put("key.serializer", "org.apache.kafka.common.serialization.ByteArraySerializer");
         props.put("value.deserializer", "org.apache.kafka.common.serialization.ByteArrayDeserializer");

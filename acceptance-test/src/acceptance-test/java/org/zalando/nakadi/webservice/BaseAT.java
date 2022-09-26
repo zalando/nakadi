@@ -3,10 +3,13 @@ package org.zalando.nakadi.webservice;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.jayway.restassured.RestAssured;
 import com.jayway.restassured.parsing.Parser;
+import java.io.IOException;
 import org.apache.http.params.CoreConnectionPNames;
 import org.junit.BeforeClass;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.jdbc.datasource.DriverManagerDataSource;
+import org.zalando.nakadi.config.Configuration;
+import org.zalando.nakadi.config.TestConfigurationContext;
 import org.zalando.nakadi.config.JsonConfig;
 import org.zalando.nakadi.domain.storage.KafkaConfiguration;
 import org.zalando.nakadi.domain.storage.Storage;
@@ -19,25 +22,49 @@ import java.util.concurrent.TimeUnit;
 
 public abstract class BaseAT {
 
-    public static final String POSTGRES_URL = "jdbc:postgresql://localhost:5432/local_nakadi_db";
-    public static final String POSTGRES_USER = "nakadi";
-    public static final String POSTGRES_PWD = "nakadi";
+    public static final String POSTGRES_URL;
+    public static final String POSTGRES_USER;
+    public static final String POSTGRES_PWD;
 
-    protected static final int PORT = 8081;
-    public static final String URL = "http://localhost:" + PORT;
+    protected static final int PORT;
+    public static final String URL;
 
-    protected static final String ZOOKEEPER_URL = "localhost:2181";
-    protected static final ZookeeperConnection ZOOKEEPER_CONNECTION =
-            ZookeeperConnection.valueOf("zookeeper://" + ZOOKEEPER_URL);
-    protected static final String KAFKA_URL = "localhost:29092";
+    protected static final String ZOOKEEPER_URL;
+    protected static final ZookeeperConnection ZOOKEEPER_CONNECTION;
+    public static final String KAFKA_URL;
 
-    private static final JdbcTemplate JDBC_TEMPLATE = new JdbcTemplate(
-            new DriverManagerDataSource(POSTGRES_URL, POSTGRES_USER, POSTGRES_PWD));
-    protected static final ObjectMapper MAPPER = (new JsonConfig()).jacksonObjectMapper();
-    protected static final StorageDbRepository STORAGE_DB_REPOSITORY = new StorageDbRepository(JDBC_TEMPLATE, MAPPER);
-    protected static final TimelineDbRepository TIMELINE_REPOSITORY = new TimelineDbRepository(JDBC_TEMPLATE, MAPPER);
+    protected static final ObjectMapper MAPPER;
+    protected static final StorageDbRepository STORAGE_DB_REPOSITORY;
+    protected static final TimelineDbRepository TIMELINE_REPOSITORY;
+
+    public static Configuration configs;
 
     static {
+
+        // Get configurations from automation.yml file
+        try {
+            configs = new TestConfigurationContext().load();
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+
+        POSTGRES_URL = configs.getDatabase().getUrl();
+        POSTGRES_USER = configs.getDatabase().getUsername();
+        POSTGRES_PWD = configs.getDatabase().getPassword();
+
+        JdbcTemplate jdbcTemplate =
+            new JdbcTemplate(new DriverManagerDataSource(POSTGRES_URL, POSTGRES_USER, POSTGRES_PWD));
+        MAPPER = (new JsonConfig()).jacksonObjectMapper();
+        STORAGE_DB_REPOSITORY = new StorageDbRepository(jdbcTemplate, MAPPER);
+        TIMELINE_REPOSITORY = new TimelineDbRepository(jdbcTemplate, MAPPER);
+
+
+        PORT = configs.getApiPort();
+        URL = configs.getApiUrl() + ":" + PORT;
+        KAFKA_URL = configs.getKafka().getBootstrapServers();
+        ZOOKEEPER_URL = configs.getZookeeperUrl();
+        ZOOKEEPER_CONNECTION = ZookeeperConnection.valueOf("zookeeper://" + ZOOKEEPER_URL);
+
         RestAssured.port = PORT;
         RestAssured.defaultParser = Parser.JSON;
         RestAssured.config().getHttpClientConfig()
@@ -58,4 +85,5 @@ public abstract class BaseAT {
         } catch (final DuplicatedStorageException ignore) {
         }
     }
+
 }

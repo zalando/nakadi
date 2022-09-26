@@ -1,6 +1,7 @@
 include:
   - project: wiley-sons/tc-gitlab-templates
     file: autodevops-gradle.gitlab-ci.yml
+    ref: latest_image
 
 variables:
   APP_NAME: eventhub
@@ -19,16 +20,20 @@ review:
     KUBE_NAMESPACE: epdcs-review
     K8S_SECRET_SPRING_PROFILES_ACTIVE: review
     HELM_UPGRADE_VALUES_FILE: .gitlab/auto-deploy-values-review.yaml
+  after_script:
+    - echo "HOST_IP=$(kubectl get pods -l app=$APP_NAME-$CI_ENVIRONMENT_SLUG --sort-by=.metadata.creationTimestamp -o jsonpath='{.items[-1:]..status.podIP}' -n epdcs-review)" >> deploy.env
 
 
 review-integrationtest:
-  when: manual
   image: artifactory.aws.wiley.com/docker/openjdk:11-jdk
+  tags:
+    - dev
   extends: .review-integration-test
   variables:
     ENVIRONMENT_HOST: environment_url.txt
   script:
-    - ./gradlew :acceptance-test:acceptanceTest
+    - echo "$HOST_IP"
+    - "TEST_ENV=review NAKADI_BASE_URL=http://$HOST_IP POSTGRES_URL=jdbc:postgresql://$HOST_IP:5432/local_nakadi_db ZOOKEEPER_URL=$HOST_IP:2181 KAFKA_URL=$HOST_IP:29092 ./gradlew :acceptance-test:acceptanceTest"
 
 dev:
   variables:
@@ -45,7 +50,7 @@ dev-integrationtest:
   allow_failure: true
   extends: .dev-integration-test
   script:
-    - ./gradlew :acceptance-test:acceptanceTest
+    - "TEST_ENV=dev NAKADI_BASE_URL=https://eventhub.dev.tc.private.wiley.host ./gradlew :acceptance-test:acceptanceTest"
 
 qa:
   variables:
@@ -62,4 +67,4 @@ qa-integrationtest:
   allow_failure: true
   extends: .qa-integration-test
   script:
-    - ./gradlew :acceptance-test:acceptanceTest
+    - "TEST_ENV=qa NAKADI_BASE_URL=https://eventhub.qa.tc.wiley.host ./gradlew :acceptance-test:acceptanceTest"
