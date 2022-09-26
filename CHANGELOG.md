@@ -1,3 +1,14 @@
+## [1.1.4](https://github.com/wiley/nakadi/compare/v1.1.3...v1.1.4) (2022-09-26)
+
+
+### Bug Fixes
+
+* add external configs to integration tests ([e91d7aa](https://github.com/wiley/nakadi/commit/e91d7aa316095e39aeaf08586bf2de25abcd9754))
+* add external kafaka security configs ([56a93fe](https://github.com/wiley/nakadi/commit/56a93fea0b7d541d57a31bdad6c2f94451061da2))
+* append port to url in only for local environment ([779c502](https://github.com/wiley/nakadi/commit/779c502b456b9a93af49b7a5d11d5a317d793c68))
+* check null preventing nullpointer exception ([c65f5da](https://github.com/wiley/nakadi/commit/c65f5da95fa95ff228d68ce8fbe867a724223cad))
+* replace hard coded kafka url with variable ([2655ad4](https://github.com/wiley/nakadi/commit/2655ad48558e048bc4a20e6e1624f6f020539c17))
+
 ## [1.1.3](https://github.com/wiley/nakadi/compare/v1.1.2...v1.1.3) (2022-09-19)
 
 
