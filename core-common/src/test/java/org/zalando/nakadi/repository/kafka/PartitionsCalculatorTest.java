@@ -33,6 +33,9 @@ public class PartitionsCalculatorTest {
     static Stream<Arguments> partitionTestCases() {
         // readParallelism, writeParallelism, expectedBestPartitionCount
         return Stream.of(
+                arguments(0, -1, 1),
+                arguments(-1, 0, 1),
+                arguments(-1, -1, 1),
                 arguments(0, 0, 1),
                 arguments(2, 2, 2),
                 arguments(2, 3, 3),

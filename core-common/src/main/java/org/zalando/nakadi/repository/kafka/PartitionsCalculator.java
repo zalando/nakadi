@@ -14,7 +14,7 @@ public class PartitionsCalculator {
     }
 
     public int getBestPartitionsCount(final EventTypeStatistics stat) {
-        if (null == stat || stat.getReadParallelism() == 0 && stat.getWriteParallelism() == 0) {
+        if (null == stat || stat.getReadParallelism() <= 0 && stat.getWriteParallelism() <= 0) {
             return defaultPartitionCount;
         }
         final int maxPartitionsDueParallelism = Math.max(stat.getReadParallelism(), stat.getWriteParallelism());
