@@ -69,17 +69,13 @@ public class EventTypeStatistics {
             return false;
         }
         final EventTypeStatistics that = (EventTypeStatistics) o;
-        return Objects.equals(messagesPerMinute, that.messagesPerMinute)
-                && Objects.equals(messageSize, that.messageSize)
-                && Objects.equals(readParallelism, that.readParallelism)
+        return Objects.equals(readParallelism, that.readParallelism)
                 && Objects.equals(writeParallelism, that.writeParallelism);
     }
 
     @Override
     public int hashCode() {
-        int result = messagesPerMinute != null ? messagesPerMinute.hashCode() : 0;
-        result = 31 * result + (messageSize != null ? messageSize.hashCode() : 0);
-        result = 31 * result + (readParallelism != null ? readParallelism.hashCode() : 0);
+        int result = readParallelism != null ? readParallelism.hashCode() : 0;
         result = 31 * result + (writeParallelism != null ? writeParallelism.hashCode() : 0);
         return result;
     }
