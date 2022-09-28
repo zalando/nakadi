@@ -5,6 +5,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableMap;
 import com.google.common.collect.Lists;
+import java.util.Objects;
 import org.apache.http.HttpStatus;
 import org.hamcrest.Matchers;
 import org.hamcrest.core.StringContains;
@@ -244,8 +245,14 @@ public class HilaAT extends BaseAT {
 
         waitFor(() -> assertThat(client.getJsonBatches(), Matchers.hasSize(2)), configs.getStream().maxCommitTimeout);
         waitFor(() -> assertThat(client.isRunning(), is(false)), configs.getStream().maxCommitTimeout);
-        assertThat(client.getJsonBatches().get(1), equalToBatchIgnoringToken(singleEventBatch("0",
+        String env = System.getenv("TEST_ENV");
+        if(!Objects.isNull(env) && env.equalsIgnoreCase("review")) {
+            assertThat(client.getJsonBatches().get(1), equalToBatchIgnoringToken(singleEventBatch("0",
                 "001-0001-000000000000000000", eventType.getName(), ImmutableMap.of(), "Commit timeout reached")));
+        } else {
+            assertThat(client.getJsonBatches().get(2), equalToBatchIgnoringToken(singleEventBatch("0",
+                "001-0001-000000000000000000", eventType.getName(), ImmutableMap.of(), "Commit timeout reached")));
+        }
     }
 
     @Test(timeout = 15000)
