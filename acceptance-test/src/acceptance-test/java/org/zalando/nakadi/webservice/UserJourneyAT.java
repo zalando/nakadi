@@ -313,7 +313,7 @@ public class UserJourneyAT extends RealEnvironmentAT {
         return MAPPER.writer().writeValueAsString(updateEventType);
     }
 
-    @Test(timeout = 15000)
+    @Test(timeout = 60000)
     public void userJourneyHila() throws InterruptedException, IOException {
         postEvents(rangeClosed(0, 3)
                 .mapToObj(x -> "{\"foo\":\"bar" + x + "\"}")
@@ -392,7 +392,7 @@ public class UserJourneyAT extends RealEnvironmentAT {
                 .statusCode(NO_CONTENT.value());
     }
 
-    @Test(timeout = 15000)
+    @Test(timeout = 60000)
     public void userJourneyAvroTransition() throws InterruptedException, IOException {
 
         final EventType eventType = MAPPER.readValue(jsonRequestSpec()

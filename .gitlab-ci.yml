@@ -45,12 +45,14 @@ dev:
 dev-integrationtest:
   when: manual
   image: artifactory.aws.wiley.com/docker/openjdk:11-jdk
+  tags:
+    - dev
   variables:
     APP_ENVIRONMENT: dev
   allow_failure: true
   extends: .dev-integration-test
   script:
-    - "TEST_ENV=dev NAKADI_BASE_URL=https://eventhub.dev.tc.private.wiley.host ./gradlew :acceptance-test:acceptanceTest"
+    - "TEST_ENV=dev ./gradlew :acceptance-test:acceptanceTest"
 
 qa:
   variables:
@@ -62,9 +64,11 @@ qa:
 qa-integrationtest:
   when: manual
   image: artifactory.aws.wiley.com/docker/openjdk:11-jdk
+  tags:
+    - dev
   variables:
     APP_ENVIRONMENT: qa
   allow_failure: true
   extends: .qa-integration-test
   script:
-    - "TEST_ENV=qa NAKADI_BASE_URL=https://eventhub.qa.tc.wiley.host ./gradlew :acceptance-test:acceptanceTest"
+    - "TEST_ENV=qa ./gradlew :acceptance-test:acceptanceTest"

@@ -6,6 +6,7 @@ environments:
     kafka:
       bootstrapServers: localhost:29092
       minInSyncReplicas: 1
+      replicaFactor: 1
       securityProtocol: PLAINTEXT
       saslMechanism: PLAIN
       saslJaasConfig: software.amazon.msk.auth.iam.IAMLoginModule required;
@@ -31,6 +32,7 @@ environments:
     kafka:
       bootstrapServers: localhost:29092
       minInSyncReplicas: 1
+      replicaFactor: 1
       securityProtocol: PLAINTEXT
       saslMechanism: PLAIN
       saslJaasConfig: software.amazon.msk.auth.iam.IAMLoginModule required;
@@ -55,7 +57,8 @@ environments:
     zookeeperUrl: z-3.epdcs-nakadi-msk-kafk.uwqhdz.c23.kafka.us-east-1.amazonaws.com:2181,z-2.epdcs-nakadi-msk-kafk.uwqhdz.c23.kafka.us-east-1.amazonaws.com:2181,z-1.epdcs-nakadi-msk-kafk.uwqhdz.c23.kafka.us-east-1.amazonaws.com:2181
     kafka:
       bootstrapServers: b-2.epdcs-nakadi-msk-kafk.uwqhdz.c23.kafka.us-east-1.amazonaws.com:9098,b-3.epdcs-nakadi-msk-kafk.uwqhdz.c23.kafka.us-east-1.amazonaws.com:9098,b-1.epdcs-nakadi-msk-kafk.uwqhdz.c23.kafka.us-east-1.amazonaws.com:9098
-      minInSyncReplicas: 1
+      minInSyncReplicas: 2
+      replicaFactor: 2
       securityProtocol: SASL_SSL
       saslMechanism: AWS_MSK_IAM
       saslJaasConfig: software.amazon.msk.auth.iam.IAMLoginModule required;
@@ -81,6 +84,7 @@ environments:
     kafka:
       bootstrapServers: b-2.epdcs-nakadi-msk-kafk.uwqhdz.c23.kafka.us-east-1.amazonaws.com:9098,b-3.epdcs-nakadi-msk-kafk.uwqhdz.c23.kafka.us-east-1.amazonaws.com:9098,b-1.epdcs-nakadi-msk-kafk.uwqhdz.c23.kafka.us-east-1.amazonaws.com:9098
       minInSyncReplicas: 2
+      replicaFactor: 2
       securityProtocol: SASL_SSL
       saslMechanism: AWS_MSK_IAM
       saslJaasConfig: software.amazon.msk.auth.iam.IAMLoginModule required;
@@ -105,7 +109,8 @@ environments:
     zookeeperUrl: localhost:2181
     kafka:
       bootstrapServers: localhost:29092
-      minInSyncReplicas: 1
+      minInSyncReplicas: 2
+      replicaFactor: 2
       securityProtocol: PLAINTEXT
       saslMechanism: PLAIN
       saslJaasConfig: software.amazon.msk.auth.iam.IAMLoginModule required;
@@ -130,7 +135,8 @@ environments:
     zookeeperUrl: localhost:2181
     kafka:
       bootstrapServers: localhost:29092
-      minInSyncReplicas: 1
+      minInSyncReplicas: 2
+      replicaFactor: 2
       securityProtocol: PLAINTEXT
       saslMechanism: PLAIN
       saslJaasConfig: software.amazon.msk.auth.iam.IAMLoginModule required;

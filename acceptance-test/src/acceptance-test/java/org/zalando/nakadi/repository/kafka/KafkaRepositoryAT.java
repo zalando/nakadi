@@ -37,7 +37,7 @@ import static org.zalando.nakadi.repository.kafka.KafkaTestHelper.createKafkaPro
 public class KafkaRepositoryAT extends BaseAT {
 
     private static final int DEFAULT_PARTITION_COUNT = 8;
-    private static final int DEFAULT_REPLICA_FACTOR = 1;
+    private static final int DEFAULT_REPLICA_FACTOR = configs.getKafka().getReplicaFactor();
     private static final int MAX_TOPIC_PARTITION_COUNT = 10;
     private static final int DEFAULT_TOPIC_ROTATION = 50000000;
     private static final int COMPACTED_TOPIC_ROTATION = 60000;
@@ -52,20 +52,20 @@ public class KafkaRepositoryAT extends BaseAT {
     private static final Long DEFAULT_RETENTION_TIME = 100L;
     private static final Long DEFAULT_TOPIC_RETENTION = 100000000L;
     private static final CleanupPolicy DEFAULT_CLEANUP_POLICY = CleanupPolicy.DELETE;
-    private static final int KAFKA_RETRIES = 10;
-    private static final int KAFKA_REQUEST_TIMEOUT = 30000;
-    private static final int KAFKA_DELIVERY_TIMEOUT = 30000;
-    private static final int KAFKA_MAX_BLOCK_TIMEOUT = 5000;
-    private static final String KAFKA_COMPRESSION_TYPE = "lz4";
-    private static final int KAFKA_BATCH_SIZE = 1048576;
-    private static final long KAFKA_BUFFER_MEMORY = KAFKA_BATCH_SIZE * 10L;
-    private static final int KAFKA_LINGER_MS = 0;
-    private static final int KAFKA_MAX_IN_FLIGHT_REQUESTS_PER_CONNECTION = 5;
+    protected static final int KAFKA_RETRIES = 10;
+    protected static final int KAFKA_REQUEST_TIMEOUT = 30000;
+    protected static final int KAFKA_DELIVERY_TIMEOUT = 30000;
+    protected static final int KAFKA_MAX_BLOCK_TIMEOUT = 5000;
+    protected static final String KAFKA_COMPRESSION_TYPE = "lz4";
+    protected static final int KAFKA_BATCH_SIZE = 1048576;
+    protected static final long KAFKA_BUFFER_MEMORY = KAFKA_BATCH_SIZE * 10L;
+    protected static final int KAFKA_LINGER_MS = 0;
+    protected static final int KAFKA_MAX_IN_FLIGHT_REQUESTS_PER_CONNECTION = 5;
     private static final long NAKADI_EVENT_MAX_BYTES = 1000000L;
     private static final long TIMELINE_WAIT_TIMEOUT = 40000;
     private static final int NAKADI_SUBSCRIPTION_MAX_PARTITIONS = 8;
-    private static final boolean KAFKA_ENABLE_AUTO_COMMIT = false;
-    private static final int KAFKA_MAX_REQUEST_SIZE = 2098152;
+    protected static final boolean KAFKA_ENABLE_AUTO_COMMIT = false;
+    protected static final int KAFKA_MAX_REQUEST_SIZE = 2098152;
     private static final String DEFAULT_ADMIN_DATA_TYPE = "service";
     private static final String DEFAULT_ADMIN_VALUE = "nakadi";
     private static final String DEFAULT_WARN_ALL_DATA_ACCESS_MESSAGE = "";

@@ -4,6 +4,7 @@ import org.apache.commons.lang3.StringUtils;
 import org.apache.kafka.clients.admin.AdminClient;
 import org.apache.kafka.clients.admin.DescribeConfigsResult;
 import org.apache.kafka.clients.admin.NewTopic;
+import org.apache.kafka.clients.consumer.ConsumerConfig;
 import org.apache.kafka.clients.consumer.KafkaConsumer;
 import org.apache.kafka.clients.producer.KafkaProducer;
 import org.apache.kafka.clients.producer.ProducerConfig;
@@ -34,14 +35,35 @@ public class KafkaTestHelper {
     }
 
     public KafkaConsumer<byte[], byte[]> createConsumer() {
-        return new KafkaConsumer<>(createKafkaProperties());
+        Properties props = createKafkaProperties();
+        props.put(ConsumerConfig.ENABLE_AUTO_COMMIT_CONFIG, KafkaRepositoryAT.KAFKA_ENABLE_AUTO_COMMIT);
+        props.put(ConsumerConfig.KEY_DESERIALIZER_CLASS_CONFIG,
+            "org.apache.kafka.common.serialization.ByteArrayDeserializer");
+        props.put(ConsumerConfig.VALUE_DESERIALIZER_CLASS_CONFIG,
+            "org.apache.kafka.common.serialization.ByteArrayDeserializer");
+        props.put(ConsumerConfig.DEFAULT_API_TIMEOUT_MS_CONFIG, KafkaRepositoryAT.KAFKA_MAX_BLOCK_TIMEOUT);
+        return new KafkaConsumer<>(props);
     }
 
     public KafkaProducer<byte[], byte[]> createProducer() {
         Properties props = createKafkaProperties();
+        props.put(ProducerConfig.KEY_SERIALIZER_CLASS_CONFIG,
+            "org.apache.kafka.common.serialization.ByteArraySerializer");
+        props.put(ProducerConfig.VALUE_SERIALIZER_CLASS_CONFIG,
+            "org.apache.kafka.common.serialization.ByteArraySerializer");
+        props.put(ProducerConfig.ACKS_CONFIG, "all");
         props.put(ProducerConfig.ENABLE_IDEMPOTENCE_CONFIG, true);
         props.put("min.insync.replicas",  BaseAT.configs.getKafka().getMinInSyncReplicas());
-        props.put(ProducerConfig.ACKS_CONFIG, "all");
+        props.put(ProducerConfig.RETRIES_CONFIG, KafkaRepositoryAT.KAFKA_RETRIES);
+        props.put(ProducerConfig.REQUEST_TIMEOUT_MS_CONFIG, KafkaRepositoryAT.KAFKA_REQUEST_TIMEOUT);
+        props.put(ProducerConfig.BUFFER_MEMORY_CONFIG, KafkaRepositoryAT.KAFKA_BUFFER_MEMORY);
+        props.put(ProducerConfig.BATCH_SIZE_CONFIG, KafkaRepositoryAT.KAFKA_BATCH_SIZE);
+        props.put(ProducerConfig.LINGER_MS_CONFIG, KafkaRepositoryAT.KAFKA_LINGER_MS);
+        props.put(ProducerConfig.MAX_IN_FLIGHT_REQUESTS_PER_CONNECTION, KafkaRepositoryAT.KAFKA_MAX_IN_FLIGHT_REQUESTS_PER_CONNECTION);
+        props.put(ProducerConfig.COMPRESSION_TYPE_CONFIG, KafkaRepositoryAT.KAFKA_COMPRESSION_TYPE);
+        props.put(ProducerConfig.MAX_REQUEST_SIZE_CONFIG, KafkaRepositoryAT.KAFKA_MAX_REQUEST_SIZE);
+        props.put(ProducerConfig.DELIVERY_TIMEOUT_MS_CONFIG, KafkaRepositoryAT.KAFKA_DELIVERY_TIMEOUT);
+        props.put(ProducerConfig.MAX_BLOCK_MS_CONFIG, KafkaRepositoryAT.KAFKA_MAX_BLOCK_TIMEOUT);
         return new KafkaProducer<>(props);
     }
 
@@ -52,10 +74,6 @@ public class KafkaTestHelper {
         props.put("sasl.mechanism", BaseAT.configs.getKafka().getSaslMechanism());
         props.put("sasl.jaas.config", BaseAT.configs.getKafka().getSaslJaasConfig());
         props.put("sasl.client.callback.handler.class", BaseAT.configs.getKafka().getSaslClientCallbackHandlerClass());
-        props.put("value.serializer", "org.apache.kafka.common.serialization.ByteArraySerializer");
-        props.put("key.serializer", "org.apache.kafka.common.serialization.ByteArraySerializer");
-        props.put("value.deserializer", "org.apache.kafka.common.serialization.ByteArrayDeserializer");
-        props.put("key.deserializer", "org.apache.kafka.common.serialization.ByteArrayDeserializer");
         return props;
     }
 

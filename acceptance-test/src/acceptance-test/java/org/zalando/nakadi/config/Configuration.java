@@ -121,6 +121,7 @@ public class Configuration {
   public static class Kafka {
     private String bootstrapServers;
     private int minInSyncReplicas;
+    private int replicaFactor;
     private String securityProtocol;
     private String saslMechanism;
     private String saslJaasConfig;
@@ -140,6 +141,14 @@ public class Configuration {
 
     public void setMinInSyncReplicas(int minInSyncReplicas) {
       this.minInSyncReplicas = minInSyncReplicas;
+    }
+
+    public int getReplicaFactor() {
+      return replicaFactor;
+    }
+
+    public void setReplicaFactor(int replicaFactor) {
+      this.replicaFactor = replicaFactor;
     }
 
     public String getSecurityProtocol() {

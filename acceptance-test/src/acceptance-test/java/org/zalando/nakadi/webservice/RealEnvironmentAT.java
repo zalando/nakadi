@@ -4,6 +4,7 @@ import com.jayway.restassured.RestAssured;
 import com.jayway.restassured.specification.RequestSpecification;
 
 import java.util.Optional;
+import org.zalando.nakadi.config.Configuration;
 
 import static java.util.Optional.ofNullable;
 
@@ -16,11 +17,14 @@ public abstract class RealEnvironmentAT {
         oauthToken = ofNullable(System.getenv("NAKADI_OAUTH_TOKEN"));
         owningApp = ofNullable(System.getenv("NAKADI_OWNING_APP")).orElse("dummy-app");
 
-        RestAssured.baseURI = ofNullable(System.getenv("NAKADI_BASE_URL"))
+        // Get configurations from automation.yml file
+        Configuration configs = BaseAT.configs;
+
+        RestAssured.baseURI = ofNullable(configs.getApiUrl())
                 .orElse(RestAssured.DEFAULT_URI);
 
-        RestAssured.port = Integer.parseInt(ofNullable(System.getenv("NAKADI_PORT"))
-                .orElse(Integer.toString(RestAssured.DEFAULT_PORT)));
+        RestAssured.port = Optional.of(configs.getApiPort())
+                .orElse(RestAssured.DEFAULT_PORT);
     }
 
     protected RequestSpecification requestSpec() {
