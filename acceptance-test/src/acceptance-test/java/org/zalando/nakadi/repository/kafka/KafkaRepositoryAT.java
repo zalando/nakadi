@@ -37,7 +37,7 @@ import static org.zalando.nakadi.repository.kafka.KafkaTestHelper.createKafkaPro
 public class KafkaRepositoryAT extends BaseAT {
 
     private static final int DEFAULT_PARTITION_COUNT = 8;
-    private static final int DEFAULT_REPLICA_FACTOR = 1;
+    private static final int DEFAULT_REPLICA_FACTOR = configs.getKafka().getReplicaFactor();
     private static final int MAX_TOPIC_PARTITION_COUNT = 10;
     private static final int DEFAULT_TOPIC_ROTATION = 50000000;
     private static final int COMPACTED_TOPIC_ROTATION = 60000;
