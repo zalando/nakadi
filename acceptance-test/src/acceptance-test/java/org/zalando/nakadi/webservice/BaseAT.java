@@ -65,6 +65,7 @@ public abstract class BaseAT {
         ZOOKEEPER_URL = configs.getZookeeperUrl();
         ZOOKEEPER_CONNECTION = ZookeeperConnection.valueOf("zookeeper://" + ZOOKEEPER_URL);
 
+        RestAssured.baseURI = configs.getApiUrl();
         RestAssured.port = PORT;
         RestAssured.defaultParser = Parser.JSON;
         RestAssured.config().getHttpClientConfig()
