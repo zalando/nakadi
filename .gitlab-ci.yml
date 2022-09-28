@@ -45,6 +45,8 @@ dev:
 dev-integrationtest:
   when: manual
   image: artifactory.aws.wiley.com/docker/openjdk:11-jdk
+  tags:
+    - dev
   variables:
     APP_ENVIRONMENT: dev
   allow_failure: true
@@ -62,6 +64,8 @@ qa:
 qa-integrationtest:
   when: manual
   image: artifactory.aws.wiley.com/docker/openjdk:11-jdk
+  tags:
+    - dev
   variables:
     APP_ENVIRONMENT: qa
   allow_failure: true
