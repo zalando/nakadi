@@ -17,10 +17,12 @@ import java.util.Optional;
 import java.util.UUID;
 import java.util.stream.Collectors;
 
+import static org.hamcrest.Matchers.is;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNotSame;
 import static org.junit.Assert.assertTrue;
+import static org.junit.Assume.assumeThat;
 import static org.zalando.nakadi.utils.TestUtils.randomUUID;
 import static org.zalando.nakadi.utils.TestUtils.randomValidStringOfLength;
 
@@ -48,6 +50,8 @@ public class StorageDbRepositoryTest extends AbstractDbRepositoryTest {
 
     @Test
     public void testStorageCreated() {
+        // Ignore storage testcase from real environments until using multiple storages
+        assumeThat(System.getenv("TEST_ENV"), is("review"));
         final String name = randomUUID();
         final Storage storage = createStorage(name, ZookeeperConnection.valueOf("zookeeper://exaddress:8181/path"));
 
@@ -62,6 +66,8 @@ public class StorageDbRepositoryTest extends AbstractDbRepositoryTest {
 
     @Test
     public void testStorageOrdered() {
+        // Ignore storage testcase from real environments until using multiple storages
+        assumeThat(System.getenv("TEST_ENV"), is("review"));
         final String namePrefix = randomValidStringOfLength(31);
 
         final Storage storage2 = repository.createStorage(
@@ -84,6 +90,8 @@ public class StorageDbRepositoryTest extends AbstractDbRepositoryTest {
 
     @Test
     public void testStorageDeleted() {
+        // Ignore storage testcase from real environments until using multiple storages
+        assumeThat(System.getenv("TEST_ENV"), is("review"));
         final String name = randomUUID();
         final Storage storage = repository.createStorage(
                 createStorage(name, ZookeeperConnection.valueOf("zookeeper://exaddress:8181/path")));
@@ -99,6 +107,8 @@ public class StorageDbRepositoryTest extends AbstractDbRepositoryTest {
 
     @Test(expected = StorageIsUsedException.class)
     public void testDeleteUsedStorage() {
+        // Ignore storage testcase from real environments until using multiple storages
+        assumeThat(System.getenv("TEST_ENV"), is("review"));
         final String name = randomUUID();
         final Storage storage = repository.createStorage(
                 createStorage(name, ZookeeperConnection.valueOf("zookeeper://exaddress:8181/path")));

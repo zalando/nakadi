@@ -18,6 +18,8 @@ import java.util.UUID;
 import java.util.stream.Collectors;
 import java.util.stream.LongStream;
 
+import static org.hamcrest.Matchers.is;
+import static org.junit.Assume.assumeThat;
 import static org.zalando.nakadi.utils.TestUtils.randomUUID;
 
 public class TimelineDbRepositoryTest extends AbstractDbRepositoryTest {
@@ -33,6 +35,8 @@ public class TimelineDbRepositoryTest extends AbstractDbRepositoryTest {
         final StorageDbRepository sRepository = new StorageDbRepository(template, TestUtils.OBJECT_MAPPER);
         final EventTypeRepository eRepository = new EventTypeRepository(template, TestUtils.OBJECT_MAPPER);
 
+        // Ignore timeline testcase from real environments until using multiple timeline
+        assumeThat(System.getenv("TEST_ENV"), is("review"));
         storage = sRepository.createStorage(StorageDbRepositoryTest.createStorage(
                 randomUUID(), ZookeeperConnection.valueOf("zookeeper://localhost:8181/test")));
         testEt = eRepository.saveEventType(TestUtils.buildDefaultEventType());
@@ -40,6 +44,8 @@ public class TimelineDbRepositoryTest extends AbstractDbRepositoryTest {
 
     @Test
     public void testTimelineCreated() {
+        // Ignore timeline testcase from real environments until using multiple timeline
+        assumeThat(System.getenv("TEST_ENV"), is("review"));
 
         final Timeline timeline = insertTimeline(0);
 
@@ -51,6 +57,9 @@ public class TimelineDbRepositoryTest extends AbstractDbRepositoryTest {
 
     @Test
     public void testTimelineUpdate() {
+        // Ignore timeline testcase from real environments until using multiple timeline
+        assumeThat(System.getenv("TEST_ENV"), is("review"));
+
         final Timeline initial = insertTimeline(0);
 
         final Timeline modified = tRepository.getTimeline(initial.getId()).get();
@@ -70,12 +79,18 @@ public class TimelineDbRepositoryTest extends AbstractDbRepositoryTest {
 
     @Test(expected = DuplicatedTimelineException.class)
     public void testDuplicateOrderNotAllowed() {
+        // Ignore timeline testcase from real environments until using multiple timeline
+        assumeThat(System.getenv("TEST_ENV"), is("review"));
+
         insertTimeline(0);
         insertTimeline(0);
     }
 
     @Test
     public void testListTimelinesOrdered() {
+        // Ignore timeline testcase from real environments until using multiple timeline
+        assumeThat(System.getenv("TEST_ENV"), is("review"));
+
         final Timeline t1 = insertTimeline(1);
         final Timeline t0 = insertTimeline(0);
 
@@ -95,6 +110,9 @@ public class TimelineDbRepositoryTest extends AbstractDbRepositoryTest {
 
     @Test
     public void testGetExpiredTimelines() {
+        // Ignore timeline testcase from real environments until using multiple timeline
+        assumeThat(System.getenv("TEST_ENV"), is("review"));
+
         final DateTime now = new DateTime();
         final DateTime tomorrow = now.plusDays(1);
         final DateTime yesterday = now.minusDays(1);
