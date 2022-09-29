@@ -13,3 +13,4 @@ include 'api-metastore'
 include 'api-misc'
 
 include 'acceptance-test'
+include 'api-perftest'

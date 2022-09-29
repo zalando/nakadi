@@ -1,0 +1,10 @@
+[
+{
+  "assignment_id": "${assignmentId}",
+  "metadata": {
+    "occurred_at": "2022-05-03T09:00:00.895Z",
+    "eid": "${eid}",
+    "partition_compaction_key": "329ed3d2-8366-11e8-adc0-fa7ae01bbebc"
+  }
+}
+]
