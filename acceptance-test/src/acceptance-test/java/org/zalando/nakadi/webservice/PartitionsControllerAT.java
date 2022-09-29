@@ -28,6 +28,8 @@ import java.util.stream.Collectors;
 import static com.jayway.restassured.RestAssured.get;
 import static com.jayway.restassured.RestAssured.when;
 import static org.hamcrest.MatcherAssert.assertThat;
+import static org.hamcrest.Matchers.is;
+import static org.junit.Assume.assumeThat;
 import static org.zalando.nakadi.webservice.utils.JsonTestHelper.asMap;
 import static org.zalando.nakadi.webservice.utils.JsonTestHelper.asMapsList;
 
@@ -50,12 +52,17 @@ public class PartitionsControllerAT extends BaseAT {
 
     @Before
     public void before() {
+        // Skip connecting to MSK via KafkaTestHelper from automation. Allow executing on review environment only.
+        assumeThat(System.getenv("TEST_ENV"), is("review"));
         kafkaHelper = new KafkaTestHelper(KAFKA_URL);
         actualTopics = kafkaHelper.createConsumer().listTopics();
     }
 
     @Test
     public void whenListPartitionsThenOk() throws IOException {
+        // Skip connecting to MSK via KafkaTestHelper from automation. Allow executing on review environment only.
+        assumeThat(System.getenv("TEST_ENV"), is("review"));
+
         // ACT //
         final Response response = when().get(String.format("/event-types/%s/partitions", eventTypeName));
 
@@ -79,6 +86,9 @@ public class PartitionsControllerAT extends BaseAT {
 
     @Test
     public void testBeginShownForNoEvents() throws IOException {
+        // Skip connecting to MSK via KafkaTestHelper from automation. Allow executing on review environment only.
+        assumeThat(System.getenv("TEST_ENV"), is("review"));
+
         final EventType eventType = NakadiTestUtils.createEventType();
         when().get(String.format("/event-types/%s/partitions", eventType.getName())).then()
                 .statusCode(HttpStatus.OK.value())
@@ -92,6 +102,9 @@ public class PartitionsControllerAT extends BaseAT {
 
     @Test
     public void whenListPartitionsThenTopicNotFound() throws IOException {
+        // Skip connecting to MSK via KafkaTestHelper from automation. Allow executing on review environment only.
+        assumeThat(System.getenv("TEST_ENV"), is("review"));
+
         when()
                 .get("/event-types/not-existing-topic/partitions")
                 .then()
@@ -103,6 +116,9 @@ public class PartitionsControllerAT extends BaseAT {
     @Test
     public void whenListPartitionsAndWriteMessageThenOffsetInPartitionIsIncreased() throws ExecutionException,
             InterruptedException, IOException {
+        // Skip connecting to MSK via KafkaTestHelper from automation. Allow executing on review environment only.
+        assumeThat(System.getenv("TEST_ENV"), is("review"));
+
         // ACT //
         final String url = String.format("/event-types/%s/partitions", eventTypeName);
         final List<Map<String, String>> partitionsInfoBefore = asMapsList(get(url).print());
@@ -118,6 +134,9 @@ public class PartitionsControllerAT extends BaseAT {
 
     @Test
     public void whenGetPartitionThenOk() throws IOException {
+        // Skip connecting to MSK via KafkaTestHelper from automation. Allow executing on review environment only.
+        assumeThat(System.getenv("TEST_ENV"), is("review"));
+
         // ACT //
         final Response response = when().get(String.format("/event-types/%s/partitions/0", eventTypeName));
 
@@ -128,6 +147,9 @@ public class PartitionsControllerAT extends BaseAT {
 
     @Test
     public void whenGetPartitionWithConsumedOffsetThenOk() throws IOException {
+        // Skip connecting to MSK via KafkaTestHelper from automation. Allow executing on review environment only.
+        assumeThat(System.getenv("TEST_ENV"), is("review"));
+
         // ACT //
         final Response response = when().get(String.format("/event-types/%s/partitions/0?consumed_offset=BEGIN",
                 eventTypeName));
@@ -139,6 +161,9 @@ public class PartitionsControllerAT extends BaseAT {
 
     @Test
     public void whenGetPartitionThenTopicNotFound() throws IOException {
+        // Skip connecting to MSK via KafkaTestHelper from automation. Allow executing on review environment only.
+        assumeThat(System.getenv("TEST_ENV"), is("review"));
+
         when()
                 .get("/event-types/not-existing-topic/partitions/0")
                 .then()
@@ -149,6 +174,9 @@ public class PartitionsControllerAT extends BaseAT {
 
     @Test
     public void whenGetPartitionThenPartitionNotFound() throws IOException {
+        // Skip connecting to MSK via KafkaTestHelper from automation. Allow executing on review environment only.
+        assumeThat(System.getenv("TEST_ENV"), is("review"));
+
         when()
                 .get(String.format("/event-types/%s/partitions/43766", eventTypeName))
                 .then()
@@ -160,6 +188,9 @@ public class PartitionsControllerAT extends BaseAT {
     @Test
     public void whenGetPartitionAndWriteMessageThenOffsetInPartitionIsIncreased() throws ExecutionException,
             InterruptedException, IOException {
+        // Skip connecting to MSK via KafkaTestHelper from automation. Allow executing on review environment only.
+        assumeThat(System.getenv("TEST_ENV"), is("review"));
+
         // ACT //
         final String url = String.format("/event-types/%s/partitions/0", eventTypeName);
         final Map<String, String> partitionInfoBefore = asMap(get(url).print());

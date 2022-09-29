@@ -53,6 +53,7 @@ import static org.hamcrest.Matchers.hasKey;
 import static org.hamcrest.core.Is.is;
 import static org.hamcrest.core.IsEqual.equalTo;
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assume.assumeThat;
 import static org.zalando.nakadi.utils.TestUtils.buildDefaultEventType;
 import static org.zalando.nakadi.utils.TestUtils.randomTextString;
 import static org.zalando.nakadi.utils.TestUtils.resourceAsString;
@@ -667,6 +668,10 @@ public class EventTypeAT extends BaseAT {
     private void checkEventTypeIsDeleted(final EventType eventType, final List<String> topics) {
         when().get(String.format("%s/%s", ENDPOINT, eventType.getName())).then().statusCode(HttpStatus.SC_NOT_FOUND);
         assertEquals(0, TIMELINE_REPOSITORY.listTimelinesOrdered(eventType.getName()).size());
+
+        // Skip connecting to MSK via KafkaTestHelper from automation. Allow executing on review environment only.
+        assumeThat(System.getenv("TEST_ENV"), Matchers.is("review"));
+
         final KafkaTestHelper kafkaHelper = new KafkaTestHelper(KAFKA_URL);
         // Kafka deletes topics asynchronously, so there may be a delay
         waitFor(() -> {
