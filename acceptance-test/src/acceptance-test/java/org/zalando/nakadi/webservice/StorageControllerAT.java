@@ -17,8 +17,6 @@ import static org.zalando.nakadi.webservice.utils.NakadiTestUtils.createEventTyp
 
 public class StorageControllerAT extends BaseAT {
 
-// TODO: Ignored until fix the issue
-    @Ignore
     @Test
     public void shouldChangeDefaultStorageWhenRequested() throws Exception {
         given()
@@ -27,7 +25,7 @@ public class StorageControllerAT extends BaseAT {
                         "\"kafka_configuration\": {" +
                         "\"zookeeper_connection\":{" +
                         "\"type\": \"zookeeper\"," +
-                        "\"addresses\":[{\"address\":\"zookeeper\", \"port\":2181}]" +
+                        "\"addresses\":[{\"address\":\"" + configs.getZookeeperUrl() + "\", \"port\":2181}]" +
                         "}" +
                         "},\"storage_type\": \"kafka\"}")
                 .contentType(JSON).post("/storages")
