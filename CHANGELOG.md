@@ -1,3 +1,10 @@
+## [1.1.6](https://github.com/wiley/nakadi/compare/v1.1.5...v1.1.6) (2022-09-29)
+
+
+### Bug Fixes
+
+* add perf module ([e4caad9](https://github.com/wiley/nakadi/commit/e4caad9178a375d12e715f04737b80ae532c9cbc))
+
 ## [1.1.5](https://github.com/wiley/nakadi/compare/v1.1.4...v1.1.5) (2022-09-28)
 
 
