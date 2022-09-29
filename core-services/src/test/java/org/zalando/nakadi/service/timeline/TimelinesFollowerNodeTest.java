@@ -64,7 +64,7 @@ public class TimelinesFollowerNodeTest {
         node = null;
     }
 
-    @Test(timeout = 5_000)
+    @Test(timeout = 6_000)
     public void testUpdatesArePropagated() throws InterruptedException {
         final VersionedLockedEventTypes updated = new VersionedLockedEventTypes(
                 startVersion + 1,

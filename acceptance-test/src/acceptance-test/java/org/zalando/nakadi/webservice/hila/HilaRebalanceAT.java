@@ -256,7 +256,7 @@ public class HilaRebalanceAT extends BaseAT {
         assertThat(client2.getResponseCode(), Matchers.is(HttpStatus.CONFLICT.value()));
     }
 
-    @Test(timeout = 60000)
+    @Test(timeout = 65000)
     public void whenNotCommittedThenEventsAreReplayedAfterRebalance() {
         publishBusinessEventWithUserDefinedPartition(
                 eventType.getName(), 2, x -> "blah" + x, x -> String.valueOf(x % 8));

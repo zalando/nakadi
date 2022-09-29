@@ -77,7 +77,7 @@ public class HilaAT extends BaseAT {
         this.subscription = createSubscription(subscription);
     }
 
-    @Test(timeout = 10000)
+    @Test(timeout = 60000)
     public void whenStreamTimeoutReachedPossibleToCommit() throws Exception {
         final TestStreamingClient client = TestStreamingClient
                 .create(URL, subscription.getId(), "batch_limit=1&stream_limit=2&stream_timeout=1")
@@ -275,7 +275,7 @@ public class HilaAT extends BaseAT {
         waitFor(() -> assertThat(client.isRunning(), is(false)), 5000);
     }
 
-    @Test(timeout = 60000)
+    @Test(timeout = 65000)
     public void whenBatchLimitAndTimeoutAreSetTheyAreConsidered() {
 
         publishEvents(eventType.getName(), 12, i -> "{\"foo\":\"bar\"}");
