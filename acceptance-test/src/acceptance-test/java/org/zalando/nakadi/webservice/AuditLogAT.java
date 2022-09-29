@@ -32,7 +32,7 @@ public class AuditLogAT extends BaseAT {
                 .body("owning_application", equalTo("stups_nakadi"));
     }
 
-    @Test(timeout = 60000L)
+    @Test(timeout = 65000L)
     public void testAuditLogEventIsSent() throws IOException, InterruptedException {
         // subscribe to audit log
         final SubscriptionBase subscriptionBase = RandomSubscriptionBuilder.builder()

@@ -54,7 +54,7 @@ public class SubscriptionConsumptionTest {
         cursorsDuringPublish = inTimeCursors.get();
     }
 
-    @Test(timeout = 60000)
+    @Test(timeout = 65000)
     public void test2TimelinesInaRow() throws IOException, InterruptedException {
         final EventType eventType = createEventType();
         final Subscription subscription = createSubscription(
