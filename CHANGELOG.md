@@ -1,3 +1,19 @@
+## [1.1.6](https://github.com/wiley/nakadi/compare/v1.1.5...v1.1.6) (2022-09-29)
+
+
+### Bug Fixes
+
+* add perf module ([e4caad9](https://github.com/wiley/nakadi/commit/e4caad9178a375d12e715f04737b80ae532c9cbc))
+
+## [1.1.5](https://github.com/wiley/nakadi/compare/v1.1.4...v1.1.5) (2022-09-28)
+
+
+### Bug Fixes
+
+* add iam auth dependency for acceptance test model ([2d79286](https://github.com/wiley/nakadi/commit/2d79286a7f9169732d5685904a23124594937ad8))
+* check batches according to env specific batch size ([cfb4f72](https://github.com/wiley/nakadi/commit/cfb4f72d313fdb0100d4aeb21d50b1d1f6959f70))
+* increase test timeout ([a9f7a5a](https://github.com/wiley/nakadi/commit/a9f7a5a1ee7efbd3eed86a67d4253092f5b895c4))
+
 ## [1.1.4](https://github.com/wiley/nakadi/compare/v1.1.3...v1.1.4) (2022-09-26)
 
 

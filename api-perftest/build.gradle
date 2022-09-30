@@ -1,0 +1,79 @@
+plugins {
+    id 'scala'
+    id "io.gatling.gradle" version "3.8.4"
+}
+
+version '1.1.3'
+
+repositories {
+    mavenCentral()
+}
+
+ext {
+    reflectionsVersion= "0.9.12"
+}
+
+dependencies {
+    gatling "org.reflections:reflections:${reflectionsVersion}"
+    testCompile "org.scala-lang:scala-library:2.12.6"
+    testCompile "io.gatling:gatling-app:3.7.2"
+    testCompile "io.gatling.highcharts:gatling-charts-highcharts:3.7.2"
+}
+
+ScalaCompileOptions.metaClass.daemonServer = true
+ScalaCompileOptions.metaClass.fork = true
+ScalaCompileOptions.metaClass.useAnt = false
+ScalaCompileOptions.metaClass.useCompileDaemon = false
+
+task testLoad(type: JavaExec) {
+    description = 'Test load the Spring Boot web service with Gatling'
+    group = 'Load Test'
+    classpath = sourceSets.test.runtimeClasspath
+    jvmArgs = [
+            // workaround for https://github.com/gatling/gatling/issues/2689
+            "-Dgatling.core.directory.binaries=${sourceSets.test.output.classesDirs.toString()}",
+            "-Dlogback.configurationFile=${logbackGatlingConfig()}"
+    ]
+    main = 'io.gatling.app.Gatling'
+    args = [
+            '--simulation', 'com.wiley.epdcs.eventhub.Test1',
+            '--results-folder', "project(':api-perftest').buildDir/gatling-results",
+            '--binaries-folder', sourceSets.test.output.classesDirs.toString() // ignored because of above bug
+    ]
+}
+
+def logbackGatlingConfig() {
+    return sourceSets.test.resources.find { it.name == 'logback-gatling.xml'};
+}
+
+configurations {
+    fatJarDependencies.extendsFrom gatling
+}
+
+task fatJar(type: Jar, dependsOn: ['gatlingClasses', 'processResources']) {
+    group =  "build"
+    manifest {
+        attributes 'Implementation-Title': project.name,
+                'Implementation-Version': project.version,
+                'Main-Class': 'io.gatling.app.Gatling'
+    }
+
+    exclude 'META-INF/MANIFEST.MF'
+    exclude 'META-INF/*.SF'
+    exclude 'META-INF/*.DSA'
+    exclude 'META-INF/*.RSA'
+
+    duplicatesStrategy = DuplicatesStrategy.EXCLUDE
+
+    archiveClassifier = "all"
+
+    from files(sourceSets.test.output.classesDirs)
+    from files(sourceSets.gatling.output)
+    from {
+        configurations['fatJarDependencies']
+                .collect { it.isDirectory() ? it : zipTree(it) }
+    }
+    with jar
+}
+
+tasks.named("jar") { finalizedBy("fatJar") }
