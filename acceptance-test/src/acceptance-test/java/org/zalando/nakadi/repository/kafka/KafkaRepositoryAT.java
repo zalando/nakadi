@@ -31,6 +31,8 @@ import static org.hamcrest.Matchers.arrayWithSize;
 import static org.hamcrest.Matchers.equalTo;
 import static org.hamcrest.Matchers.hasItem;
 import static org.hamcrest.Matchers.hasSize;
+import static org.hamcrest.Matchers.is;
+import static org.junit.Assume.assumeThat;
 import static org.mockito.ArgumentMatchers.any;
 import static org.zalando.nakadi.repository.kafka.KafkaTestHelper.createKafkaProperties;
 
@@ -128,6 +130,9 @@ public class KafkaRepositoryAT extends BaseAT {
     @Test(timeout = 60000)
     @SuppressWarnings("unchecked")
     public void whenCreateTopicThenTopicIsCreated() {
+        // Skip connecting to MSK via KafkaTestHelper from automation. Allow executing on review environment only.
+        assumeThat(System.getenv("TEST_ENV"), is("review"));
+
         // ACT //
         final String topicName = kafkaTopicRepository.createTopic(defaultTopicConfig);
 
@@ -163,6 +168,9 @@ public class KafkaRepositoryAT extends BaseAT {
     @Test(timeout = 60000)
     @SuppressWarnings("unchecked")
     public void whenCreateCompactedTopicThenTopicIsCreated() {
+        // Skip connecting to MSK via KafkaTestHelper from automation. Allow executing on review environment only.
+        assumeThat(System.getenv("TEST_ENV"), is("review"));
+
         // ACT //
         final NakadiTopicConfig compactedTopicConfig = new NakadiTopicConfig(DEFAULT_PARTITION_COUNT,
                 CleanupPolicy.COMPACT, Optional.empty());
@@ -201,9 +209,11 @@ public class KafkaRepositoryAT extends BaseAT {
                         .withWaitBetweenEachTry(500));
     }
 
-    @Test(timeout = 60000)
+    @Test
     @SuppressWarnings("unchecked")
     public void whenDeleteTopicThenTopicIsDeleted() {
+        // Skip connecting to MSK via KafkaTestHelper from automation. Allow executing on review environment only.
+        assumeThat(System.getenv("TEST_ENV"), is("review"));
 
         // ARRANGE //
         final String topicName = UUID.randomUUID().toString();
@@ -230,6 +240,9 @@ public class KafkaRepositoryAT extends BaseAT {
 
     @Test
     public void whenBulkSendSuccessfullyThenUpdateBatchItemStatus() {
+        // Skip connecting to MSK via KafkaTestHelper from automation. Allow executing on review environment only.
+        assumeThat(System.getenv("TEST_ENV"), is("review"));
+
         final List<BatchItem> items = new ArrayList<>();
         final String topicId = TestUtils.randomValidEventTypeName();
         kafkaHelper.createTopic(topicId);
@@ -249,6 +262,9 @@ public class KafkaRepositoryAT extends BaseAT {
 
     @Test
     public void whenSendBatchWithItemHeadersThenCheckBatchStatus() {
+        // Skip connecting to MSK via KafkaTestHelper from automation. Allow executing on review environment only.
+        assumeThat(System.getenv("TEST_ENV"), is("review"));
+
         final List<BatchItem> items = new ArrayList<>();
         final String topicId = TestUtils.randomValidEventTypeName();
         kafkaHelper.createTopic(topicId);

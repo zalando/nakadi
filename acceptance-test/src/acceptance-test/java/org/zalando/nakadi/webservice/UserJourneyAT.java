@@ -89,7 +89,7 @@ public class UserJourneyAT extends RealEnvironmentAT {
     }
 
     @SuppressWarnings("unchecked")
-    @Test(timeout = 15000)
+    @Test(timeout = 60000)
     public void userJourneyM1() throws InterruptedException, IOException {
 
         // get event type

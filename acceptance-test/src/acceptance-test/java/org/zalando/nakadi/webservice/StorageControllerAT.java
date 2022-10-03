@@ -3,7 +3,6 @@ package org.zalando.nakadi.webservice;
 import org.apache.http.HttpStatus;
 import org.junit.After;
 import org.junit.Assert;
-import org.junit.Ignore;
 import org.junit.Test;
 import org.zalando.nakadi.domain.EventType;
 import org.zalando.nakadi.utils.EventTypeTestBuilder;
@@ -17,17 +16,17 @@ import static org.zalando.nakadi.webservice.utils.NakadiTestUtils.createEventTyp
 
 public class StorageControllerAT extends BaseAT {
 
-// TODO: Ignored until fix the issue
-    @Ignore
     @Test
     public void shouldChangeDefaultStorageWhenRequested() throws Exception {
+
+        String defaultTestStorageId = "default-test-"+ System.currentTimeMillis();
         given()
                 .body("{" +
-                        "\"id\": \"default-test\"," +
+                        "\"id\": \"" + defaultTestStorageId + "\"," +
                         "\"kafka_configuration\": {" +
                         "\"zookeeper_connection\":{" +
                         "\"type\": \"zookeeper\"," +
-                        "\"addresses\":[{\"address\":\"zookeeper\", \"port\":2181}]" +
+                        "\"addresses\":[{\"address\":\"" + configs.getZookeeperUrl() + "\", \"port\":2181}]" +
                         "}" +
                         "},\"storage_type\": \"kafka\"}")
                 .contentType(JSON).post("/storages")
@@ -38,7 +37,7 @@ public class StorageControllerAT extends BaseAT {
         final String storageId = (String) NakadiTestUtils.listTimelines("event_a").get(0).get("storage_id");
         Assert.assertEquals("default", storageId);
 
-        given().contentType(JSON).put("/storages/default/default-test")
+        given().contentType(JSON).put("/storages/default/" + defaultTestStorageId)
                 .then()
                 .statusCode(HttpStatus.SC_OK);
 
@@ -47,7 +46,7 @@ public class StorageControllerAT extends BaseAT {
             try {
                 final EventType et = createEventType();
                 final String storage = (String) NakadiTestUtils.listTimelines(et.getName()).get(0).get("storage_id");
-                Assert.assertEquals("default-test", storage);
+                Assert.assertEquals(defaultTestStorageId, storage);
             } catch (final Exception e) {
                 fail(e.getMessage());
             }
