@@ -1,3 +1,11 @@
+## [1.1.7](https://github.com/wiley/nakadi/compare/v1.1.6...v1.1.7) (2022-10-03)
+
+
+### Bug Fixes
+
+* increase test timeout ([cd50e9b](https://github.com/wiley/nakadi/commit/cd50e9b7beefdc00cac152dfaa7d65edfe1a0bb4))
+* shouldChangeDefaultStorageWhenRequested automation test ([aa46445](https://github.com/wiley/nakadi/commit/aa4644503980b24c1ffd9147bd93c1c1aad52970))
+
 ## [1.1.6](https://github.com/wiley/nakadi/compare/v1.1.5...v1.1.6) (2022-09-29)
 
 
