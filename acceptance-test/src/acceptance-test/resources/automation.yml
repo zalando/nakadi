@@ -104,21 +104,21 @@ environments:
     kpiConfig:
       streamDataCollectionFrequencyMs: 30000 # every half minute
   uat:
-    apiUrl: http://localhost
+    apiUrl: https://eventhub.uat.tc.wiley.host
     apiPort: 443
-    zookeeperUrl: localhost:2181
+    zookeeperUrl: z-1.epdcsnakadimskkafkaua.0m37sq.c19.kafka.us-east-1.amazonaws.com:2181,z-3.epdcsnakadimskkafkaua.0m37sq.c19.kafka.us-east-1.amazonaws.com:2181,z-2.epdcsnakadimskkafkaua.0m37sq.c19.kafka.us-east-1.amazonaws.com:2181
     kafka:
-      bootstrapServers: localhost:29092
+      bootstrapServers: b-1.epdcsnakadimskkafkaua.0m37sq.c19.kafka.us-east-1.amazonaws.com:9098,b-3.epdcsnakadimskkafkaua.0m37sq.c19.kafka.us-east-1.amazonaws.com:9098,b-2.epdcsnakadimskkafkaua.0m37sq.c19.kafka.us-east-1.amazonaws.com:9098
       minInSyncReplicas: 2
       replicaFactor: 2
-      securityProtocol: PLAINTEXT
-      saslMechanism: PLAIN
+      securityProtocol: SASL_SSL
+      saslMechanism: AWS_MSK_IAM
       saslJaasConfig: software.amazon.msk.auth.iam.IAMLoginModule required;
       saslClientCallbackHandlerClass: software.amazon.msk.auth.iam.IAMClientCallbackHandler
     database:
-      url: jdbc:postgresql://localhost:5432/local_nakadi_db
-      username: nakadi
-      password: nakadi
+      url: jdbc:postgresql://eventhub-epdcs-uat-use1.cluster-chxkh4p9th7p.us-east-1.rds.amazonaws.com/event_hub
+      username: event_hub_user
+      password: bEsre4CejbFi3wwm
     eventTypeDeletableSubscription:
       owningApplication: "nakadi_archiver"
       consumerGroup: "nakadi_to_s3"
