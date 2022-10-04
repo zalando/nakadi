@@ -1,3 +1,10 @@
+## [1.1.8](https://github.com/wiley/nakadi/compare/v1.1.7...v1.1.8) (2022-10-04)
+
+
+### Bug Fixes
+
+* change timeout on tests ([8d24edf](https://github.com/wiley/nakadi/commit/8d24edf4d0b5bbdd6d7613d34677c64a422c8fe0))
+
 ## [1.1.7](https://github.com/wiley/nakadi/compare/v1.1.6...v1.1.7) (2022-10-03)
 
 
