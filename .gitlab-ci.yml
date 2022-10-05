@@ -41,6 +41,9 @@ dev:
     K8S_SECRET_SPRING_PROFILES_ACTIVE: dev
     KUBE_INGRESS_BASE_DOMAIN: dev.tc.private.wiley.host
     HELM_UPGRADE_VALUES_FILE: .gitlab/auto-deploy-values-dev.yaml
+  after_script:
+    - echo "DB_PWD=$SPRING_DATASOURCE_PASSWORD" >> deploy.env
+
 
 dev-integrationtest:
   image: artifactory.aws.wiley.com/docker/openjdk:11-jdk
@@ -51,6 +54,8 @@ dev-integrationtest:
   allow_failure: true
   extends: .dev-integration-test
   script:
+    - echo "DB_PWD-$DB_PWD"
+    - echo "SPRING_DATASOURCE_PASSWORD-$SPRING_DATASOURCE_PASSWORD"
     - "TEST_ENV=dev ./gradlew :acceptance-test:acceptanceTest"
 
 qa:
