@@ -9,6 +9,6 @@ description: "Event Hub for manage events"
 state: "Active"
 hostedBy: "aws"
 functionalArea: "technology-academic-professional"
-systemId: "9c03c346-31c8-11ec-8d3d-0242ac130003"
+systemId: "acc2d904-aaa8-45e7-acad-b42950081f0b"
 shortCode: "eventhub"
 isSystem: false

@@ -1,0 +1,24 @@
+---
+id: "acc2d904-aaa8-45e7-acad-b42950081f0b"
+modelType: "System"
+sysCode: "eventhub"
+name: "APL EventHub"
+appType: "Built"
+description: "EventHub under EdPub Data & Core Services"
+functionalArea" : "technology-academic-professional"
+state: "Active"
+documentationUrl: "https://confluence.wiley.com/display/EPDCS/Event+Hub"
+issueTrackerUrl: "https://jira.wiley.com/projects/EPDCS/issues"
+financialData:
+  applies: true
+  scope:
+    - "PCI"
+    - "SalesTax"
+personalData:
+  applies: true
+  scope:
+    - Customer
+usages:
+  - "Product"
+  - "Internal"
+---
