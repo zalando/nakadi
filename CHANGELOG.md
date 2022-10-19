@@ -1,6 +1,5 @@
 ## [1.1.9](https://github.com/wiley/nakadi/compare/v1.1.8...v1.1.9) (2022-10-05)
 
-
 ### Bug Fixes
 
 * get db password from secretKey test commit ([1574284](https://github.com/wiley/nakadi/commit/1574284cb2c12b996c11c33bf9b0fe6bda5a8bbc))
