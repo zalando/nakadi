@@ -11,11 +11,7 @@ import io.gatling.http.Predef.http
 import scala.concurrent.duration.DurationInt
 import scala.language.postfixOps
 
-class EventHubLoadTest extends Simulation with ConfigProvider with AssignmentEventDataFeeder {
-
-  implicit val assignmentProgressConfig: AssignmentProgressConfig = AssignmentEvent.config(config)
-
-  private final def testDataPreparationDuration: Int = getProperty("TEST_DATA_PREPARATION_DURATION", "5").toInt
+class EventHubLoadTest extends Simulation with AssignmentEventDataFeeder {
 
   val httpConf = http
     .baseUrl("https://eventhub.dev.tc.private.wiley.host")

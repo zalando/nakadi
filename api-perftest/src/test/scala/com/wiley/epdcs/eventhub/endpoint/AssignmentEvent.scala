@@ -15,7 +15,7 @@ object AssignmentEvent {
   def createAssignment = {
     http("01 Create assignment event")
       .post("/event-types/assignment.created/events")
-      .body(ElFileBody("./json/createAssignment.json"))
+      .body(ElFileBody("createAssignment.json"))
       .check(status.is(201))
   }
 }
