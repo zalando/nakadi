@@ -40,7 +40,7 @@ import org.zalando.nakadi.service.LocalSchemaRegistry;
 import org.zalando.nakadi.service.publishing.check.Check;
 import org.zalando.nakadi.service.timeline.TimelineService;
 import org.zalando.nakadi.service.timeline.TimelineSync;
-import org.zalando.nakadi.util.FlowIdUtils;
+import org.zalando.nakadi.util.MDCUtils;
 import org.zalando.nakadi.utils.EventTypeTestBuilder;
 import org.zalando.nakadi.validation.JsonSchemaValidator;
 import org.zalando.nakadi.validation.ValidationError;
@@ -638,7 +638,7 @@ public class EventPublisherTest {
         final NakadiMetadata metadata = new NakadiMetadata();
         metadata.setOccurredAt(now);
         metadata.setEid("9702cf96-9bdb-48b7-9f4c-92643cb6d9fc");
-        metadata.setFlowId(FlowIdUtils.peek());
+        metadata.setFlowId(MDCUtils.getFlowId());
         metadata.setEventType("nakadi.access.log");
         metadata.setPartition("0");
         metadata.setReceivedAt(now);

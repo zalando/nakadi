@@ -13,7 +13,7 @@ import org.zalando.nakadi.plugin.api.authz.AuthorizationService;
 import org.zalando.nakadi.plugin.api.authz.Subject;
 import org.zalando.nakadi.service.FeatureToggleService;
 import org.zalando.nakadi.service.publishing.NakadiKpiPublisher;
-import org.zalando.nakadi.util.FlowIdUtils;
+import org.zalando.nakadi.util.MDCUtils;
 
 import javax.servlet.AsyncEvent;
 import javax.servlet.AsyncListener;
@@ -108,9 +108,9 @@ public class LoggingFilter extends OncePerRequestFilter {
         }
 
         private void logOnEvent() {
-            FlowIdUtils.push(this.flowId);
-            logRequest(this.requestLogInfo);
-            FlowIdUtils.clear();
+            try (MDCUtils.CloseableNOException ignored = MDCUtils.withFlowId(this.flowId)) {
+                logRequest(this.requestLogInfo);
+            }
         }
 
         @Override
@@ -146,7 +146,7 @@ public class LoggingFilter extends OncePerRequestFilter {
         try {
             filterChain.doFilter(requestWrapper, responseWrapper);
             if (request.isAsyncStarted()) {
-                final String flowId = FlowIdUtils.peek();
+                final String flowId = MDCUtils.getFlowId();
                 request.getAsyncContext().addListener(new AsyncRequestListener(requestLogInfo, flowId));
             }
         } finally {

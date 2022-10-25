@@ -42,7 +42,7 @@ import org.zalando.nakadi.service.subscription.SubscriptionOutput;
 import org.zalando.nakadi.service.subscription.SubscriptionStreamer;
 import org.zalando.nakadi.service.subscription.SubscriptionStreamerFactory;
 import org.zalando.nakadi.service.subscription.model.Session;
-import org.zalando.nakadi.util.FlowIdUtils;
+import org.zalando.nakadi.util.MDCUtils;
 import org.zalando.nakadi.view.UserStreamParameters;
 import org.zalando.problem.Problem;
 
@@ -239,51 +239,52 @@ public class SubscriptionStreamController {
                 .setTag("subscription.id", subscriptionId);
 
         final Span requestSpan = TracingService.getActiveSpan();
-        final String flowId = FlowIdUtils.peek();
+        final String flowId = MDCUtils.getFlowId();
 
         return outputStream -> {
-            FlowIdUtils.push(flowId);
-            final String metricName = metricNameForSubscription(subscriptionId, CONSUMERS_COUNT_METRIC_NAME);
-            final Counter consumerCounter = metricRegistry.counter(metricName);
-            consumerCounter.inc();
+            try (MDCUtils.CloseableNOException ignore = MDCUtils.withFlowId(flowId)) {
+                final String metricName = metricNameForSubscription(subscriptionId, CONSUMERS_COUNT_METRIC_NAME);
+                final Counter consumerCounter = metricRegistry.counter(metricName);
+                consumerCounter.inc();
 
-            SubscriptionStreamer streamer = null;
-            final SubscriptionOutputImpl output = new SubscriptionOutputImpl(response, outputStream);
+                SubscriptionStreamer streamer = null;
+                final SubscriptionOutputImpl output = new SubscriptionOutputImpl(response, outputStream);
 
-            try {
-                if (eventStreamChecks.isSubscriptionConsumptionBlocked(subscriptionId, client.getClientId())) {
-                    writeProblemResponse(response, outputStream,
-                            Problem.valueOf(FORBIDDEN, "Application or event type is blocked"));
-                    return;
+                try {
+                    if (eventStreamChecks.isSubscriptionConsumptionBlocked(subscriptionId, client.getClientId())) {
+                        writeProblemResponse(response, outputStream,
+                                Problem.valueOf(FORBIDDEN, "Application or event type is blocked"));
+                        return;
+                    }
+                    final Subscription subscription = subscriptionCache.getSubscription(subscriptionId);
+                    subscriptionValidationService.validatePartitionsToStream(subscription,
+                            streamParameters.getPartitions());
+
+                    final Session session = Session.generate(1, streamParameters.getPartitions());
+
+                    streamer = subscriptionStreamerFactory.build(subscription, streamParameters,
+                            session, output, streamContentType);
+
+                    final Tracer.SpanBuilder spanBuilder =
+                            TracingService.buildNewFollowerSpan("streaming_async", requestSpan.context())
+                                    .withTag("client", client.getClientId())
+                                    .withTag("session.id", session.getId())
+                                    .withTag("subscription.id", subscriptionId);
+                    try (
+                            Closeable ignore1 = TracingService.withActiveSpan(spanBuilder);
+                            Closeable ignore2 = shutdownHooks.addHook(streamer::terminateStream) // bugfix ARUHA-485
+                    ) {
+                        streamer.stream();
+                    }
+                } catch (final InterruptedException ex) {
+                    LOG.warn("Interrupted while streaming with " + streamer, ex);
+                    Thread.currentThread().interrupt();
+                } catch (final RuntimeException e) {
+                    output.onException(e);
+                } finally {
+                    consumerCounter.dec();
+                    outputStream.close();
                 }
-                final Subscription subscription = subscriptionCache.getSubscription(subscriptionId);
-                subscriptionValidationService.validatePartitionsToStream(subscription,
-                        streamParameters.getPartitions());
-
-                final Session session = Session.generate(1, streamParameters.getPartitions());
-
-                streamer = subscriptionStreamerFactory.build(subscription, streamParameters,
-                        session, output, streamContentType);
-
-                final Tracer.SpanBuilder spanBuilder =
-                        TracingService.buildNewFollowerSpan("streaming_async", requestSpan.context())
-                                .withTag("client", client.getClientId())
-                                .withTag("session.id", session.getId())
-                                .withTag("subscription.id", subscriptionId);
-                try (
-                        Closeable ignore1 = TracingService.withActiveSpan(spanBuilder);
-                        Closeable ignore2 = shutdownHooks.addHook(streamer::terminateStream) // bugfix ARUHA-485
-                ) {
-                    streamer.stream();
-                }
-            } catch (final InterruptedException ex) {
-                LOG.warn("Interrupted while streaming with " + streamer, ex);
-                Thread.currentThread().interrupt();
-            } catch (final RuntimeException e) {
-                output.onException(e);
-            } finally {
-                consumerCounter.dec();
-                outputStream.close();
             }
         };
     }
