@@ -94,12 +94,12 @@ public class LoggingFilter extends OncePerRequestFilter {
 
     private class AsyncRequestListener implements AsyncListener {
         private final RequestLogInfo requestLogInfo;
-        private final String flowId;
+        private final MDCUtils.MDCContext loggingContext;
 
-        private AsyncRequestListener(final RequestLogInfo requestLogInfo, final String flowId) {
+        private AsyncRequestListener(final RequestLogInfo requestLogInfo, final MDCUtils.MDCContext loggingContext) {
 
             this.requestLogInfo = requestLogInfo;
-            this.flowId = flowId;
+            this.loggingContext = loggingContext;
 
             if (isAccessLogEnabled()) {
                 final Long timeSpentMs = 0L;
@@ -108,7 +108,7 @@ public class LoggingFilter extends OncePerRequestFilter {
         }
 
         private void logOnEvent() {
-            try (MDCUtils.CloseableNOException ignored = MDCUtils.withFlowId(this.flowId)) {
+            try (MDCUtils.CloseableNoEx ignored = MDCUtils.withContext(this.loggingContext)) {
                 logRequest(this.requestLogInfo);
             }
         }
@@ -146,8 +146,8 @@ public class LoggingFilter extends OncePerRequestFilter {
         try {
             filterChain.doFilter(requestWrapper, responseWrapper);
             if (request.isAsyncStarted()) {
-                final String flowId = MDCUtils.getFlowId();
-                request.getAsyncContext().addListener(new AsyncRequestListener(requestLogInfo, flowId));
+                final MDCUtils.MDCContext context = MDCUtils.getContext();
+                request.getAsyncContext().addListener(new AsyncRequestListener(requestLogInfo, context));
             }
         } finally {
             if (!request.isAsyncStarted()) {

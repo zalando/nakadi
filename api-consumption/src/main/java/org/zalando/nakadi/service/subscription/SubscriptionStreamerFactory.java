@@ -88,7 +88,6 @@ public class SubscriptionStreamerFactory {
             throws InternalNakadiException, NoSuchEventTypeException {
         final ZkSubscriptionClient zkClient = zkClientFactory.createClient(
                 subscription,
-                LogPathBuilder.build(subscription.getId(), session.getId()),
                 streamParameters.commitTimeoutMillis);
         // Create streaming context
         return new StreamingContext.Builder()

@@ -29,7 +29,7 @@ public class FlowIdRequestFilter implements Filter {
             httpServletResponse.setHeader(X_FLOW_ID_HEADER, flowId);
         }
 
-        try (MDCUtils.CloseableNOException ignored = MDCUtils.withFlowId(flowId)) {
+        try (MDCUtils.CloseableNoEx ignored = MDCUtils.withFlowId(flowId)) {
             chain.doFilter(request, response);
         }
     }

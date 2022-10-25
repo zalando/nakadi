@@ -32,10 +32,8 @@ public class NakadiKpiPublisher {
     private final Map<Class, String> classToEventTypeName;
 
     private final FeatureToggleService featureToggleService;
-    private final JsonEventProcessor jsonEventsProcessor;
     private final BinaryEventProcessor binaryEventsProcessor;
     private final UsernameHasher usernameHasher;
-    private final EventMetadata eventMetadata;
     private final UUIDGenerator uuidGenerator;
     private final SchemaProviderService schemaService;
     private final NakadiRecordMapper nakadiRecordMapper;
@@ -43,18 +41,14 @@ public class NakadiKpiPublisher {
     @Autowired
     protected NakadiKpiPublisher(
             final FeatureToggleService featureToggleService,
-            final JsonEventProcessor jsonEventsProcessor,
             final BinaryEventProcessor binaryEventsProcessor,
             final UsernameHasher usernameHasher,
-            final EventMetadata eventMetadata,
             final UUIDGenerator uuidGenerator,
             final SchemaProviderService schemaService,
             final NakadiRecordMapper nakadiRecordMapper) {
         this.featureToggleService = featureToggleService;
-        this.jsonEventsProcessor = jsonEventsProcessor;
         this.binaryEventsProcessor = binaryEventsProcessor;
         this.usernameHasher = usernameHasher;
-        this.eventMetadata = eventMetadata;
         this.uuidGenerator = uuidGenerator;
         this.schemaService = schemaService;
         this.nakadiRecordMapper = nakadiRecordMapper;

@@ -234,59 +234,60 @@ public class SubscriptionStreamController {
                                          final Client client,
                                          final StreamParameters streamParameters,
                                          final StreamContentType streamContentType) {
+        final Session session = Session.generate(1, streamParameters.getPartitions());
+        try (MDCUtils.CloseableNoEx ignore1 = MDCUtils.withSubscriptionIdStreamId(subscriptionId, session.getId())) {
+            TracingService.setOperationName("stream_events")
+                    .setTag("subscription.id", subscriptionId);
 
-        TracingService.setOperationName("stream_events")
-                .setTag("subscription.id", subscriptionId);
+            final Span requestSpan = TracingService.getActiveSpan();
+            final MDCUtils.MDCContext loggingContext = MDCUtils.getContext();
 
-        final Span requestSpan = TracingService.getActiveSpan();
-        final String flowId = MDCUtils.getFlowId();
+            return outputStream -> {
+                try (MDCUtils.CloseableNoEx ignore2 = MDCUtils.withContext(loggingContext)) {
+                    final String metricName = metricNameForSubscription(subscriptionId, CONSUMERS_COUNT_METRIC_NAME);
+                    final Counter consumerCounter = metricRegistry.counter(metricName);
+                    consumerCounter.inc();
 
-        return outputStream -> {
-            try (MDCUtils.CloseableNOException ignore = MDCUtils.withFlowId(flowId)) {
-                final String metricName = metricNameForSubscription(subscriptionId, CONSUMERS_COUNT_METRIC_NAME);
-                final Counter consumerCounter = metricRegistry.counter(metricName);
-                consumerCounter.inc();
+                    SubscriptionStreamer streamer = null;
+                    final SubscriptionOutputImpl output = new SubscriptionOutputImpl(response, outputStream);
 
-                SubscriptionStreamer streamer = null;
-                final SubscriptionOutputImpl output = new SubscriptionOutputImpl(response, outputStream);
+                    try {
+                        if (eventStreamChecks.isSubscriptionConsumptionBlocked(subscriptionId, client.getClientId())) {
+                            writeProblemResponse(response, outputStream,
+                                    Problem.valueOf(FORBIDDEN, "Application or event type is blocked"));
+                            return;
+                        }
+                        final Subscription subscription = subscriptionCache.getSubscription(subscriptionId);
+                        subscriptionValidationService.validatePartitionsToStream(subscription,
+                                streamParameters.getPartitions());
 
-                try {
-                    if (eventStreamChecks.isSubscriptionConsumptionBlocked(subscriptionId, client.getClientId())) {
-                        writeProblemResponse(response, outputStream,
-                                Problem.valueOf(FORBIDDEN, "Application or event type is blocked"));
-                        return;
+                        streamer = subscriptionStreamerFactory.build(subscription, streamParameters,
+                                session, output, streamContentType);
+
+                        final Tracer.SpanBuilder spanBuilder =
+                                TracingService.buildNewFollowerSpan(
+                                        "streaming_async", requestSpan.context())
+                                        .withTag("client", client.getClientId())
+                                        .withTag("session.id", session.getId())
+                                        .withTag("subscription.id", subscriptionId);
+                        try (
+                                Closeable ignore3 = TracingService.withActiveSpan(spanBuilder);
+                                Closeable ignore4 = shutdownHooks.addHook(streamer::terminateStream)
+                        ) {
+                            streamer.stream();
+                        }
+                    } catch (final InterruptedException ex) {
+                        LOG.warn("Interrupted while streaming with " + streamer, ex);
+                        Thread.currentThread().interrupt();
+                    } catch (final RuntimeException e) {
+                        output.onException(e);
+                    } finally {
+                        consumerCounter.dec();
+                        outputStream.close();
                     }
-                    final Subscription subscription = subscriptionCache.getSubscription(subscriptionId);
-                    subscriptionValidationService.validatePartitionsToStream(subscription,
-                            streamParameters.getPartitions());
-
-                    final Session session = Session.generate(1, streamParameters.getPartitions());
-
-                    streamer = subscriptionStreamerFactory.build(subscription, streamParameters,
-                            session, output, streamContentType);
-
-                    final Tracer.SpanBuilder spanBuilder =
-                            TracingService.buildNewFollowerSpan("streaming_async", requestSpan.context())
-                                    .withTag("client", client.getClientId())
-                                    .withTag("session.id", session.getId())
-                                    .withTag("subscription.id", subscriptionId);
-                    try (
-                            Closeable ignore1 = TracingService.withActiveSpan(spanBuilder);
-                            Closeable ignore2 = shutdownHooks.addHook(streamer::terminateStream) // bugfix ARUHA-485
-                    ) {
-                        streamer.stream();
-                    }
-                } catch (final InterruptedException ex) {
-                    LOG.warn("Interrupted while streaming with " + streamer, ex);
-                    Thread.currentThread().interrupt();
-                } catch (final RuntimeException e) {
-                    output.onException(e);
-                } finally {
-                    consumerCounter.dec();
-                    outputStream.close();
                 }
-            }
-        };
+            };
+        }
     }
 
     private void writeProblemResponse(final HttpServletResponse response,

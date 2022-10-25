@@ -190,10 +190,10 @@ public class EventStreamController {
             @RequestParam(value = "stream_keep_alive_limit", required = false) final Integer streamKeepAliveLimit,
             @Nullable @RequestHeader(name = "X-nakadi-cursors", required = false) final String cursorsStr,
             final HttpServletResponse response, final Client client) {
-        final String flowId = MDCUtils.getFlowId();
+        final MDCUtils.MDCContext requestContext = MDCUtils.getContext();
 
         return outputStream -> {
-            try (MDCUtils.CloseableNOException ignore1 = MDCUtils.withFlowId(flowId)) {
+            try (MDCUtils.CloseableNoEx ignore1 = MDCUtils.withContext(requestContext)) {
                 if (eventStreamChecks.isConsumptionBlocked(
                         Collections.singleton(eventTypeName), client.getClientId())) {
                     writeProblemResponse(response, outputStream,

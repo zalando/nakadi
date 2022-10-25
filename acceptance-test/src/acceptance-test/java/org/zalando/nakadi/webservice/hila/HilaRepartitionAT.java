@@ -28,8 +28,6 @@ import java.util.stream.Collectors;
 public class HilaRepartitionAT extends BaseAT {
     private static final Logger LOG = LoggerFactory.getLogger(HilaRepartitionAT.class);
     private static final CuratorFramework CURATOR = ZookeeperTestUtils.createCurator(ZOOKEEPER_URL);
-    private ZooKeeperHolder zooKeeperHolder;
-    private final String sid = TestUtils.randomUUID();
     private final String subscriptionId = TestUtils.randomUUID();
     private final String eventTypeName = "random";
     private final String secondEventTypeName = "random_et_2";
@@ -39,7 +37,6 @@ public class HilaRepartitionAT extends BaseAT {
         final ZkSubscriptionClient subscriptionClient = new NewZkSubscriptionClient(
                 subscriptionId,
                 new ZooKeeperHolder.DisposableCuratorFramework(CURATOR),
-                String.format("%s.%s", subscriptionId, sid),
                 MAPPER
         );
 
@@ -62,7 +59,6 @@ public class HilaRepartitionAT extends BaseAT {
         final ZkSubscriptionClient subscriptionClient = new NewZkSubscriptionClient(
                 subscriptionId,
                 new ZooKeeperHolder.DisposableCuratorFramework(CURATOR),
-                String.format("%s.%s", subscriptionId, sid),
                 MAPPER
         );
 

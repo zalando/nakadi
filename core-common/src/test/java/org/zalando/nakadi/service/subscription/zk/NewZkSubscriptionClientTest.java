@@ -52,7 +52,6 @@ public class NewZkSubscriptionClientTest {
         client = new NewZkSubscriptionClient(
                 "subscription-id-xxx",
                 new ZooKeeperHolder.RotatingCuratorFramework(curatorFrameworkRotator),
-                "loggin.path",
                 objectMapper
         );
     }
@@ -99,7 +98,7 @@ public class NewZkSubscriptionClientTest {
     public void whenUnregisterSessionMissingNodeThenOk() throws Exception {
 
         Mockito.when(curator.delete().forPath(Mockito.any()))
-            .thenThrow(KeeperException.NoNodeException.class);
+                .thenThrow(KeeperException.NoNodeException.class);
 
         final Session session = Session.generate(1, ImmutableList.of());
 

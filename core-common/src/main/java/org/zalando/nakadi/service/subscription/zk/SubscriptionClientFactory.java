@@ -30,20 +30,18 @@ public class SubscriptionClientFactory {
         this.maxCommitTimeoutMs = TimeUnit.SECONDS.toMillis(nakadiSettings.getMaxCommitTimeout());
     }
 
-    public ZkSubscriptionClient createClient(final Subscription subscription, final String loggingPath)
+    public ZkSubscriptionClient createClient(final Subscription subscription)
             throws InternalNakadiException, NoSuchEventTypeException, ZookeeperException {
-        return createClient(subscription, loggingPath, maxCommitTimeoutMs);
+        return createClient(subscription, maxCommitTimeoutMs);
     }
 
     public ZkSubscriptionClient createClient(final Subscription subscription,
-                                             final String loggingPath,
                                              final long commitTimeoutMillis)
             throws InternalNakadiException, NoSuchEventTypeException, ZookeeperException {
         Preconditions.checkNotNull(subscription.getId());
         return new NewZkSubscriptionClient(
                 subscription.getId(),
                 zkHolder.getSubscriptionCurator(commitTimeoutMillis),
-                loggingPath,
                 objectMapper
         );
     }

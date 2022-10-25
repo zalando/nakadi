@@ -2,7 +2,6 @@ package org.zalando.nakadi.service.subscription.zk;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import java.util.function.Function;
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.Lists;
 import org.apache.zookeeper.CreateMode;
@@ -10,6 +9,8 @@ import org.apache.zookeeper.KeeperException;
 import org.apache.zookeeper.data.Stat;
 import org.echocat.jomon.runtime.concurrent.RetryForSpecifiedCountStrategy;
 import org.echocat.jomon.runtime.concurrent.Retryer;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.zalando.nakadi.domain.EventTypePartition;
 import org.zalando.nakadi.exceptions.runtime.NakadiRuntimeException;
 import org.zalando.nakadi.exceptions.runtime.ServiceTemporarilyUnavailableException;
@@ -25,6 +26,7 @@ import java.util.Collection;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.function.Function;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
@@ -70,15 +72,13 @@ import static com.google.common.base.Charsets.UTF_8;
 public class NewZkSubscriptionClient extends AbstractZkSubscriptionClient {
 
     private final ObjectMapper objectMapper;
+    private static final Logger LOG = LoggerFactory.getLogger(NewZkSubscriptionClient.class);
 
     public NewZkSubscriptionClient(
             final String subscriptionId,
             final ZooKeeperHolder.CloseableCuratorFramework closeableCuratorFramework,
-            final String loggingPath,
             final ObjectMapper objectMapper) throws ZookeeperException {
-        super(subscriptionId,
-                closeableCuratorFramework,
-                loggingPath);
+        super(subscriptionId, closeableCuratorFramework);
         this.objectMapper = objectMapper;
     }
 
@@ -92,14 +92,14 @@ public class NewZkSubscriptionClient extends AbstractZkSubscriptionClient {
                 Partition.State.UNASSIGNED
         )).toArray(Partition[]::new);
         final Topology topology = new Topology(partitions, 0);
-        getLog().info("Creating topology ZNode for {}", topology);
+        LOG.info("Creating topology ZNode for {}", topology);
         final byte[] topologyData = objectMapper.writeValueAsBytes(topology);
         try {
             getCurator().create()
                     .withMode(CreateMode.PERSISTENT)
                     .forPath(getSubscriptionPath(NODE_TOPOLOGY), topologyData);
         } catch (final KeeperException.NodeExistsException ex) {
-            getLog().info("ZNode exist for topology, not creating a new one");
+            LOG.info("ZNode exist for topology, not creating a new one");
         }
     }
 
@@ -123,7 +123,7 @@ public class NewZkSubscriptionClient extends AbstractZkSubscriptionClient {
                     if (partitions.length > 0) {
                         final Topology newTopology =
                                 topology.withUpdatedPartitions(partitions);
-                        getLog().info("Updating topology to {}", newTopology);
+                        LOG.info("Updating topology to {}", newTopology);
                         try {
                             getCurator().setData().withVersion(stats.getVersion())
                                     .forPath(getSubscriptionPath(NODE_TOPOLOGY),
@@ -225,7 +225,7 @@ public class NewZkSubscriptionClient extends AbstractZkSubscriptionClient {
     @Override
     public void transfer(final String sessionId, final Collection<EventTypePartition> partitions)
             throws NakadiRuntimeException, SubscriptionNotInitializedException {
-        getLog().info("session " + sessionId + " releases partitions " + partitions);
+        LOG.info("session " + sessionId + " releases partitions " + partitions);
         updateTopology(topology -> {
             final List<Partition> changeSet = new ArrayList<>();
             for (final EventTypePartition etp : partitions) {
@@ -277,7 +277,7 @@ public class NewZkSubscriptionClient extends AbstractZkSubscriptionClient {
         );
 
         try {
-            getLog().info("Updating topology due to repartitioning event type: {} to {}", eventTypeName,
+            LOG.info("Updating topology due to repartitioning event type: {} to {}", eventTypeName,
                     partitionedTopology);
             getCurator().setData().forPath(getSubscriptionPath(NODE_TOPOLOGY),
                     objectMapper.writeValueAsBytes(partitionedTopology));

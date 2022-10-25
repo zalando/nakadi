@@ -51,12 +51,12 @@ import org.zalando.nakadi.repository.db.EventTypeRepository;
 import org.zalando.nakadi.repository.db.SubscriptionDbRepository;
 import org.zalando.nakadi.service.publishing.NakadiAuditLogPublisher;
 import org.zalando.nakadi.service.publishing.NakadiKpiPublisher;
-import org.zalando.nakadi.service.subscription.LogPathBuilder;
 import org.zalando.nakadi.service.subscription.model.Partition;
 import org.zalando.nakadi.service.subscription.zk.SubscriptionClientFactory;
 import org.zalando.nakadi.service.subscription.zk.ZkSubscriptionClient;
 import org.zalando.nakadi.service.subscription.zk.ZkSubscriptionNode;
 import org.zalando.nakadi.service.timeline.TimelineService;
+import org.zalando.nakadi.util.MDCUtils;
 import org.zalando.nakadi.view.SubscriptionCursorWithoutToken;
 
 import javax.annotation.Nullable;
@@ -306,7 +306,11 @@ public class SubscriptionService {
         }
         if (showStatus) {
             final List<Subscription> items = paginationWrapper.getItems();
-            items.forEach(s -> s.setStatus(createSubscriptionStat(s, StatsMode.LIGHT)));
+            items.forEach(s -> {
+                try (MDCUtils.CloseableNoEx ignore = MDCUtils.withSubscriptionId(s.getId())) {
+                    s.setStatus(createSubscriptionStat(s, StatsMode.LIGHT));
+                }
+            });
         }
         return paginationWrapper;
     }
@@ -331,8 +335,7 @@ public class SubscriptionService {
         authorizationValidator.authorizeSubscriptionAdmin(subscription);
 
         subscriptionDbRepository.deleteSubscription(subscriptionId);
-        try (ZkSubscriptionClient zkSubscriptionClient = subscriptionClientFactory.createClient(
-                subscription, LogPathBuilder.build(subscriptionId, "delete_subscription"))) {
+        try (ZkSubscriptionClient zkSubscriptionClient = subscriptionClientFactory.createClient(subscription)) {
             zkSubscriptionClient.deleteSubscription();
         } catch (IOException io) {
             throw new ServiceTemporarilyUnavailableException(io.getMessage(), io);
@@ -369,8 +372,7 @@ public class SubscriptionService {
             throws InconsistentStateException, NoSuchEventTypeException, ServiceTemporarilyUnavailableException {
         final List<EventType> eventTypes = getEventTypesForSubscription(subscription);
         subscriptionValidationService.verifyViewAccessOnEventTypes(eventTypes);
-        try (ZkSubscriptionClient subscriptionClient = subscriptionClientFactory.createClient(subscription,
-                LogPathBuilder.build(subscription.getId(), "stats"))) {
+        try (ZkSubscriptionClient subscriptionClient = subscriptionClientFactory.createClient(subscription)) {
             final Optional<ZkSubscriptionNode> zkSubscriptionNode = subscriptionClient.getZkSubscriptionNode();
 
             if (statsMode == StatsMode.LIGHT) {
@@ -476,9 +478,9 @@ public class SubscriptionService {
         final List<SubscriptionEventTypeStats.Partition> resultPartitions = new ArrayList<>();
 
         final List<String> partitionsList = subscriptionNode.map(
-                node -> node.getPartitions().stream()
-                        .map(Partition::getPartition)
-                        .collect(Collectors.toList()))
+                        node -> node.getPartitions().stream()
+                                .map(Partition::getPartition)
+                                .collect(Collectors.toList()))
                 .orElseGet(() -> getPartitionsList(eventType));
 
         for (final String partition : partitionsList) {

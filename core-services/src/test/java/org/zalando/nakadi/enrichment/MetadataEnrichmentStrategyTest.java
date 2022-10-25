@@ -109,7 +109,7 @@ public class MetadataEnrichmentStrategyTest {
         assertThat(event.getJSONObject("metadata").optString("flow_id"), isEmptyString());
 
         final String flowId = randomString();
-        try (MDCUtils.CloseableNOException ignore = MDCUtils.withFlowId(flowId)) {
+        try (MDCUtils.CloseableNoEx ignore = MDCUtils.withFlowId(flowId)) {
             strategy.enrich(batch, eventType);
         }
 
@@ -123,7 +123,7 @@ public class MetadataEnrichmentStrategyTest {
         event.getJSONObject("metadata").put("flow_id", "something");
         final BatchItem batch = createBatchItem(event);
 
-        try (MDCUtils.CloseableNOException ignore = MDCUtils.withFlowId("something-else")) {
+        try (MDCUtils.CloseableNoEx ignore = MDCUtils.withFlowId("something-else")) {
             strategy.enrich(batch, eventType);
         }
 
@@ -138,7 +138,7 @@ public class MetadataEnrichmentStrategyTest {
         final BatchItem batch = createBatchItem(event);
 
         final String flowId = randomString();
-        try (MDCUtils.CloseableNOException ignore = MDCUtils.withFlowId(flowId)) {
+        try (MDCUtils.CloseableNoEx ignore = MDCUtils.withFlowId(flowId)) {
             strategy.enrich(batch, eventType);
         }
         assertThat(batch.getEvent().getJSONObject("metadata").getString("flow_id"), equalTo(flowId));
@@ -152,7 +152,7 @@ public class MetadataEnrichmentStrategyTest {
         final BatchItem batch = createBatchItem(event);
 
         final String flowId = randomString();
-        try (MDCUtils.CloseableNOException ignore = MDCUtils.withFlowId(flowId)) {
+        try (MDCUtils.CloseableNoEx ignore = MDCUtils.withFlowId(flowId)) {
             strategy.enrich(batch, eventType);
         }
 
