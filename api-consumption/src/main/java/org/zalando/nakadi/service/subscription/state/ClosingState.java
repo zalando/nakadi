@@ -1,5 +1,7 @@
 package org.zalando.nakadi.service.subscription.state;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.zalando.nakadi.domain.EventTypePartition;
 import org.zalando.nakadi.domain.NakadiCursor;
 import org.zalando.nakadi.exceptions.runtime.NakadiBaseException;
@@ -21,6 +23,8 @@ import java.util.function.Supplier;
 import java.util.stream.Stream;
 
 class ClosingState extends State {
+    private static final Logger LOG = LoggerFactory.getLogger(ClosingState.class);
+
     private final Supplier<Map<EventTypePartition, NakadiCursor>> uncommittedOffsetsSupplier;
     private final LongSupplier lastCommitSupplier;
     private Map<EventTypePartition, NakadiCursor> uncommittedOffsets;
@@ -40,7 +44,7 @@ class ClosingState extends State {
             freePartitions(new HashSet<>(listeners.keySet()));
         } catch (final NakadiRuntimeException | NakadiBaseException ex) {
             // In order not to stuck here one will just log this exception, without rethrowing
-            getLog().error("Failed to transfer partitions when leaving ClosingState", ex);
+            LOG.error("Failed to transfer partitions when leaving ClosingState", ex);
         } finally {
             if (null != topologyListener) {
                 try {
@@ -155,7 +159,7 @@ class ClosingState extends State {
                     listener.close();
                 } catch (final RuntimeException ex) {
                     exceptionCaught = ex;
-                    getLog().error("Failed to cancel offsets listener {}", listener, ex);
+                    LOG.error("Failed to cancel offsets listener {}", listener, ex);
                 }
             }
         }

@@ -3,6 +3,7 @@ package org.zalando.nakadi.service.subscription.state;
 import com.codahale.metrics.Meter;
 import com.google.common.annotations.VisibleForTesting;
 import com.google.common.base.Preconditions;
+import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.zalando.nakadi.domain.ConsumedEvent;
 import org.zalando.nakadi.domain.EventTypePartition;
@@ -16,7 +17,6 @@ import org.zalando.nakadi.exceptions.runtime.ServiceTemporarilyUnavailableExcept
 import org.zalando.nakadi.metrics.MetricUtils;
 import org.zalando.nakadi.repository.EventConsumer;
 import org.zalando.nakadi.service.subscription.IdleStreamWatcher;
-import org.zalando.nakadi.service.subscription.LogPathBuilder;
 import org.zalando.nakadi.service.subscription.model.Partition;
 import org.zalando.nakadi.service.subscription.zk.ZkSubscription;
 import org.zalando.nakadi.service.subscription.zk.ZkSubscriptionClient;
@@ -43,6 +43,8 @@ import static java.util.stream.Collectors.groupingBy;
 
 
 class StreamingState extends State {
+    private static final Logger LOG = LoggerFactory.getLogger(StreamingState.class);
+
     private final Map<EventTypePartition, PartitionData> offsets = new HashMap<>();
     // Maps partition barrier when releasing must be completed or stream will be closed.
     // The reasons for that if there are two partitions (p0, p1) and p0 is reassigned, if p1 is working
@@ -135,7 +137,7 @@ class StreamingState extends State {
         try {
             getOut().onInitialized(getSessionId());
         } catch (final IOException e) {
-            getLog().error("Failed to notify of initialization. Switch to cleanup directly", e);
+            LOG.error("Failed to notify of initialization. Switch to cleanup directly", e);
             switchState(new CleanupState(e));
         }
     }
@@ -184,7 +186,7 @@ class StreamingState extends State {
 
     private void shutdownGracefully(final String reason) {
         logStreamCloseReason("Shutting down gracefully: " + reason);
-        getLog().info("Shutting down gracefully. Reason: {}", reason);
+        LOG.info("Shutting down gracefully. Reason: {}", reason);
         switchState(new ClosingState(this::getUncommittedOffsets, this::getLastCommitMillis));
     }
 
@@ -243,7 +245,7 @@ class StreamingState extends State {
         if (delta > 0) {
             scheduleTask(this::checkBatchTimeouts, delta, TimeUnit.MILLISECONDS);
         } else {
-            getLog().debug("Probably acting too slow, stream timeouts are constantly rescheduled");
+            LOG.debug("Probably acting too slow, stream timeouts are constantly rescheduled");
             addTask(this::checkBatchTimeouts);
         }
     }
@@ -293,7 +295,7 @@ class StreamingState extends State {
                     events,
                     Optional.of("Stream parameters are causing overflow"));
             messagesAllowedToSend -= events.size();
-            getLog().info("Memory limit reached: {} bytes. Dumped events from {}. Freed: {} bytes, {} messages",
+            LOG.info("Memory limit reached: {} bytes. Dumped events from {}. Freed: {} bytes, {} messages",
                     memoryConsumed, heaviestPartition.getKey(), deltaSize, events.size());
             memoryConsumed -= deltaSize;
         }
@@ -367,10 +369,10 @@ class StreamingState extends State {
                             ", StreamSent: " + pd.getSentOffset() +
                             ", ZkCommitted: " + realCommitted.get(etp) + ")";
                 }).collect(Collectors.joining(", "));
-                getLog().warn("Stale offsets during streaming commit timeout: {}", bustedData);
+                LOG.warn("Stale offsets during streaming commit timeout: {}", bustedData);
             }
         } catch (NakadiRuntimeException ex) {
-            getLog().warn("Failed to get nakadi cursors for logging purposes.");
+            LOG.warn("Failed to get nakadi cursors for logging purposes.");
         }
     }
 
@@ -386,7 +388,7 @@ class StreamingState extends State {
             try {
                 topologyChangeSubscription.close();
             } catch (final RuntimeException ex) {
-                getLog().warn("Failed to cancel topology subscription", ex);
+                LOG.warn("Failed to cancel topology subscription", ex);
             } finally {
                 topologyChangeSubscription = null;
                 new HashSet<>(offsets.keySet()).forEach(this::removeFromStreaming);
@@ -429,7 +431,7 @@ class StreamingState extends State {
                 .filter(p -> getSessionId().equalsIgnoreCase(p.getSession()))
                 .toArray(Partition[]::new);
         if (refreshTopologyUnlocked(partitions)) {
-            getLog().info("Topology changed not by event, but by schedule. Recreating zk listener");
+            LOG.info("Topology changed not by event, but by schedule. Recreating zk listener");
             recreateTopologySubscription();
         }
         // addTask() is used to check if state is not changed.
@@ -496,8 +498,8 @@ class StreamingState extends State {
     }
 
     private void logPartitionAssignment(final String reason) {
-        if (getLog().isInfoEnabled()) {
-            getLog().info("{}. Streaming partitions: [{}]. Reassigning partitions: [{}]",
+        if (LOG.isInfoEnabled()) {
+            LOG.info("{}. Streaming partitions: [{}]. Reassigning partitions: [{}]",
                     reason,
                     offsets.keySet().stream().filter(p -> !releasingPartitions.containsKey(p))
                             .map(EventTypePartition::toString).collect(Collectors.joining(",")),
@@ -522,7 +524,7 @@ class StreamingState extends State {
         if (!releasingPartitions.containsKey(pk)) {
             return;
         }
-        getLog().info("Checking barrier to transfer partition {}", pk);
+        LOG.info("Checking barrier to transfer partition {}", pk);
         final long currentTime = System.currentTimeMillis();
         if (currentTime >= releasingPartitions.get(pk)) {
             shutdownGracefully("barrier on reassigning partition reached for " + pk + ", current time: " + currentTime
@@ -554,7 +556,7 @@ class StreamingState extends State {
         }
         final Set<EventTypePartition> currentAssignment = eventConsumer.getAssignment();
 
-        getLog().info("Changing kafka assignment from {} to {}",
+        LOG.info("Changing kafka assignment from {} to {}",
                 Arrays.deepToString(currentAssignment.toArray()),
                 Arrays.deepToString(newAssignment.toArray()));
 
@@ -615,7 +617,7 @@ class StreamingState extends State {
     private void addToStreaming(final Partition partition,
                                 final Map<EventTypePartition, SubscriptionCursorWithoutToken> cursorMap) {
         final NakadiCursor cursor = createNakadiCursor(cursorMap.get(partition.getKey()));
-        getLog().info("Adding to streaming {} with start position {}", partition.getKey(), cursor);
+        LOG.info("Adding to streaming {} with start position {}", partition.getKey(), cursor);
         final ZkSubscription<SubscriptionCursorWithoutToken> subscription = getZk().subscribeForOffsetChanges(
                 partition.getKey(),
                 () -> addTask(() -> offsetChanged(partition.getKey())));
@@ -623,8 +625,6 @@ class StreamingState extends State {
                 getComparator(),
                 subscription,
                 cursor,
-                LoggerFactory.getLogger(LogPathBuilder.build(
-                        getContext().getSubscription().getId(), getSessionId(), String.valueOf(partition.getKey()))),
                 System.currentTimeMillis(),
                 this.getContext().getParameters().batchTimespan,
                 getContext().getCursorOperationsService()
@@ -678,19 +678,19 @@ class StreamingState extends State {
     }
 
     private void removeFromStreaming(final EventTypePartition key) {
-        getLog().info("Removing partition {} from streaming", key);
+        LOG.info("Removing partition {} from streaming", key);
         releasingPartitions.remove(key);
         final PartitionData data = offsets.remove(key);
         getAutocommit().removePartition(key);
         if (null != data) {
             try {
                 if (data.getUnconfirmed() > 0) {
-                    getLog().info("Skipping commits: {}, commit={}, sent={}",
+                    LOG.info("Skipping commits: {}, commit={}, sent={}",
                             key, data.getCommitOffset(), data.getSentOffset());
                 }
                 data.getSubscription().close();
             } catch (final RuntimeException ex) {
-                getLog().warn("Failed to cancel subscription, skipping exception", ex);
+                LOG.warn("Failed to cancel subscription, skipping exception", ex);
             }
         }
     }
