@@ -41,10 +41,6 @@ public class SubscriptionIdLogFilter extends Filter {
         if (threshold != null && event.getLevel().isGreaterOrEqual(threshold)) {
             return Filter.ACCEPT;
         }
-        if (subscriptionIdsSet.isEmpty()) {
-            // Filter allows to log the data only in case when subscription ids to log are set.
-            return Filter.DENY;
-        }
         final Object subscriptionId = event.getMDC("subscriptionId");
         if (subscriptionId == null) {
             // If subscription id is not set - log it, as probably it is some related code, that was not covered by
