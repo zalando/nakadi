@@ -16,7 +16,7 @@ public class SubscriptionIdLogFilter extends Filter {
         return threshold;
     }
 
-    public void setThreshold(Priority threshold) {
+    public void setThreshold(final Priority threshold) {
         this.threshold = threshold;
     }
 
@@ -24,7 +24,7 @@ public class SubscriptionIdLogFilter extends Filter {
         return subscriptionIds;
     }
 
-    public void setSubscriptionIds(String subscriptionIds) {
+    public void setSubscriptionIds(final String subscriptionIds) {
         this.subscriptionIds = subscriptionIds;
         this.subscriptionIdsSet.clear();
         for (final String item : this.subscriptionIds.split("[,;]")) {
@@ -37,7 +37,7 @@ public class SubscriptionIdLogFilter extends Filter {
     }
 
     @Override
-    public int decide(LoggingEvent event) {
+    public int decide(final LoggingEvent event) {
         if (threshold != null && event.getLevel().isGreaterOrEqual(threshold)) {
             return Filter.ACCEPT;
         }
