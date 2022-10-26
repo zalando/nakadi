@@ -34,7 +34,6 @@ review-integrationtest:
     ENVIRONMENT_HOST: environment_url.txt
   script:
     - echo "$HOST_IP"
-    - echo "EVENTHUB_DB_PASSWORD_DEV - $EVENTHUB_DB_PASSWORD_DEV"
     - "TEST_ENV=review NAKADI_BASE_URL=http://$HOST_IP POSTGRES_URL=jdbc:postgresql://$HOST_IP:5432/local_nakadi_db ZOOKEEPER_URL=$HOST_IP:2181 KAFKA_URL=$HOST_IP:29092 ./gradlew :acceptance-test:acceptanceTest"
 
 dev:
@@ -43,8 +42,6 @@ dev:
     K8S_SECRET_SPRING_PROFILES_ACTIVE: dev
     KUBE_INGRESS_BASE_DOMAIN: dev.tc.private.wiley.host
     HELM_UPGRADE_VALUES_FILE: .gitlab/auto-deploy-values-dev.yaml
-  after_script:
-    - echo "DB_PWD=$SPRING_DATASOURCE_PASSWORD" >> deploy.env
 
 
 dev-integrationtest:
@@ -56,8 +53,6 @@ dev-integrationtest:
   allow_failure: true
   extends: .dev-integration-test
   script:
-    - echo "DB_PWD-$DB_PWD"
-    - echo "SPRING_DATASOURCE_PASSWORD-$SPRING_DATASOURCE_PASSWORD"
     - "TEST_ENV=dev ./gradlew :acceptance-test:acceptanceTest"
 
 qa:
