@@ -240,10 +240,10 @@ public class SubscriptionStreamController {
                     .setTag("subscription.id", subscriptionId);
 
             final Span requestSpan = TracingService.getActiveSpan();
-            final MDCUtils.MDCContext loggingContext = MDCUtils.getContext();
+            final MDCUtils.Context loggingContext = MDCUtils.getContext();
 
             return outputStream -> {
-                try (MDCUtils.CloseableNoEx ignore2 = MDCUtils.withContext(loggingContext)) {
+                try (MDCUtils.CloseableNoEx ignore2 = MDCUtils.enrichContext(loggingContext)) {
                     final String metricName = metricNameForSubscription(subscriptionId, CONSUMERS_COUNT_METRIC_NAME);
                     final Counter consumerCounter = metricRegistry.counter(metricName);
                     consumerCounter.inc();
