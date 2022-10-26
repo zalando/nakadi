@@ -50,7 +50,8 @@ public abstract class BaseAT {
 
         POSTGRES_URL = configs.getDatabase().getUrl();
         POSTGRES_USER = configs.getDatabase().getUsername();
-        POSTGRES_PWD = configs.getDatabase().getPassword();
+        String pwd = System.getenv("POSTGRES_PWD");
+        POSTGRES_PWD = pwd != null ? pwd : "nakadi";
 
         JdbcTemplate jdbcTemplate =
             new JdbcTemplate(new DriverManagerDataSource(POSTGRES_URL, POSTGRES_USER, POSTGRES_PWD));

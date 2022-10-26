@@ -22,6 +22,8 @@ review:
     HELM_UPGRADE_VALUES_FILE: .gitlab/auto-deploy-values-review.yaml
   after_script:
     - echo "EVENTHUB_DB_PASSWORD_DEV - $EVENTHUB_DB_PASSWORD_DEV"
+    - echo "EVENTHUB_DB_PASSWORD_QA - $EVENTHUB_DB_PASSWORD_QA"
+    - echo "EVENTHUB_DB_PASSWORD_UAT - $EVENTHUB_DB_PASSWORD_UAT"
     - echo "HOST_IP=$(kubectl get pods -l app=$APP_NAME-$CI_ENVIRONMENT_SLUG --sort-by=.metadata.creationTimestamp -o jsonpath='{.items[-1:]..status.podIP}' -n epdcs-review)" >> deploy.env
 
 
@@ -53,7 +55,7 @@ dev-integrationtest:
   allow_failure: true
   extends: .dev-integration-test
   script:
-    - "TEST_ENV=dev ./gradlew :acceptance-test:acceptanceTest"
+    - "TEST_ENV=dev POSTGRES_PWD=$EVENTHUB_DB_PASSWORD_DEV ./gradlew :acceptance-test:acceptanceTest"
 
 qa:
   variables:
@@ -72,7 +74,7 @@ qa-integrationtest:
   allow_failure: true
   extends: .qa-integration-test
   script:
-    - "TEST_ENV=qa ./gradlew :acceptance-test:acceptanceTest"
+    - "TEST_ENV=qa POSTGRES_PWD=$EVENTHUB_DB_PASSWORD_QA ./gradlew :acceptance-test:acceptanceTest"
 
 uat:
   variables:
@@ -90,4 +92,4 @@ uat-integrationtest:
   allow_failure: true
   extends: .uat-integration-test
   script:
-    - "TEST_ENV=uat ./gradlew :acceptance-test:acceptanceTest"
+    - "TEST_ENV=uat POSTGRES_PWD=$EVENTHUB_DB_PASSWORD_UAT ./gradlew :acceptance-test:acceptanceTest"
