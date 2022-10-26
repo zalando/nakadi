@@ -21,9 +21,6 @@ review:
     K8S_SECRET_SPRING_PROFILES_ACTIVE: review
     HELM_UPGRADE_VALUES_FILE: .gitlab/auto-deploy-values-review.yaml
   after_script:
-    - echo "EVENTHUB_DB_PASSWORD_DEV - $EVENTHUB_DB_PASSWORD_DEV"
-    - echo "EVENTHUB_DB_PASSWORD_QA - $EVENTHUB_DB_PASSWORD_QA"
-    - echo "EVENTHUB_DB_PASSWORD_UAT - $EVENTHUB_DB_PASSWORD_UAT"
     - echo "HOST_IP=$(kubectl get pods -l app=$APP_NAME-$CI_ENVIRONMENT_SLUG --sort-by=.metadata.creationTimestamp -o jsonpath='{.items[-1:]..status.podIP}' -n epdcs-review)" >> deploy.env
 
 
