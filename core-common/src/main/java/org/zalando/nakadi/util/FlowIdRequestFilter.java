@@ -22,7 +22,7 @@ public class FlowIdRequestFilter implements Filter {
     @Override
     public void doFilter(final ServletRequest request, final ServletResponse response, final FilterChain chain)
             throws IOException, ServletException {
-        final String flowId = getRequestIdFromRequestOrGenerate(request);
+        final String flowId = getFlowIdFromRequestOrGenerate(request);
 
         if (response instanceof HttpServletResponse) {
             final HttpServletResponse httpServletResponse = (HttpServletResponse) response;
