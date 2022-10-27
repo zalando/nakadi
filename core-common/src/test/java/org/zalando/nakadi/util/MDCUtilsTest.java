@@ -13,7 +13,7 @@ public class MDCUtilsTest {
     public void testEmptyEmptyContextTransfer() throws ExecutionException, InterruptedException, TimeoutException {
         // the method is checking that nothing goes down when there are no values set, and nulls are passed
         final MDCUtils.Context context = MDCUtils.getContext();
-        try (MDCUtils.CloseableNoEx ignore = MDCUtils.enrichContext(context)) {
+        try (MDCUtils.CloseableNoEx ignore = MDCUtils.withContext(context)) {
         }
     }
 
@@ -26,7 +26,7 @@ public class MDCUtilsTest {
             Assert.assertEquals(MDCUtils.getFlowId(), "1");
         }
         Assert.assertNull(MDCUtils.getFlowId());
-        try (MDCUtils.CloseableNoEx ignore2 = MDCUtils.enrichContext(oldContext)) {
+        try (MDCUtils.CloseableNoEx ignore2 = MDCUtils.withContext(oldContext)) {
             Assert.assertEquals(MDCUtils.getFlowId(), "1");
         }
         Assert.assertNull(MDCUtils.getFlowId());
@@ -37,8 +37,8 @@ public class MDCUtilsTest {
         final MDCUtils.Context oldContext = MDCUtils.getContext();
         try (MDCUtils.CloseableNoEx ignore1 = MDCUtils.withFlowId("1")) {
             Assert.assertEquals(MDCUtils.getFlowId(), "1");
-            try (MDCUtils.CloseableNoEx ignore2 = MDCUtils.enrichContext(oldContext)) {
-                Assert.assertEquals(MDCUtils.getFlowId(), "1");
+            try (MDCUtils.CloseableNoEx ignore2 = MDCUtils.withContext(oldContext)) {
+                Assert.assertEquals(MDCUtils.getFlowId(), null);
             }
             Assert.assertEquals(MDCUtils.getFlowId(), "1");
         }
@@ -55,9 +55,9 @@ public class MDCUtilsTest {
         try (MDCUtils.CloseableNoEx ignore2 = MDCUtils.withSubscriptionIdStreamId("2", "3")) {
             Assert.assertEquals(MDC.get("subscriptionId"), "2");
             Assert.assertEquals(MDC.get("streamId"), "3");
-            try (MDCUtils.CloseableNoEx ignore3 = MDCUtils.enrichContext(oldContext)){
+            try (MDCUtils.CloseableNoEx ignore3 = MDCUtils.withContext(oldContext)){
                 Assert.assertEquals(MDC.get("subscriptionId"), "1");
-                Assert.assertEquals(MDC.get("streamId"), "3");
+                Assert.assertEquals(MDC.get("streamId"), null);
             }
             Assert.assertEquals(MDC.get("subscriptionId"), "2");
             Assert.assertEquals(MDC.get("streamId"), "3");

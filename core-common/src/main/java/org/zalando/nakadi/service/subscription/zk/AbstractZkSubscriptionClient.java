@@ -20,6 +20,7 @@ import org.zalando.nakadi.exceptions.runtime.UnableProcessException;
 import org.zalando.nakadi.exceptions.runtime.ZookeeperException;
 import org.zalando.nakadi.repository.zookeeper.ZooKeeperHolder;
 import org.zalando.nakadi.service.subscription.model.Session;
+import org.zalando.nakadi.util.MDCUtils;
 import org.zalando.nakadi.view.Cursor;
 import org.zalando.nakadi.view.SubscriptionCursorWithoutToken;
 
@@ -181,13 +182,11 @@ public abstract class AbstractZkSubscriptionClient implements ZkSubscriptionClie
         final Map<K, V> result = new HashMap<>();
         final CountDownLatch latch = new CountDownLatch(keys.size());
         try {
+            final MDCUtils.Context loggingContext = MDCUtils.getContext();
             for (final K key : keys) {
                 final String zkKey = keyConverter.apply(key);
                 getCurator().getData().inBackground((client, event) -> {
-
-                    // TODO: Transfer logging context!
-
-                    try {
+                    try (MDCUtils.CloseableNoEx ignore = MDCUtils.withContext(loggingContext)){
                         if (event.getResultCode() == KeeperException.Code.OK.intValue()) {
                             final V value = valueConverter.apply(key, event.getData());
                             synchronized (result) {

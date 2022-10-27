@@ -193,7 +193,7 @@ public class EventStreamController {
         final MDCUtils.Context requestContext = MDCUtils.getContext();
 
         return outputStream -> {
-            try (MDCUtils.CloseableNoEx ignore1 = MDCUtils.enrichContext(requestContext)) {
+            try (MDCUtils.CloseableNoEx ignore1 = MDCUtils.withContext(requestContext)) {
                 if (eventStreamChecks.isConsumptionBlocked(
                         Collections.singleton(eventTypeName), client.getClientId())) {
                     writeProblemResponse(response, outputStream,

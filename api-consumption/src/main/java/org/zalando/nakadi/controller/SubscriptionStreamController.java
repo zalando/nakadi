@@ -243,7 +243,7 @@ public class SubscriptionStreamController {
             final MDCUtils.Context loggingContext = MDCUtils.getContext();
 
             return outputStream -> {
-                try (MDCUtils.CloseableNoEx ignore2 = MDCUtils.enrichContext(loggingContext)) {
+                try (MDCUtils.CloseableNoEx ignore2 = MDCUtils.withContext(loggingContext)) {
                     final String metricName = metricNameForSubscription(subscriptionId, CONSUMERS_COUNT_METRIC_NAME);
                     final Counter consumerCounter = metricRegistry.counter(metricName);
                     consumerCounter.inc();

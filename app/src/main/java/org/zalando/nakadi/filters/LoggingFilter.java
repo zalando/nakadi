@@ -108,7 +108,7 @@ public class LoggingFilter extends OncePerRequestFilter {
         }
 
         private void logOnEvent() {
-            try (MDCUtils.CloseableNoEx ignored = MDCUtils.enrichContext(this.loggingContext)) {
+            try (MDCUtils.CloseableNoEx ignored = MDCUtils.withContext(this.loggingContext)) {
                 logRequest(this.requestLogInfo);
             }
         }
