@@ -34,7 +34,7 @@ public class FlowIdRequestFilter implements Filter {
         }
     }
 
-    private String getRequestIdFromRequestOrGenerate(final ServletRequest request) {
+    private String getFlowIdFromRequestOrGenerate(final ServletRequest request) {
         if (request instanceof HttpServletRequest) {
             final HttpServletRequest httpServletRequest = (HttpServletRequest) request;
             final String requestIdFromRequest = httpServletRequest.getHeader(X_FLOW_ID_HEADER);
