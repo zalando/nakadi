@@ -1,5 +1,7 @@
 package org.zalando.nakadi.util;
 
+import org.apache.commons.lang3.RandomStringUtils;
+
 import javax.servlet.Filter;
 import javax.servlet.FilterChain;
 import javax.servlet.FilterConfig;
@@ -15,41 +17,35 @@ public class FlowIdRequestFilter implements Filter {
 
     @Override
     public void init(final FilterConfig filterConfig) throws ServletException {
-        // This constructor is intentionally empty, because something something
     }
 
     @Override
     public void doFilter(final ServletRequest request, final ServletResponse response, final FilterChain chain)
             throws IOException, ServletException {
-        FlowIdUtils.clear();
-        String flowId = null;
-
-        if (request instanceof HttpServletRequest) {
-            final HttpServletRequest httpServletRequest = (HttpServletRequest) request;
-            flowId = httpServletRequest.getHeader(X_FLOW_ID_HEADER);
-        }
-
-        if (flowId == null) {
-            flowId = FlowIdUtils.generateFlowId();
-        }
-
-        FlowIdUtils.push(flowId);
+        final String flowId = getFlowIdFromRequestOrGenerate(request);
 
         if (response instanceof HttpServletResponse) {
             final HttpServletResponse httpServletResponse = (HttpServletResponse) response;
             httpServletResponse.setHeader(X_FLOW_ID_HEADER, flowId);
         }
 
-        try {
+        try (MDCUtils.CloseableNoEx ignored = MDCUtils.withFlowId(flowId)) {
             chain.doFilter(request, response);
-
-        } finally {
-            FlowIdUtils.clear();
         }
+    }
+
+    private String getFlowIdFromRequestOrGenerate(final ServletRequest request) {
+        if (request instanceof HttpServletRequest) {
+            final HttpServletRequest httpServletRequest = (HttpServletRequest) request;
+            final String requestIdFromRequest = httpServletRequest.getHeader(X_FLOW_ID_HEADER);
+            if (null != requestIdFromRequest) {
+                return requestIdFromRequest;
+            }
+        }
+        return RandomStringUtils.randomAlphanumeric(24);
     }
 
     @Override
     public void destroy() {
-        // This constructor is intentionally empty, because something something
     }
 }

@@ -53,7 +53,6 @@ import java.io.Closeable;
 import java.io.IOException;
 import java.io.OutputStream;
 import java.net.InetAddress;
-import java.net.UnknownHostException;
 import java.util.Collections;
 import java.util.Date;
 import java.util.LinkedList;
@@ -122,7 +121,7 @@ public class EventStreamControllerTest {
     private AuthorizationService authorizationService;
 
     @Before
-    public void setup() throws UnknownHostException, InvalidCursorException {
+    public void setup() throws InvalidCursorException {
         EVENT_TYPE.setName(TEST_EVENT_TYPE_NAME);
         timeline = buildTimeline(TEST_EVENT_TYPE_NAME, TEST_TOPIC, new Date());
 
@@ -200,8 +199,7 @@ public class EventStreamControllerTest {
 
         when(eventTypeCache.getEventType(TEST_EVENT_TYPE_NAME)).thenReturn(EVENT_TYPE);
 
-        mockMvc.perform(
-                get(String.format("/event-types/%s/events", TEST_EVENT_TYPE_NAME))
+        mockMvc.perform(get(String.format("/event-types/%s/events", TEST_EVENT_TYPE_NAME))
                         .header("X-nakadi-cursors", "[{\"partition\":\"0\",\"offset\":\"000000000000000000\"}]"))
                 .andExpect(status().isOk());
 
@@ -516,19 +514,19 @@ public class EventStreamControllerTest {
     }
 
     protected StreamingResponseBody createStreamingResponseBody() throws IOException {
-        return controller.streamEvents(TEST_EVENT_TYPE_NAME, 1, 0, 0, 0, 0, null, requestMock, responseMock,
+        return controller.streamEvents(TEST_EVENT_TYPE_NAME, 1, 0, 0, 0, 0, null, responseMock,
                 FULL_ACCESS_CLIENT);
     }
 
     private StreamingResponseBody createStreamingResponseBody(final Client client) throws Exception {
         return controller.streamEvents(
                 TEST_EVENT_TYPE_NAME, 1, 2, 3, 4, 5, "[{\"partition\":\"0\",\"offset\":\"000000000000000000\"}]",
-                requestMock, responseMock, client);
+                responseMock, client);
     }
 
     private StreamingResponseBody createStreamingResponseBody(final String cursorsStr) throws Exception {
         return controller.streamEvents(TEST_EVENT_TYPE_NAME, 1, 2, 3, 4, 5, cursorsStr,
-                requestMock, responseMock, FULL_ACCESS_CLIENT);
+                responseMock, FULL_ACCESS_CLIENT);
     }
 
     private StreamingResponseBody createStreamingResponseBody(final Integer batchLimit,
@@ -536,9 +534,9 @@ public class EventStreamControllerTest {
                                                               final Integer batchTimeout,
                                                               final Integer streamTimeout,
                                                               final Integer streamKeepAliveLimit,
-                                                              final String cursorsStr) throws IOException {
+                                                              final String cursorsStr) {
         return controller.streamEvents(TEST_EVENT_TYPE_NAME, batchLimit, streamLimit, batchTimeout, streamTimeout,
-                streamKeepAliveLimit, cursorsStr, requestMock, responseMock, FULL_ACCESS_CLIENT);
+                streamKeepAliveLimit, cursorsStr, responseMock, FULL_ACCESS_CLIENT);
     }
 
 }

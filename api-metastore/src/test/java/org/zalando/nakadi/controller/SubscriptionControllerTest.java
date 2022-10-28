@@ -121,7 +121,7 @@ public class SubscriptionControllerTest {
         topicRepository = mock(TopicRepository.class);
         final SubscriptionClientFactory zkSubscriptionClientFactory = mock(SubscriptionClientFactory.class);
         zkSubscriptionClient = mock(ZkSubscriptionClient.class);
-        when(zkSubscriptionClientFactory.createClient(any(), any())).thenReturn(zkSubscriptionClient);
+        when(zkSubscriptionClientFactory.createClient(any())).thenReturn(zkSubscriptionClient);
         timelineService = mock(TimelineService.class);
         when(timelineService.getActiveTimeline(any(EventType.class))).thenReturn(TIMELINE);
         when(timelineService.getTopicRepository((EventTypeBase) any())).thenReturn(topicRepository);

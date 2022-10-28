@@ -13,7 +13,7 @@ import org.zalando.nakadi.exceptions.runtime.EnrichmentException;
 import org.zalando.nakadi.exceptions.runtime.NoSuchSchemaException;
 import org.zalando.nakadi.plugin.api.authz.AuthorizationService;
 import org.zalando.nakadi.plugin.api.authz.Subject;
-import org.zalando.nakadi.util.FlowIdUtils;
+import org.zalando.nakadi.util.MDCUtils;
 
 import java.time.Instant;
 import java.util.Optional;
@@ -52,7 +52,7 @@ public class MetadataEnrichmentStrategy implements EnrichmentStrategy {
         metadata.setPublishedBy(getPublisher());
         metadata.setReceivedAt(Instant.now());
         if (metadata.getFlowId() == null || metadata.getFlowId().isEmpty()) {
-            metadata.setFlowId(FlowIdUtils.peek());
+            metadata.setFlowId(MDCUtils.getFlowId());
         }
     }
 
@@ -76,7 +76,7 @@ public class MetadataEnrichmentStrategy implements EnrichmentStrategy {
 
     private void setFlowId(final JSONObject metadata) {
         if ("".equals(metadata.optString("flow_id"))) {
-            metadata.put("flow_id", FlowIdUtils.peek());
+            metadata.put("flow_id", MDCUtils.getFlowId());
         }
     }
 

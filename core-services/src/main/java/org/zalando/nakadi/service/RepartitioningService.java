@@ -19,11 +19,11 @@ import org.zalando.nakadi.exceptions.runtime.NakadiBaseException;
 import org.zalando.nakadi.exceptions.runtime.NakadiRuntimeException;
 import org.zalando.nakadi.repository.db.EventTypeRepository;
 import org.zalando.nakadi.repository.db.SubscriptionDbRepository;
-import org.zalando.nakadi.service.subscription.LogPathBuilder;
 import org.zalando.nakadi.service.subscription.zk.SubscriptionClientFactory;
 import org.zalando.nakadi.service.subscription.zk.ZkSubscriptionClient;
 import org.zalando.nakadi.service.timeline.TimelineService;
 import org.zalando.nakadi.service.timeline.TimelineSync;
+import org.zalando.nakadi.util.MDCUtils;
 import org.zalando.nakadi.view.Cursor;
 import org.zalando.nakadi.view.SubscriptionCursorWithoutToken;
 
@@ -95,7 +95,11 @@ public class RepartitioningService {
             timelineService.updateTimeLineForRepartition(eventType, partitions);
 
             subscriptionRepository.listAllSubscriptionsFor(ImmutableSet.of(eventType.getName()))
-                    .forEach(sub -> updateSubscriptionForRepartitioning(sub, eventTypeName, partitions));
+                    .forEach(sub -> {
+                        try (MDCUtils.CloseableNoEx ignore = MDCUtils.withSubscriptionId(sub.getId())) {
+                            updateSubscriptionForRepartitioning(sub, eventTypeName, partitions);
+                        }
+                    });
 
             // it is clear that the operation has to be done under the lock with other related work for changing event
             // type, but it is skipped, because it is quite rare operation to change event type and repartition at the
@@ -151,8 +155,7 @@ public class RepartitioningService {
             subscriptionRepository.updateSubscription(subscription);
         }
 
-        final ZkSubscriptionClient zkClient = subscriptionClientFactory.createClient(subscription,
-                LogPathBuilder.build(subscription.getId(), "repartition"));
+        final ZkSubscriptionClient zkClient = subscriptionClientFactory.createClient(subscription);
         try {
             // it could be that subscription was created, but never initialized
             SubscriptionInitializer.initialize(

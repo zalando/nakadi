@@ -61,8 +61,8 @@ public class NakadiKpiPublisherTest {
                 .setStatus("created")
                 .build();
 
-        new NakadiKpiPublisher(featureToggleService, jsonProcessor, binaryProcessor, usernameHasher,
-                new EventMetadataTestStub(), uuidGenerator, schemaProviderService, recordMapper)
+        new NakadiKpiPublisher(featureToggleService, binaryProcessor, usernameHasher,
+                uuidGenerator, schemaProviderService, recordMapper)
                 .publish(() -> subscriptionLogEvent);
 
         verify(binaryProcessor).queueEvent(eventTypeCaptor.capture(), nakadiRecordCaptor.capture());
@@ -83,8 +83,8 @@ public class NakadiKpiPublisherTest {
     public void testPublishKPIEventWithFeatureToggleOff() {
         when(featureToggleService.isFeatureEnabled(Feature.KPI_COLLECTION)).thenReturn(false);
         final Supplier<SpecificRecord> mockEventSupplier = Mockito.mock(Supplier.class);
-        new NakadiKpiPublisher(featureToggleService, jsonProcessor, binaryProcessor, usernameHasher,
-                new EventMetadataTestStub(), uuidGenerator, schemaProviderService, recordMapper)
+        new NakadiKpiPublisher(featureToggleService, binaryProcessor, usernameHasher,
+                uuidGenerator, schemaProviderService, recordMapper)
                 .publish(mockEventSupplier);
         verifyNoInteractions(mockEventSupplier, jsonProcessor, binaryProcessor, localRegistryMock);
     }
@@ -92,8 +92,7 @@ public class NakadiKpiPublisherTest {
     @Test
     public void testHash() {
         final NakadiKpiPublisher publisher = new NakadiKpiPublisher(featureToggleService,
-                jsonProcessor, binaryProcessor, usernameHasher,
-                new EventMetadataTestStub(), uuidGenerator, schemaProviderService, recordMapper);
+                binaryProcessor, usernameHasher, uuidGenerator, schemaProviderService, recordMapper);
 
         assertThat(publisher.hash("application"),
                 equalTo("befee725ab2ed3b17020112089a693ad8d8cfbf62b2442dcb5b89d66ce72391e"));

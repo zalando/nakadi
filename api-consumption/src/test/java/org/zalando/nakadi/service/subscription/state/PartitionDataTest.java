@@ -41,7 +41,7 @@ public class PartitionDataTest {
 
     @Test
     public void onNewOffsetsShouldSupportRollback() {
-        final PartitionData pd = new PartitionData(COMP, null, createCursor(100L), System.currentTimeMillis(),
+        final PartitionData pd = new PartitionData(COMP, null, createCursor(100L), System.currentTimeMillis(), 0L,
                 new CursorOperationsService(timelineService));
         final PartitionData.CommitResult cr = pd.onCommitOffset(createCursor(90L));
 
@@ -53,7 +53,7 @@ public class PartitionDataTest {
 
     @Test
     public void onNewOffsetsShouldSupportCommitInFuture() {
-        final PartitionData pd = new PartitionData(COMP, null, createCursor(100L), System.currentTimeMillis(),
+        final PartitionData pd = new PartitionData(COMP, null, createCursor(100L), System.currentTimeMillis(), 0L,
                 new CursorOperationsService(timelineService));
         final PartitionData.CommitResult cr = pd.onCommitOffset(createCursor(110L));
 
@@ -65,7 +65,7 @@ public class PartitionDataTest {
 
     @Test
     public void normalOperationShouldNotReconfigureKafkaConsumer() {
-        final PartitionData pd = new PartitionData(COMP, null, createCursor(100L), System.currentTimeMillis(),
+        final PartitionData pd = new PartitionData(COMP, null, createCursor(100L), System.currentTimeMillis(), 0L,
                 new CursorOperationsService(timelineService));
         for (long i = 0; i < 100; ++i) {
             pd.addEvent(new ConsumedEvent(("test_" + i).getBytes(), createCursor(100L + i + 1), 0, null));
@@ -83,7 +83,7 @@ public class PartitionDataTest {
 
     @Test
     public void keepAliveCountShouldIncreaseOnEachEmptyCall() {
-        final PartitionData pd = new PartitionData(COMP, null, createCursor(100L), System.currentTimeMillis(),
+        final PartitionData pd = new PartitionData(COMP, null, createCursor(100L), System.currentTimeMillis(), 0L,
                 new CursorOperationsService(timelineService));
         for (int i = 0; i < 100; ++i) {
             pd.takeEventsToStream(currentTimeMillis(), 10, 0L, false);
@@ -102,7 +102,7 @@ public class PartitionDataTest {
         final long timeout = TimeUnit.SECONDS.toMillis(1);
         long currentTime = System.currentTimeMillis();
 
-        final PartitionData pd = new PartitionData(COMP, null, createCursor(100L), currentTime,
+        final PartitionData pd = new PartitionData(COMP, null, createCursor(100L), currentTime, 0L,
                 new CursorOperationsService(timelineService));
         for (int i = 0; i < 100; ++i) {
             pd.addEvent(new ConsumedEvent("test".getBytes(), createCursor(i + 100L + 1), 0, null));
@@ -134,7 +134,7 @@ public class PartitionDataTest {
     @Test
     public void eventsShouldBeStreamedOnBatchSize() {
         final long timeout = TimeUnit.SECONDS.toMillis(1);
-        final PartitionData pd = new PartitionData(COMP, null, createCursor(100L), System.currentTimeMillis(),
+        final PartitionData pd = new PartitionData(COMP, null, createCursor(100L), System.currentTimeMillis(), 0L,
                 new CursorOperationsService(timelineService));
         for (int i = 0; i < 100; ++i) {
             pd.addEvent(new ConsumedEvent("test".getBytes(), createCursor(i + 100L + 1), 0, null));
@@ -217,7 +217,7 @@ public class PartitionDataTest {
     @Test
     public void eventsShouldBeStreamedOnStreamTimeout() {
         final long timeout = TimeUnit.SECONDS.toMillis(100);
-        final PartitionData pd = new PartitionData(COMP, null, createCursor(100L), System.currentTimeMillis(),
+        final PartitionData pd = new PartitionData(COMP, null, createCursor(100L), System.currentTimeMillis(), 0L,
                 new CursorOperationsService(timelineService));
         for (int i = 0; i < 10; ++i) {
             pd.addEvent(new ConsumedEvent("test".getBytes(), createCursor(i), 0, null));
@@ -228,7 +228,7 @@ public class PartitionDataTest {
     @Test
     public void noEmptyBatchShouldBeStreamedOnStreamTimeoutWhenNoEvents() {
         final long timeout = TimeUnit.SECONDS.toMillis(100);
-        final PartitionData pd = new PartitionData(COMP, null, createCursor(100L), System.currentTimeMillis(),
+        final PartitionData pd = new PartitionData(COMP, null, createCursor(100L), System.currentTimeMillis(), 0L,
                 new CursorOperationsService(timelineService));
         for (int i = 0; i < 10; ++i) {
             pd.addEvent(new ConsumedEvent("test".getBytes(), createCursor(i), 0, null));

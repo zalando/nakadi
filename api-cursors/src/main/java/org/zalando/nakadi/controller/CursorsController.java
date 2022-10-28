@@ -24,11 +24,11 @@ import org.zalando.nakadi.service.CursorTokenService;
 import org.zalando.nakadi.service.CursorsService;
 import org.zalando.nakadi.service.EventStreamChecks;
 import org.zalando.nakadi.service.TracingService;
+import org.zalando.nakadi.util.MDCUtils;
 import org.zalando.nakadi.view.CursorCommitResult;
 import org.zalando.nakadi.view.SubscriptionCursor;
 import org.zalando.nakadi.view.SubscriptionCursorWithoutToken;
 
-import javax.servlet.http.HttpServletRequest;
 import javax.validation.Valid;
 import javax.validation.constraints.NotNull;
 import java.util.ArrayList;
@@ -58,7 +58,7 @@ public class CursorsController {
     @RequestMapping(path = "/subscriptions/{subscriptionId}/cursors", method = RequestMethod.GET)
     public ItemsWrapper<SubscriptionCursor> getCursors(@PathVariable("subscriptionId") final String subscriptionId,
                                                        final Client client) {
-        try {
+        try (MDCUtils.CloseableNoEx ignore = MDCUtils.withSubscriptionId(subscriptionId)) {
             if (eventStreamChecks.isSubscriptionConsumptionBlocked(subscriptionId, client.getClientId())) {
                 throw new BlockedException("Application or subscription is blocked");
             }
@@ -76,7 +76,6 @@ public class CursorsController {
     public ResponseEntity<?> commitCursors(@PathVariable("subscriptionId") final String subscriptionId,
                                            @Valid @RequestBody final ItemsWrapper<SubscriptionCursor> cursorsIn,
                                            @NotNull @RequestHeader("X-Nakadi-StreamId") final String streamId,
-                                           final HttpServletRequest request,
                                            final Client client)
             throws NoSuchEventTypeException,
             NoSuchSubscriptionException,
@@ -84,29 +83,30 @@ public class CursorsController {
             ServiceTemporarilyUnavailableException,
             InternalNakadiException {
 
-        TracingService.setOperationName("commit_cursors")
-                .setTag("subscription.id", subscriptionId)
-                .setTag("stream.id", streamId);
+        try (MDCUtils.CloseableNoEx ignore = MDCUtils.withSubscriptionIdStreamId(subscriptionId, streamId)) {
+            TracingService.setOperationName("commit_cursors")
+                    .setTag("subscription.id", subscriptionId)
+                    .setTag("stream.id", streamId);
+            final List<NakadiCursor> cursors = convertToNakadiCursors(cursorsIn);
+            if (cursors.isEmpty()) {
+                throw new CursorsAreEmptyException();
+            }
 
-        final List<NakadiCursor> cursors = convertToNakadiCursors(cursorsIn);
-        if (cursors.isEmpty()) {
-            throw new CursorsAreEmptyException();
-        }
+            if (eventStreamChecks.isSubscriptionConsumptionBlocked(subscriptionId, client.getClientId())) {
+                TracingService.logError("Application or subscription is blocked");
+                throw new BlockedException("Application or subscription is blocked");
+            }
+            final List<Boolean> items = cursorsService.commitCursors(streamId, subscriptionId, cursors);
 
-        if (eventStreamChecks.isSubscriptionConsumptionBlocked(subscriptionId, client.getClientId())) {
-            TracingService.logError("Application or subscription is blocked");
-            throw new BlockedException("Application or subscription is blocked");
-        }
-        final List<Boolean> items = cursorsService.commitCursors(streamId, subscriptionId, cursors);
-
-        final boolean allCommitted = items.stream().allMatch(item -> item);
-        if (allCommitted) {
-            return ResponseEntity.noContent().build();
-        } else {
-            final List<CursorCommitResult> body = IntStream.range(0, cursorsIn.getItems().size())
-                    .mapToObj(idx -> new CursorCommitResult(cursorsIn.getItems().get(idx), items.get(idx)))
-                    .collect(Collectors.toList());
-            return ResponseEntity.ok(new ItemsWrapper<>(body));
+            final boolean allCommitted = items.stream().allMatch(item -> item);
+            if (allCommitted) {
+                return ResponseEntity.noContent().build();
+            } else {
+                final List<CursorCommitResult> body = IntStream.range(0, cursorsIn.getItems().size())
+                        .mapToObj(idx -> new CursorCommitResult(cursorsIn.getItems().get(idx), items.get(idx)))
+                        .collect(Collectors.toList());
+                return ResponseEntity.ok(new ItemsWrapper<>(body));
+            }
         }
     }
 
@@ -114,19 +114,20 @@ public class CursorsController {
     public ResponseEntity<?> resetCursors(
             @PathVariable("subscriptionId") final String subscriptionId,
             @Valid @RequestBody final ItemsWrapper<SubscriptionCursorWithoutToken> cursors,
-            final HttpServletRequest request,
             final Client client)
             throws NoSuchEventTypeException, InvalidCursorException, InternalNakadiException {
+        try (MDCUtils.CloseableNoEx ignore = MDCUtils.withSubscriptionId(subscriptionId)) {
 
-        TracingService.setOperationName("reset_cursors")
-                .setTag("subscription.id", subscriptionId);
+            TracingService.setOperationName("reset_cursors")
+                    .setTag("subscription.id", subscriptionId);
 
-        if (eventStreamChecks.isSubscriptionConsumptionBlocked(subscriptionId, client.getClientId())) {
-            throw new BlockedException("Application or subscription is blocked");
+            if (eventStreamChecks.isSubscriptionConsumptionBlocked(subscriptionId, client.getClientId())) {
+                throw new BlockedException("Application or subscription is blocked");
+            }
+
+            cursorsService.resetCursors(subscriptionId, convertToNakadiCursors(cursors));
+            return ResponseEntity.noContent().build();
         }
-
-        cursorsService.resetCursors(subscriptionId, convertToNakadiCursors(cursors));
-        return ResponseEntity.noContent().build();
     }
 
     private List<NakadiCursor> convertToNakadiCursors(

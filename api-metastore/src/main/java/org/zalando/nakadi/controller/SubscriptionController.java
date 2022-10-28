@@ -25,9 +25,9 @@ import org.zalando.nakadi.plugin.api.authz.AuthorizationAttribute;
 import org.zalando.nakadi.service.SubscriptionService;
 import org.zalando.nakadi.service.SubscriptionService.StatsMode;
 import org.zalando.nakadi.service.TracingService;
+import org.zalando.nakadi.util.MDCUtils;
 
 import javax.annotation.Nullable;
-import javax.servlet.http.HttpServletRequest;
 import java.util.Set;
 
 import static org.springframework.http.HttpStatus.NO_CONTENT;
@@ -59,8 +59,7 @@ public class SubscriptionController {
             @RequestParam(value = "limit", required = false, defaultValue = "20") final int limit,
             @RequestParam(value = "offset", required = false, defaultValue = "0") final int offset,
             @RequestParam(value = "token", required = false) final String token,
-            @Nullable @RequestParam(value = "reader", required = false) final AuthorizationAttribute reader,
-            final NativeWebRequest request)
+            @Nullable @RequestParam(value = "reader", required = false) final AuthorizationAttribute reader)
             throws InvalidLimitException, ServiceTemporarilyUnavailableException {
         return subscriptionService
                 .listSubscriptions(owningApplication, eventTypes, reader, showStatus, limit, offset, token);
@@ -74,27 +73,28 @@ public class SubscriptionController {
     }
 
     @RequestMapping(value = "/{id}", method = RequestMethod.DELETE)
-    public ResponseEntity<?> deleteSubscription(@PathVariable("id") final String subscriptionId,
-                                                final NativeWebRequest request)
+    public ResponseEntity<?> deleteSubscription(@PathVariable("id") final String subscriptionId)
             throws DbWriteOperationsBlockedException, NoSuchSubscriptionException, NoSuchEventTypeException,
             ServiceTemporarilyUnavailableException {
-        subscriptionService.deleteSubscription(subscriptionId);
-        return status(NO_CONTENT).build();
+        try (MDCUtils.CloseableNoEx ignore = MDCUtils.withSubscriptionId(subscriptionId)) {
+            subscriptionService.deleteSubscription(subscriptionId);
+            return status(NO_CONTENT).build();
+        }
     }
 
     @RequestMapping(value = "/{id}/stats", method = RequestMethod.GET)
     public ItemsWrapper<SubscriptionEventTypeStats> getSubscriptionStats(
             @PathVariable("id") final String subscriptionId,
-            @RequestParam(value = "show_time_lag", required = false, defaultValue = "false") final boolean showTimeLag,
-            final HttpServletRequest request)
+            @RequestParam(value = "show_time_lag", required = false, defaultValue = "false") final boolean showTimeLag)
             throws InconsistentStateException, NoSuchEventTypeException, NoSuchSubscriptionException,
             ServiceTemporarilyUnavailableException {
+        try (MDCUtils.CloseableNoEx ignore = MDCUtils.withSubscriptionId(subscriptionId)) {
+            TracingService.setOperationName("fetch_stats")
+                    .setTag("subscription.id", subscriptionId)
+                    .setTag("show_time_lag", showTimeLag);
 
-        TracingService.setOperationName("fetch_stats")
-                .setTag("subscription.id", subscriptionId)
-                .setTag("show_time_lag", showTimeLag);
-
-        final StatsMode statsMode = showTimeLag ? StatsMode.TIMELAG : StatsMode.NORMAL;
-        return subscriptionService.getSubscriptionStat(subscriptionId, statsMode);
+            final StatsMode statsMode = showTimeLag ? StatsMode.TIMELAG : StatsMode.NORMAL;
+            return subscriptionService.getSubscriptionStat(subscriptionId, statsMode);
+        }
     }
 }

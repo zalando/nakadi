@@ -2,7 +2,7 @@ package org.zalando.nakadi.service.publishing;
 
 import org.json.JSONObject;
 import org.springframework.stereotype.Component;
-import org.zalando.nakadi.util.FlowIdUtils;
+import org.zalando.nakadi.util.MDCUtils;
 import org.zalando.nakadi.util.UUIDGenerator;
 
 import java.time.Instant;
@@ -20,6 +20,6 @@ public class EventMetadata {
         return event.put("metadata", new JSONObject()
                 .put("occurred_at", Instant.now())
                 .put("eid", uuidGenerator.randomUUID())
-                .put("flow_id", FlowIdUtils.peek()));
+                .put("flow_id", MDCUtils.getFlowId()));
     }
 }

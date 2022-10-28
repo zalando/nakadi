@@ -76,7 +76,7 @@ public class StreamingContext implements SubscriptionStreamer {
     private boolean sessionRegistered;
     private boolean zkClientClosed;
 
-    private final Logger log;
+    private static final Logger LOG = LoggerFactory.getLogger(StreamingContext.class);
 
     private StreamingContext(final Builder builder) {
         this.out = builder.out;
@@ -86,7 +86,6 @@ public class StreamingContext implements SubscriptionStreamer {
         this.timer = builder.timer;
         this.zkClient = builder.zkClient;
         this.kafkaPollTimeout = builder.kafkaPollTimeout;
-        this.log = LoggerFactory.getLogger(LogPathBuilder.build(builder.subscription.getId(), builder.session.getId()));
         this.timelineService = builder.timelineService;
         this.cursorTokenService = builder.cursorTokenService;
         this.objectMapper = builder.objectMapper;
@@ -157,7 +156,8 @@ public class StreamingContext implements SubscriptionStreamer {
     }
 
     public void terminateStream() {
-        log.info("Shutdown hook called. Trying to terminate subscription gracefully");
+        LOG.info("Shutdown hook called for {} {}. Trying to terminate subscription gracefully",
+                subscription.getId(), session.getId());
         switchState(new CleanupState(null));
     }
 
@@ -179,10 +179,10 @@ public class StreamingContext implements SubscriptionStreamer {
                     task.run();
                 }
             } catch (final NakadiRuntimeException ex) {
-                log.warn("Failed to process task " + task + ", will rethrow original error");
+                LOG.warn("Failed to process task " + task + ", will rethrow original error");
                 switchStateImmediately(new CleanupState(ex.getException()));
             } catch (final RuntimeException ex) {
-                log.warn("Failed to process task " + task + ", code carefully!");
+                LOG.warn("Failed to process task " + task + ", code carefully!");
                 switchStateImmediately(new CleanupState(ex));
             }
         }
@@ -190,7 +190,7 @@ public class StreamingContext implements SubscriptionStreamer {
 
     public void switchState(final State newState) {
         this.addTask(() -> {
-            log.info("Switching state from {} to {}",
+            LOG.info("Switching state from {} to {}",
                     currentState.getClass().getSimpleName(),
                     newState.getClass().getSimpleName());
             // There is a problem with onExit call - it can not throw exceptions, otherwise it won't be possible
@@ -201,7 +201,7 @@ public class StreamingContext implements SubscriptionStreamer {
     }
 
     public void switchStateImmediately(final State newState) {
-        log.info("Cleaning task queue & Switching state immediately from {} to {}",
+        LOG.info("Cleaning task queue & Switching state immediately from {} to {}",
                 currentState.getClass().getSimpleName(),
                 newState.getClass().getSimpleName());
         taskQueue.clear();
@@ -219,7 +219,7 @@ public class StreamingContext implements SubscriptionStreamer {
     }
 
     public void registerSession() throws NakadiRuntimeException {
-        log.info("Registering session {}", session);
+        LOG.info("Registering session {}", session);
 
         // Set the flag early to make sure we try to clean it up later.
         // It's safe to unregister session even if the call to register it has failed, because its ID is unique.
@@ -242,7 +242,7 @@ public class StreamingContext implements SubscriptionStreamer {
     }
 
     public void unregisterSession() {
-        log.info("Unregistering session {}", session);
+        LOG.info("Unregistering session {}", session);
         try {
             if (sessionListSubscription != null) {
                 sessionListSubscription.close();
@@ -297,7 +297,7 @@ public class StreamingContext implements SubscriptionStreamer {
                             zkClient.listSessions(),
                             topology.getPartitions());
                 } catch (final RebalanceConflictException e) {
-                    log.warn("failed to rebalance partitions: {}", e.getMessage(), e);
+                    LOG.warn("failed to rebalance partitions: {}", e.getMessage(), e);
                     return new Partition[0];
                 }
             });
@@ -309,7 +309,7 @@ public class StreamingContext implements SubscriptionStreamer {
             try {
                 authorizationCheckSubscription.close();
             } catch (final IOException e) {
-                log.error("Failed to cancel subscription for authorization updates. " +
+                LOG.error("Failed to cancel subscription for authorization updates. " +
                         "This operation should not throw exceptions at all", e);
             } finally {
                 authorizationCheckSubscription = null;

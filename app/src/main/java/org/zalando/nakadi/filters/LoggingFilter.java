@@ -13,7 +13,7 @@ import org.zalando.nakadi.plugin.api.authz.AuthorizationService;
 import org.zalando.nakadi.plugin.api.authz.Subject;
 import org.zalando.nakadi.service.FeatureToggleService;
 import org.zalando.nakadi.service.publishing.NakadiKpiPublisher;
-import org.zalando.nakadi.util.FlowIdUtils;
+import org.zalando.nakadi.util.MDCUtils;
 
 import javax.servlet.AsyncEvent;
 import javax.servlet.AsyncListener;
@@ -94,12 +94,12 @@ public class LoggingFilter extends OncePerRequestFilter {
 
     private class AsyncRequestListener implements AsyncListener {
         private final RequestLogInfo requestLogInfo;
-        private final String flowId;
+        private final MDCUtils.Context loggingContext;
 
-        private AsyncRequestListener(final RequestLogInfo requestLogInfo, final String flowId) {
+        private AsyncRequestListener(final RequestLogInfo requestLogInfo, final MDCUtils.Context loggingContext) {
 
             this.requestLogInfo = requestLogInfo;
-            this.flowId = flowId;
+            this.loggingContext = loggingContext;
 
             if (isAccessLogEnabled()) {
                 final Long timeSpentMs = 0L;
@@ -108,9 +108,9 @@ public class LoggingFilter extends OncePerRequestFilter {
         }
 
         private void logOnEvent() {
-            FlowIdUtils.push(this.flowId);
-            logRequest(this.requestLogInfo);
-            FlowIdUtils.clear();
+            try (MDCUtils.CloseableNoEx ignored = MDCUtils.withContext(this.loggingContext)) {
+                logRequest(this.requestLogInfo);
+            }
         }
 
         @Override
@@ -146,8 +146,8 @@ public class LoggingFilter extends OncePerRequestFilter {
         try {
             filterChain.doFilter(requestWrapper, responseWrapper);
             if (request.isAsyncStarted()) {
-                final String flowId = FlowIdUtils.peek();
-                request.getAsyncContext().addListener(new AsyncRequestListener(requestLogInfo, flowId));
+                final MDCUtils.Context context = MDCUtils.getContext();
+                request.getAsyncContext().addListener(new AsyncRequestListener(requestLogInfo, context));
             }
         } finally {
             if (!request.isAsyncStarted()) {

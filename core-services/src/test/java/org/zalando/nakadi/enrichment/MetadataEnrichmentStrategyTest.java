@@ -14,7 +14,7 @@ import org.zalando.nakadi.kpi.event.NakadiAccessLog;
 import org.zalando.nakadi.mapper.NakadiRecordMapper;
 import org.zalando.nakadi.plugin.api.authz.AuthorizationService;
 import org.zalando.nakadi.service.LocalSchemaRegistry;
-import org.zalando.nakadi.util.FlowIdUtils;
+import org.zalando.nakadi.util.MDCUtils;
 import org.zalando.nakadi.utils.TestUtils;
 
 import java.io.IOException;
@@ -109,8 +109,9 @@ public class MetadataEnrichmentStrategyTest {
         assertThat(event.getJSONObject("metadata").optString("flow_id"), isEmptyString());
 
         final String flowId = randomString();
-        FlowIdUtils.push(flowId);
-        strategy.enrich(batch, eventType);
+        try (MDCUtils.CloseableNoEx ignore = MDCUtils.withFlowId(flowId)) {
+            strategy.enrich(batch, eventType);
+        }
 
         assertThat(batch.getEvent().getJSONObject("metadata").getString("flow_id"), equalTo(flowId));
     }
@@ -122,8 +123,9 @@ public class MetadataEnrichmentStrategyTest {
         event.getJSONObject("metadata").put("flow_id", "something");
         final BatchItem batch = createBatchItem(event);
 
-        FlowIdUtils.push("something-else");
-        strategy.enrich(batch, eventType);
+        try (MDCUtils.CloseableNoEx ignore = MDCUtils.withFlowId("something-else")) {
+            strategy.enrich(batch, eventType);
+        }
 
         assertThat(batch.getEvent().getJSONObject("metadata").getString("flow_id"), equalTo("something"));
     }
@@ -136,9 +138,9 @@ public class MetadataEnrichmentStrategyTest {
         final BatchItem batch = createBatchItem(event);
 
         final String flowId = randomString();
-        FlowIdUtils.push(flowId);
-        strategy.enrich(batch, eventType);
-
+        try (MDCUtils.CloseableNoEx ignore = MDCUtils.withFlowId(flowId)) {
+            strategy.enrich(batch, eventType);
+        }
         assertThat(batch.getEvent().getJSONObject("metadata").getString("flow_id"), equalTo(flowId));
     }
 
@@ -150,8 +152,9 @@ public class MetadataEnrichmentStrategyTest {
         final BatchItem batch = createBatchItem(event);
 
         final String flowId = randomString();
-        FlowIdUtils.push(flowId);
-        strategy.enrich(batch, eventType);
+        try (MDCUtils.CloseableNoEx ignore = MDCUtils.withFlowId(flowId)) {
+            strategy.enrich(batch, eventType);
+        }
 
         assertThat(batch.getEvent().getJSONObject("metadata").getString("flow_id"), equalTo(flowId));
     }

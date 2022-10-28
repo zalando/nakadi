@@ -1,6 +1,5 @@
 package org.zalando.nakadi.service.subscription.state;
 
-import com.google.common.annotations.VisibleForTesting;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.zalando.nakadi.domain.ConsumedEvent;
@@ -17,10 +16,11 @@ import java.util.List;
 import java.util.function.Predicate;
 
 class PartitionData {
+    private static final Logger LOG = LoggerFactory.getLogger(PartitionData.class);
+
     private final Comparator<NakadiCursor> comparator;
     private final ZkSubscription<SubscriptionCursorWithoutToken> subscription;
     private final List<ConsumedEvent> nakadiEvents = new LinkedList<>();
-    private final Logger log;
     private final CursorOperationsService cursorOperationsService;
 
     private NakadiCursor commitOffset;
@@ -31,57 +31,23 @@ class PartitionData {
     private long bytesInMemory;
     final long batchTimespanMillis;
 
-    @VisibleForTesting
-    PartitionData(final Comparator<NakadiCursor> comparator,
-                  final ZkSubscription<SubscriptionCursorWithoutToken> subscription,
-                  final NakadiCursor commitOffset,
-                  final long currentTime,
-                  final long batchTimespanMillis,
-                  final CursorOperationsService cursorOperationsService) {
-        this(comparator,
-                subscription,
-                commitOffset,
-                LoggerFactory.getLogger(PartitionData.class),
-                currentTime,
-                batchTimespanMillis,
-                cursorOperationsService);
-        bytesInMemory = 0L;
-    }
-
-    @VisibleForTesting
-    PartitionData(final Comparator<NakadiCursor> comparator,
-                  final ZkSubscription<SubscriptionCursorWithoutToken> subscription,
-                  final NakadiCursor commitOffset,
-                  final long currentTime,
-                  final CursorOperationsService cursorOperationsService) {
-        this(comparator,
-                subscription,
-                commitOffset,
-                LoggerFactory.getLogger(PartitionData.class),
-                currentTime,
-                0L,
-                cursorOperationsService);
-        bytesInMemory = 0L;
-    }
-
     PartitionData(
             final Comparator<NakadiCursor> comparator,
             final ZkSubscription<SubscriptionCursorWithoutToken> subscription,
             final NakadiCursor commitOffset,
-            final Logger log,
             final long currentTime,
             final long batchTimespanMillis,
             final CursorOperationsService cursorOperationsService) {
         this.batchTimespanMillis = batchTimespanMillis;
         this.comparator = comparator;
         this.subscription = subscription;
-        this.log = log;
         this.cursorOperationsService = cursorOperationsService;
 
         this.commitOffset = commitOffset;
         this.sentOffset = commitOffset;
         this.lastSendMillis = currentTime;
         this.batchWindowStartTimestamp = 0L;
+        this.bytesInMemory = 0L;
     }
 
     @Nullable
@@ -198,11 +164,11 @@ class PartitionData {
      */
     void ensureDataAvailable(final NakadiCursor beforeFirst) {
         if (comparator.compare(beforeFirst, commitOffset) > 0) {
-            log.warn("Oldest kafka position is {} and commit offset is {}, updating", beforeFirst, commitOffset);
+            LOG.warn("Oldest kafka position is {} and commit offset is {}, updating", beforeFirst, commitOffset);
             commitOffset = beforeFirst;
         }
         if (comparator.compare(beforeFirst, sentOffset) > 0) {
-            log.warn("Oldest kafka position is {} and sent offset is {}, updating", beforeFirst, sentOffset);
+            LOG.warn("Oldest kafka position is {} and sent offset is {}, updating", beforeFirst, sentOffset);
             sentOffset = beforeFirst;
         }
     }
@@ -220,7 +186,7 @@ class PartitionData {
     CommitResult onCommitOffset(final NakadiCursor offset) {
         boolean seekKafka = false;
         if (comparator.compare(offset, sentOffset) > 0) {
-            log.error("Commit in future: current: {}, committed {} will skip sending obsolete data", sentOffset,
+            LOG.error("Commit in future: current: {}, committed {} will skip sending obsolete data", sentOffset,
                     commitOffset);
             seekKafka = true;
             sentOffset = offset;
@@ -230,7 +196,7 @@ class PartitionData {
             committed = cursorOperationsService.calculateDistance(commitOffset, offset);
             commitOffset = offset;
         } else {
-            log.error("Commits in past are evil!: Committing in {} while current commit is {}", offset, commitOffset);
+            LOG.error("Commits in past are evil!: Committing in {} while current commit is {}", offset, commitOffset);
             // Commit in past occurred. One should move storage pointer to sentOffset.
             seekKafka = true;
             commitOffset = offset;

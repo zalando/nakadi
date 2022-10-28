@@ -53,10 +53,10 @@ public class SubscriptionServiceTest {
     private ArgumentCaptor<Supplier<SpecificRecord>> subscriptionLogEventCaptor;
 
     @Before
-    public void setUp() throws Exception {
+    public void setUp() {
         final SubscriptionClientFactory zkSubscriptionClientFactory = Mockito.mock(SubscriptionClientFactory.class);
         final ZkSubscriptionClient zkSubscriptionClient = Mockito.mock(ZkSubscriptionClient.class);
-        Mockito.when(zkSubscriptionClientFactory.createClient(any(), any())).thenReturn(zkSubscriptionClient);
+        Mockito.when(zkSubscriptionClientFactory.createClient(any())).thenReturn(zkSubscriptionClient);
         final TimelineService timelineService = Mockito.mock(TimelineService.class);
         final CursorOperationsService cursorOperationsService = Mockito.mock(CursorOperationsService.class);
         final CursorConverter cursorConverter = Mockito.mock(CursorConverter.class);

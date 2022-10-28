@@ -20,6 +20,7 @@ import org.zalando.nakadi.exceptions.runtime.UnableProcessException;
 import org.zalando.nakadi.exceptions.runtime.ZookeeperException;
 import org.zalando.nakadi.repository.zookeeper.ZooKeeperHolder;
 import org.zalando.nakadi.service.subscription.model.Session;
+import org.zalando.nakadi.util.MDCUtils;
 import org.zalando.nakadi.view.Cursor;
 import org.zalando.nakadi.view.SubscriptionCursorWithoutToken;
 
@@ -47,21 +48,19 @@ public abstract class AbstractZkSubscriptionClient implements ZkSubscriptionClie
     private static final String STATE_INITIALIZED = "INITIALIZED";
     private static final int COMMIT_CONFLICT_RETRY_TIMES = 5;
     private static final int MAX_ZK_RESPONSE_SECONDS = 5;
+    private static final Logger LOG = LoggerFactory.getLogger(AbstractZkSubscriptionClient.class);
     protected static final String NODE_TOPOLOGY = "/topology";
 
     private final String subscriptionId;
     private final ZooKeeperHolder.CloseableCuratorFramework closeableCuratorFramework;
     private final String closeSubscriptionStream;
-    private final Logger log;
 
     public AbstractZkSubscriptionClient(
             final String subscriptionId,
-            final ZooKeeperHolder.CloseableCuratorFramework closeableCuratorFramework,
-            final String loggingPath) throws ZookeeperException {
+            final ZooKeeperHolder.CloseableCuratorFramework closeableCuratorFramework) throws ZookeeperException {
         this.subscriptionId = subscriptionId;
         this.closeableCuratorFramework = closeableCuratorFramework;
         this.closeSubscriptionStream = getSubscriptionPath("/close_subscription_stream");
-        this.log = LoggerFactory.getLogger(loggingPath + ".zk");
     }
 
     protected CuratorFramework getCurator() {
@@ -80,10 +79,6 @@ public abstract class AbstractZkSubscriptionClient implements ZkSubscriptionClie
         return "/nakadi/subscriptions/" + subscriptionId + value;
     }
 
-    protected Logger getLog() {
-        return log;
-    }
-
     @Override
     public final void deleteSubscription() {
         try {
@@ -91,7 +86,7 @@ public abstract class AbstractZkSubscriptionClient implements ZkSubscriptionClie
                     .deletingChildrenIfNeeded()
                     .forPath(getSubscriptionPath(""));
         } catch (final KeeperException.NoNodeException nne) {
-            getLog().warn("Subscription to delete is not found in Zookeeper: {}", subscriptionId);
+            LOG.warn("Subscription to delete is not found in Zookeeper: {}", subscriptionId);
         } catch (final Exception e) {
             throw new NakadiRuntimeException(e);
         }
@@ -123,43 +118,43 @@ public abstract class AbstractZkSubscriptionClient implements ZkSubscriptionClie
     }
 
     private void createSessionsZNode() throws Exception {
-        getLog().info("Creating sessions root");
+        LOG.info("Creating sessions root");
         try {
             getCurator().create()
                     .creatingParentsIfNeeded() // Important to create all nodes in hierarchy
                     .withMode(CreateMode.PERSISTENT)
                     .forPath(getSubscriptionPath("/sessions"));
         } catch (final KeeperException.NodeExistsException ex) {
-            getLog().info("ZNode for {} exists, not creating new one", getSubscriptionPath("/sessions"));
+            LOG.info("ZNode for {} exists, not creating new one", getSubscriptionPath("/sessions"));
         }
     }
 
     private void createOffsetZNodes(final Collection<SubscriptionCursorWithoutToken> cursors) throws Exception {
-        getLog().info("Creating offsets");
+        LOG.info("Creating offsets");
         for (final SubscriptionCursorWithoutToken cursor : cursors) {
             try {
                 getCurator().create().creatingParentsIfNeeded().forPath(
                         getOffsetPath(cursor.getEventTypePartition()),
                         cursor.getOffset().getBytes(UTF_8));
             } catch (final KeeperException.NodeExistsException ex) {
-                getLog().info("Offset ZNode {}/{} exists, not creating a new one",
+                LOG.info("Offset ZNode {}/{} exists, not creating a new one",
                         cursor.getEventType(), cursor.getPartition());
             }
         }
     }
 
     private void createStateZNodeAsInitialized() throws Exception {
-        getLog().info("updating state");
+        LOG.info("updating state");
         try {
             getCurator().create().forPath(getSubscriptionPath("/state"), STATE_INITIALIZED.getBytes(UTF_8));
         } catch (final KeeperException.NodeExistsException ex) {
-            getLog().info("ZNode for {} exists, not creating new one", getSubscriptionPath("/state"));
+            LOG.info("ZNode for {} exists, not creating new one", getSubscriptionPath("/state"));
         }
     }
 
     @Override
     public final void registerSession(final Session session) {
-        getLog().info("Registering session " + session);
+        LOG.info("Registering session " + session);
         try {
             final String clientPath = getSubscriptionPath("/sessions/" + session.getId());
             final byte[] sessionData = serializeSession(session);
@@ -187,24 +182,25 @@ public abstract class AbstractZkSubscriptionClient implements ZkSubscriptionClie
         final Map<K, V> result = new HashMap<>();
         final CountDownLatch latch = new CountDownLatch(keys.size());
         try {
+            final MDCUtils.Context loggingContext = MDCUtils.getContext();
             for (final K key : keys) {
                 final String zkKey = keyConverter.apply(key);
                 getCurator().getData().inBackground((client, event) -> {
-                    try {
+                    try (MDCUtils.CloseableNoEx ignore = MDCUtils.withContext(loggingContext)){
                         if (event.getResultCode() == KeeperException.Code.OK.intValue()) {
                             final V value = valueConverter.apply(key, event.getData());
                             synchronized (result) {
                                 result.put(key, value);
                             }
                         } else if (event.getResultCode() == KeeperException.Code.NONODE.intValue()) {
-                            getLog().warn("Unable to get {} data from zk. Node not found ", zkKey);
+                            LOG.warn("Unable to get {} data from zk. Node not found ", zkKey);
                         } else {
-                            getLog().error(
+                            LOG.error(
                                     "Failed to get {} data from zk. status code: {}",
                                     zkKey, event.getResultCode());
                         }
                     } catch (RuntimeException ex) {
-                        getLog().error("Failed to memorize {} key value", key, ex);
+                        LOG.error("Failed to memorize {} key value", key, ex);
                     } finally {
                         latch.countDown();
                     }
@@ -336,7 +332,7 @@ public abstract class AbstractZkSubscriptionClient implements ZkSubscriptionClie
         } catch (final KeeperException.NoNodeException e) {
             throw new UnableProcessException("Impossible to reset cursors for subscription", e);
         } catch (final Exception e) {
-            getLog().error(e.getMessage(), e);
+            LOG.error(e.getMessage(), e);
             throw new ZookeeperException("Unexpected problem occurred when resetting cursors", e);
         } finally {
             if (sessionsListener != null) {
@@ -348,7 +344,7 @@ public abstract class AbstractZkSubscriptionClient implements ZkSubscriptionClie
                     getCurator().delete().forPath(closeSubscriptionStream);
                 }
             } catch (final Exception e) {
-                getLog().error(e.getMessage(), e);
+                LOG.error(e.getMessage(), e);
             }
         }
 
@@ -415,7 +411,7 @@ public abstract class AbstractZkSubscriptionClient implements ZkSubscriptionClie
                                 }
                             }
                             if (!newMaxOffset.equals(currentMaxOffset)) {
-                                getLog().info("Committing {} to {}/{}",
+                                LOG.info("Committing {} to {}/{}",
                                         newMaxOffset, entry.getKey().getEventType(), entry.getKey().getPartition());
 
                                 getCurator()
