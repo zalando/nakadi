@@ -15,9 +15,8 @@ ext {
 
 dependencies {
     gatling "org.reflections:reflections:${reflectionsVersion}"
-    testCompile "org.scala-lang:scala-library:2.12.6"
-    testCompile "io.gatling:gatling-app:3.7.2"
-    testCompile "io.gatling.highcharts:gatling-charts-highcharts:3.7.2"
+    testCompile "io.gatling:gatling-app:3.8.4"
+    testCompile "io.gatling.highcharts:gatling-charts-highcharts:3.8.4"
 }
 
 ScalaCompileOptions.metaClass.daemonServer = true
@@ -25,25 +24,12 @@ ScalaCompileOptions.metaClass.fork = true
 ScalaCompileOptions.metaClass.useAnt = false
 ScalaCompileOptions.metaClass.useCompileDaemon = false
 
-task testLoad(type: JavaExec) {
-    description = 'Test load the Spring Boot web service with Gatling'
-    group = 'Load Test'
-    classpath = sourceSets.test.runtimeClasspath
-    jvmArgs = [
-            // workaround for https://github.com/gatling/gatling/issues/2689
-            "-Dgatling.core.directory.binaries=${sourceSets.test.output.classesDirs.toString()}",
-            "-Dlogback.configurationFile=${logbackGatlingConfig()}"
-    ]
-    main = 'io.gatling.app.Gatling'
-    args = [
-            '--simulation', 'com.wiley.epdcs.eventhub.Test1',
-            '--results-folder', "project(':api-perftest').buildDir/gatling-results",
-            '--binaries-folder', sourceSets.test.output.classesDirs.toString() // ignored because of above bug
-    ]
-}
+sourceSets {
+    test {
+        scala.srcDirs = ["src/test/scala"]
+        resources.srcDirs = ["src/test/resources"]
+    }
 
-def logbackGatlingConfig() {
-    return sourceSets.test.resources.find { it.name == 'logback-gatling.xml'};
 }
 
 configurations {
@@ -68,7 +54,7 @@ task fatJar(type: Jar, dependsOn: ['gatlingClasses', 'processResources']) {
     archiveClassifier = "all"
 
     from files(sourceSets.test.output.classesDirs)
-    from files(sourceSets.gatling.output)
+    from files(sourceSets.test.resources.collect())
     from {
         configurations['fatJarDependencies']
                 .collect { it.isDirectory() ? it : zipTree(it) }
