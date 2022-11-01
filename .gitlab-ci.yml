@@ -62,7 +62,6 @@ qa:
     HELM_UPGRADE_VALUES_FILE: .gitlab/auto-deploy-values-qa.yaml
 
 qa-integrationtest:
-  when: manual
   image: artifactory.aws.wiley.com/docker/openjdk:11-jdk
   tags:
     - dev
