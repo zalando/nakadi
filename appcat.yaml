@@ -1,7 +1,7 @@
 --- !<Application>
 id: "077a600f-29ce-443a-92b4-6d8656ae11ff"
 modelType: "Application"
-appCode: "nakadi"
+appCode: "event-hub"
 atlasId: "APP-9793"
 name: "EdPub Event Hub"
 appType: "Built"
@@ -10,5 +10,5 @@ state: "Active"
 hostedBy: "aws"
 functionalArea: "technology-academic-professional"
 systemId: "acc2d904-aaa8-45e7-acad-b42950081f0b"
-shortCode: "nakadi"
+shortCode: "event-hub"
 isSystem: false
