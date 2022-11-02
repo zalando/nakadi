@@ -91,7 +91,6 @@ public class Configuration {
   public static class Database {
     private String url;
     private String username;
-    private String password;
 
     public String getUrl() {
       return url;
@@ -107,14 +106,6 @@ public class Configuration {
 
     public void setUsername(String username) {
       this.username = username;
-    }
-
-    public String getPassword() {
-      return password;
-    }
-
-    public void setPassword(String password) {
-      this.password = password;
     }
   }
 

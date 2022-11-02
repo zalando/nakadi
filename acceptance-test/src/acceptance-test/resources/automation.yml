@@ -14,7 +14,6 @@ environments:
     database:
       url: jdbc:postgresql://localhost:5432/local_nakadi_db
       username: nakadi
-      password: nakadi
     eventTypeDeletableSubscription:
       owningApplication: "nakadi_archiver"
       consumerGroup: "nakadi_to_s3"
@@ -40,7 +39,6 @@ environments:
     database:
       url: jdbc:postgresql://localhost:5432/local_nakadi_db
       username: nakadi
-      password: nakadi
     eventTypeDeletableSubscription:
       owningApplication: "deletable_owning_app"
       consumerGroup: "deletable_consumer_group"
@@ -66,7 +64,6 @@ environments:
     database:
       url: jdbc:postgresql://sharedaurorapsql-epdcs-dev-use1.cluster-chxkh4p9th7p.us-east-1.rds.amazonaws.com:5432/event_hub
       username: event_hub_user
-      password: laOt11_zaekVaQTT
     eventTypeDeletableSubscription:
       owningApplication: "nakadi_archiver"
       consumerGroup: "nakadi_to_s3"
@@ -92,7 +89,6 @@ environments:
     database:
       url: jdbc:postgresql://sharedaurorapsql-epdcs-qa-use1.cluster-chxkh4p9th7p.us-east-1.rds.amazonaws.com/event_hub
       username: event_hub_user
-      password: N%SFtgjwGn7laEYS
     eventTypeDeletableSubscription:
       owningApplication: "nakadi_archiver"
       consumerGroup: "nakadi_to_s3"
@@ -118,7 +114,6 @@ environments:
     database:
       url: jdbc:postgresql://eventhub-epdcs-uat-use1.cluster-chxkh4p9th7p.us-east-1.rds.amazonaws.com/event_hub
       username: event_hub_user
-      password: bEsre4CejbFi3wwm
     eventTypeDeletableSubscription:
       owningApplication: "nakadi_archiver"
       consumerGroup: "nakadi_to_s3"
@@ -144,7 +139,6 @@ environments:
     database:
       url: jdbc:postgresql://localhost:5432/local_nakadi_db
       username: nakadi
-      password: nakadi
     eventTypeDeletableSubscription:
       owningApplication: "nakadi_archiver"
       consumerGroup: "nakadi_to_s3"
