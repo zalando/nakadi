@@ -30,9 +30,9 @@ class EventHubLoadTest extends Simulation with AssignmentEventDataFeeder {
 
   setUp(
     script.create_assignment_event.inject(
-      rampUsersPerSec(1).to(5).during(2 minutes),
-      constantUsersPerSec(5).during(1 minutes),
-      rampUsersPerSec(5).to(1).during(2 minutes)
+      rampUsersPerSec(1).to(120).during(10 minutes),
+      constantUsersPerSec(120).during(60 minutes),
+      rampUsersPerSec(120).to(1).during(10 minutes)
     )
   ).protocols(httpConf)
 }

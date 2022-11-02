@@ -11,12 +11,18 @@ repositories {
 
 ext {
     reflectionsVersion= "0.9.12"
+    scalaVersion = "2.12"
+    akkaVersion = "2.5.3"
 }
 
 dependencies {
     gatling "org.reflections:reflections:${reflectionsVersion}"
     testCompile "io.gatling:gatling-app:3.8.4"
     testCompile "io.gatling.highcharts:gatling-charts-highcharts:3.8.4"
+    compile "org.scala-lang:scala-library:${scalaVersion}"
+    compile "com.typesafe.akka:akka-actor_${scalaVersion}:${akkaVersion}"
+    compile "com.typesafe.akka:akka-testkit_${scalaVersion}:${akkaVersion}"
+    testCompile "org.scalatest:scalatest_${scalaVersion}:3.0.3"
 }
 
 ScalaCompileOptions.metaClass.daemonServer = true

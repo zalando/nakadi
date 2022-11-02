@@ -16,6 +16,6 @@ object AssignmentEvent {
     http("01 Create assignment event")
       .post("/event-types/assignment.created/events")
       .body(ElFileBody("createAssignment.json"))
-      .check(status.is(201))
+      .check(status.is(200))
   }
 }

@@ -62,7 +62,8 @@ USER gatling
 
 WORKDIR ${APP_HOME}
 
+#Set Environment UAT Env
 ENV JAVA_TOOL_OPTIONS "-Denv=perf"
 
-#Perf test execution and S3 report creation#
+#Perf test execution and S3 report creation# Test Env
 CMD ["sh","/docker-entrypoint.sh"]
