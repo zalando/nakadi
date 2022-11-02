@@ -17,5 +17,4 @@ object GatlingRunner {
 
     Gatling.fromMap(props.build)
   }
-
 }

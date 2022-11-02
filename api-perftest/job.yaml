@@ -1,0 +1,31 @@
+apiVersion: batch/v1
+kind: Job
+metadata:
+  namespace: epdcs-uat
+  name: api-perftest-1.1.3-all-job
+  labels:
+    jobgroup: api-perftest-1.1.3-all
+spec:
+  parallelism: 1
+  #completions: 1
+  #ttlSecondsAfterFinished: 300
+  backoffLimit: 0
+  template:
+    spec:
+      containers:
+        - name: loadtest-gatling
+          image: artifactory.aws.wiley.com/docker/tc/api-perftest-1.1.3-all:latest
+          imagePullPolicy: Always
+          #image: settings-perftest
+          #imagePullPolicy: Never # This should enable only for local image executions
+          env:
+            - name: JAVA_TOOL_OPTIONS
+              value: "-Denv=perf"
+          resources:
+            requests:
+              cpu: 1
+              memory: 1Gi
+            limits:
+              cpu: 2
+              memory: 2Gi
+      restartPolicy: Never
