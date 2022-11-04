@@ -179,7 +179,7 @@ public class TimelineServiceTest {
     }
 
     @Test
-    public void whenRepartitioningEventTypeThenOk() {
+    public void shouldRepartitionEventTypeToAnotherStorage() {
         final EventType eventType = buildDefaultEventType();
 
         final Timeline t1 = Timeline.createTimeline(eventType.getName(), 1, null, "topic1", new Date());
