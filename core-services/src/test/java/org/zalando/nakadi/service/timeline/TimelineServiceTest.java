@@ -198,7 +198,6 @@ public class TimelineServiceTest {
         s2.setType(Storage.Type.KAFKA);
         final Timeline t3 = Timeline.createTimeline(eventType.getName(), 3, s2, "topic3", new Date());
         t3.setSwitchedAt(new Date());
-        t3.setLatestPosition(new Timeline.KafkaStoragePosition(Lists.newArrayList(2l)));
 
         final TopicRepository topicRepository1 = mock(TopicRepository.class);
         final TopicRepository topicRepository2 = mock(TopicRepository.class);
@@ -216,6 +215,5 @@ public class TimelineServiceTest {
         Mockito.verify(topicRepository2, Mockito.times(1)).repartition("topic3", 2);
 
         Assert.assertEquals("[1, -1]", t2.getLatestPosition().toDebugString());
-        Assert.assertEquals("[2, -1]", t3.getLatestPosition().toDebugString());
     }
 }
