@@ -158,7 +158,7 @@ public class TimelineService {
     public void updateTimeLineForRepartition(final EventType eventType, final int partitions)
             throws NakadiBaseException {
         for (final Timeline timeline : getActiveTimelinesOrdered(eventType.getName())) {
-            getTopicRepository(eventType).repartition(timeline.getTopic(), partitions);
+            getTopicRepository(timeline.getStorage()).repartition(timeline.getTopic(), partitions);
         }
 
         for (final Timeline timeline : getActiveTimelinesOrdered(eventType.getName())) {

@@ -1,6 +1,7 @@
 package org.zalando.nakadi.service.timeline;
 
 import com.google.common.collect.ImmutableList;
+import org.assertj.core.util.Lists;
 import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
@@ -177,4 +178,42 @@ public class TimelineServiceTest {
         timelineService.createTimeline("et1", "st1");
     }
 
+    @Test
+    public void shouldRepartitionEventTypeToAnotherStorage() {
+        final EventType eventType = buildDefaultEventType();
+
+        final Timeline t1 = Timeline.createTimeline(eventType.getName(), 1, null, "topic1", new Date());
+        t1.setSwitchedAt(new Date());
+        t1.setDeleted(true);
+
+        final Storage s1 = new Storage();
+        s1.setId("live");
+        s1.setType(Storage.Type.KAFKA);
+        final Timeline t2 = Timeline.createTimeline(eventType.getName(), 2, s1, "topic2", new Date());
+        t2.setSwitchedAt(new Date());
+        t2.setLatestPosition(new Timeline.KafkaStoragePosition(Lists.newArrayList(1l)));
+
+        final Storage s2 = new Storage();
+        s2.setId("backup");
+        s2.setType(Storage.Type.KAFKA);
+        final Timeline t3 = Timeline.createTimeline(eventType.getName(), 3, s2, "topic3", new Date());
+        t3.setSwitchedAt(new Date());
+
+        final TopicRepository topicRepository1 = mock(TopicRepository.class);
+        final TopicRepository topicRepository2 = mock(TopicRepository.class);
+
+        when(eventTypeCache.getTimelinesOrdered(eventType.getName()))
+                .thenReturn(ImmutableList.of(t1, t2, t3));
+        when(topicRepositoryHolder.getTopicRepository(s1))
+                .thenReturn(topicRepository1);
+        when(topicRepositoryHolder.getTopicRepository(s2))
+                .thenReturn(topicRepository2);
+
+        timelineService.updateTimeLineForRepartition(eventType, 2);
+
+        Mockito.verify(topicRepository1, Mockito.times(1)).repartition("topic2", 2);
+        Mockito.verify(topicRepository2, Mockito.times(1)).repartition("topic3", 2);
+
+        Assert.assertEquals("[1, -1]", t2.getLatestPosition().toDebugString());
+    }
 }
