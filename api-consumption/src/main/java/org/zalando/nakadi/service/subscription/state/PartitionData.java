@@ -186,7 +186,7 @@ class PartitionData {
     CommitResult onCommitOffset(final NakadiCursor offset) {
         boolean seekKafka = false;
         if (comparator.compare(offset, sentOffset) > 0) {
-            LOG.error("Commit in future: new: {}, sent: {}, committed: {}. Will skip sending obsolete data", offset, sentOffset,
+            LOG.error("Commit in future: received: {}, sent: {}, committed: {}. Will skip sending obsolete data", offset, sentOffset,
                     commitOffset);
             seekKafka = true;
             sentOffset = offset;
