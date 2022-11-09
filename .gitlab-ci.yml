@@ -1,8 +1,7 @@
 include:
   - project: wiley-sons/tc-gitlab-templates
     file: autodevops-gradle.gitlab-ci.yml
-    ref: latest_image
-
+    
 variables:
   APP_NAME: eventhub
   AUTO_DEVOPS_DEPLOY_DEBUG: "true"
