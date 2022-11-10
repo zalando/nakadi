@@ -42,7 +42,6 @@ dependencies {
     compile project(':api-metastore')
     compile project(':api-cursors')
     compile project(':api-misc')
-    compile project(':api-perftest')
 
     compile "org.glassfish.jaxb:jaxb-runtime"
 
