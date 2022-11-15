@@ -166,7 +166,7 @@ spring:
     activate:
       on-profile: dev
   datasource:
-    url: jdbc:postgresql://sharedaurorapsql-epdcs-dev-use1.cluster-chxkh4p9th7p.us-east-1.rds.amazonaws.com:5432/event_hub
+    url: jdbc:postgresql://sharedaurorapsql-eventhub-dev-use1.cluster-chxkh4p9th7p.us-east-1.rds.amazonaws.com/event_hub
     username: event_hub_user
 
 nakadi:
@@ -174,14 +174,14 @@ nakadi:
     default:
       replicaFactor: 2
   kafka:
-    bootstrap.servers: b-2.epdcs-nakadi-msk-kafk.uwqhdz.c23.kafka.us-east-1.amazonaws.com:9098,b-3.epdcs-nakadi-msk-kafk.uwqhdz.c23.kafka.us-east-1.amazonaws.com:9098,b-1.epdcs-nakadi-msk-kafk.uwqhdz.c23.kafka.us-east-1.amazonaws.com:9098
+    bootstrap.servers: b-1.eventhubdevmskkafka.xp3u9t.c19.kafka.us-east-1.amazonaws.com:9098,b-2.eventhubdevmskkafka.xp3u9t.c19.kafka.us-east-1.amazonaws.com:9098,b-3.eventhubdevmskkafka.xp3u9t.c19.kafka.us-east-1.amazonaws.com:9098
     min.insync.replicas: 2
     security.protocol: SASL_SSL
     sasl.mechanism: AWS_MSK_IAM
     sasl.jaas.config: software.amazon.msk.auth.iam.IAMLoginModule required;
     sasl.client.callback.handler.class: software.amazon.msk.auth.iam.IAMClientCallbackHandler
   zookeeper:
-    connectionString: zookeeper://z-3.epdcs-nakadi-msk-kafk.uwqhdz.c23.kafka.us-east-1.amazonaws.com:2181,z-2.epdcs-nakadi-msk-kafk.uwqhdz.c23.kafka.us-east-1.amazonaws.com:2181,z-1.epdcs-nakadi-msk-kafk.uwqhdz.c23.kafka.us-east-1.amazonaws.com:2181
+    connectionString: zookeeper://z-3.eventhubdevmskkafka.xp3u9t.c19.kafka.us-east-1.amazonaws.com:2181,z-2.eventhubdevmskkafka.xp3u9t.c19.kafka.us-east-1.amazonaws.com:2181,z-1.eventhubdevmskkafka.xp3u9t.c19.kafka.us-east-1.amazonaws.com:2181
   features.defaultFeatures:
     DISABLE_EVENT_TYPE_CREATION: false
     DISABLE_EVENT_TYPE_DELETION: false
@@ -200,7 +200,7 @@ spring:
     activate:
       on-profile: qa
   datasource:
-    url: jdbc:postgresql://sharedaurorapsql-epdcs-qa-use1.cluster-chxkh4p9th7p.us-east-1.rds.amazonaws.com/event_hub
+    url: jdbc:postgresql://sharedaurorapsql-eventhub-qa-use1.cluster-chxkh4p9th7p.us-east-1.rds.amazonaws.com/event_hub
     username: event_hub_user
 
 nakadi:
@@ -208,14 +208,14 @@ nakadi:
     default:
       replicaFactor: 2
   kafka:
-    bootstrap.servers: b-2.epdcs-nakadi-msk-kafk.uwqhdz.c23.kafka.us-east-1.amazonaws.com:9098,b-3.epdcs-nakadi-msk-kafk.uwqhdz.c23.kafka.us-east-1.amazonaws.com:9098,b-1.epdcs-nakadi-msk-kafk.uwqhdz.c23.kafka.us-east-1.amazonaws.com:9098
+    bootstrap.servers: b-1.eventhubdevmskkafka.xp3u9t.c19.kafka.us-east-1.amazonaws.com:9098,b-2.eventhubdevmskkafka.xp3u9t.c19.kafka.us-east-1.amazonaws.com:9098,b-3.eventhubdevmskkafka.xp3u9t.c19.kafka.us-east-1.amazonaws.com:9098
     min.insync.replicas: 2
     security.protocol: SASL_SSL
     sasl.mechanism: AWS_MSK_IAM
     sasl.jaas.config: software.amazon.msk.auth.iam.IAMLoginModule required;
     sasl.client.callback.handler.class: software.amazon.msk.auth.iam.IAMClientCallbackHandler
   zookeeper:
-    connectionString: zookeeper://z-3.epdcs-nakadi-msk-kafk.uwqhdz.c23.kafka.us-east-1.amazonaws.com:2181,z-2.epdcs-nakadi-msk-kafk.uwqhdz.c23.kafka.us-east-1.amazonaws.com:2181,z-1.epdcs-nakadi-msk-kafk.uwqhdz.c23.kafka.us-east-1.amazonaws.com:2181
+    connectionString: zookeeper://z-3.eventhubdevmskkafka.xp3u9t.c19.kafka.us-east-1.amazonaws.com:2181,z-2.eventhubdevmskkafka.xp3u9t.c19.kafka.us-east-1.amazonaws.com:2181,z-1.eventhubdevmskkafka.xp3u9t.c19.kafka.us-east-1.amazonaws.com:2181
   features.defaultFeatures:
     DISABLE_EVENT_TYPE_CREATION: false
     DISABLE_EVENT_TYPE_DELETION: false
@@ -233,7 +233,7 @@ spring:
     activate:
       on-profile: uat
   datasource:
-    url: jdbc:postgresql://eventhub-epdcs-uat-use1.cluster-chxkh4p9th7p.us-east-1.rds.amazonaws.com/event_hub
+    url: jdbc:postgresql://nakadi-eventhub-uat-use1.cluster-chxkh4p9th7p.us-east-1.rds.amazonaws.com/event_hub
     username: event_hub_user
 
 nakadi:
