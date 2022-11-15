@@ -62,7 +62,7 @@ nakadi:
     maxConnections: 5
     maxStreamMemoryBytes: 50000000 # ~50 MB
   kafka:
-    bootstrap.servers: localhost:9092
+    bootstrap.servers: localhost:29092
     min.insync.replicas: 1
     retries: 5
     request.timeout.ms: 30000
