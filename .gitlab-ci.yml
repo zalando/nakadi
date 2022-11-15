@@ -73,6 +73,7 @@ qa-integrationtest:
     - "TEST_ENV=qa POSTGRES_PWD=$EVENTHUB_DB_PASSWORD_QA ./gradlew :acceptance-test:acceptanceTest"
 
 uat:
+  when: manual
   variables:
     KUBE_NAMESPACE: epdcs-uat
     K8S_SECRET_SPRING_PROFILES_ACTIVE: uat
