@@ -23,14 +23,14 @@ readinessProbe:
   probeType: "httpGet"
 serviceAccount:
   annotations:
-    eks.amazonaws.com/role-arn: arn:aws:iam::281595016440:role/epdcs-uat-uat-use1
+    eks.amazonaws.com/role-arn: arn:aws:iam::281595016440:role/eventhub-uat-uat-use1
   createNew: true
 externalSecrets:
   enabled: true
   data:
     - secretKey: SPRING_DATASOURCE_PASSWORD
       remoteRef:
-        key: eventhub-epdcs-uat-event_hub_user
+        key: nakadi-eventhub-uat-event_hub_user
 prometheusOperator:
   serviceMonitor:
     enabled: true

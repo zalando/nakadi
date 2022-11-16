@@ -22,14 +22,14 @@ readinessProbe:
   probeType: "httpGet"
 serviceAccount:
   annotations:
-    eks.amazonaws.com/role-arn: arn:aws:iam::281595016440:role/epdcs-dev-dev-use1
+    eks.amazonaws.com/role-arn: arn:aws:iam::281595016440:role/eventhub-dev-dev-use1
   createNew: true
 externalSecrets:
   enabled: true
   data:
     - secretKey: SPRING_DATASOURCE_PASSWORD
       remoteRef:
-        key: sharedaurorapsql-epdcs-dev-event_hub_user
+        key: sharedaurorapsql-eventhub-dev-event_hub_user
 prometheusOperator:
   serviceMonitor:
     enabled: true
