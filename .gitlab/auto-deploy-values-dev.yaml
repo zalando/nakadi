@@ -24,13 +24,6 @@ serviceAccount:
   annotations:
     eks.amazonaws.com/role-arn: arn:aws:iam::281595016440:role/epdcs-dev-dev-use1
   createNew: true
-resources:
-  limits:
-    cpu: 500m
-    memory: 2Gi
-  requests:
-    cpu: 200m
-    memory: 1Gi
 externalSecrets:
   enabled: true
   data:
@@ -45,3 +38,15 @@ application:
   env:
     - name: SPRING_PROFILES_ACTIVE
       value: dev
+resources:
+  limits:
+    cpu: 2000m
+    memory: 2Gi
+  requests:
+    cpu: 1500m
+    memory: 1Gi
+hpa:
+  enabled: true
+  minReplicas: 1
+  maxReplicas: 6
+  targetCPUUtilizationPercentage: 50
