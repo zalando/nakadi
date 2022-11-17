@@ -1,3 +1,20 @@
+## [1.1.11](https://github.com/wiley/nakadi/compare/v1.1.10...v1.1.11) (2022-11-17)
+
+
+### Bug Fixes
+
+* add image ([e8d002e](https://github.com/wiley/nakadi/commit/e8d002e6db6121ddd8423e1e861492ef78889ffb))
+* check build issue ([687f520](https://github.com/wiley/nakadi/commit/687f5201b5dbd31391c54f779b401b10b37c6634))
+* config new kafka cluster and dbs ([6de69d4](https://github.com/wiley/nakadi/commit/6de69d480eb6072e5aae2639a8290eb06b6037ff))
+* configure eventhub role and db sceret ([0abc074](https://github.com/wiley/nakadi/commit/0abc074475967df89ccddf18815c4678fc2f32f6))
+* remove db password from automation test configs and get it as ci a variable ([3d56d60](https://github.com/wiley/nakadi/commit/3d56d602cd36b0c9e6aa55d10655c0f277f6db4c))
+* remove perf module ([ef7d4bf](https://github.com/wiley/nakadi/commit/ef7d4bf16002d04f9aaa86914f5c223802c76eca))
+* remove ref latest_image ([85e0bdb](https://github.com/wiley/nakadi/commit/85e0bdb7bab7eb7fb1335b16905a70a1fd6c4b9f))
+* set kafka external port in local configs ([d8d7e2f](https://github.com/wiley/nakadi/commit/d8d7e2fa887b8e499d4ccece85b6303ee988ab08))
+* test ([8b477b8](https://github.com/wiley/nakadi/commit/8b477b82a40ae5b2b0eb2e31e50208e6fc1185bd))
+* update perf module ([28088f4](https://github.com/wiley/nakadi/commit/28088f43cc02ab0034e98847d735694ff640019d))
+* update reference conf ([6438bfb](https://github.com/wiley/nakadi/commit/6438bfbf39fd3c385cc07c76550dbc3e5840a104))
+
 ## [1.1.10](https://github.com/wiley/nakadi/compare/v1.1.9...v1.1.10) (2022-10-19)
 
 ### Bug Fixes
