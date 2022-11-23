@@ -1,3 +1,10 @@
+## [1.1.12](https://github.com/wiley/nakadi/compare/v1.1.11...v1.1.12) (2022-11-21)
+
+
+### Bug Fixes
+
+* revert eventhub role arn to epdcs role since this is currently deployed under epdcs syscode ([d2b7286](https://github.com/wiley/nakadi/commit/d2b7286ca864f9aabf10426a1ee3168635e7ce09))
+
 ## [1.1.11](https://github.com/wiley/nakadi/compare/v1.1.10...v1.1.11) (2022-11-17)
 
 
