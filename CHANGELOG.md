@@ -1,3 +1,11 @@
+## [1.1.14](https://github.com/wiley/nakadi/compare/v1.1.13...v1.1.14) (2022-11-24)
+
+
+### Bug Fixes
+
+* disable inti db execution when postgres container startup in linux machines because the liquibase is also executing afterwards ([0963ff6](https://github.com/wiley/nakadi/commit/0963ff602e89354b7651757fb4612770de0e0903))
+* replace eventhub roles with epdcs roles since there is a access denied issue ([691e0f8](https://github.com/wiley/nakadi/commit/691e0f8aa9dc54a336f2691f0d5df45a700a1441))
+
 ## [1.1.13](https://github.com/wiley/nakadi/compare/v1.1.12...v1.1.13) (2022-11-24)
 
 
