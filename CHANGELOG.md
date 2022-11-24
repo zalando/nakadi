@@ -1,3 +1,10 @@
+## [1.1.13](https://github.com/wiley/nakadi/compare/v1.1.12...v1.1.13) (2022-11-24)
+
+
+### Bug Fixes
+
+* replace epdcs roles with eventhub roles ([33d2771](https://github.com/wiley/nakadi/commit/33d27714bc30145160e3a21fd8d9e291d6b2495c))
+
 ## [1.1.12](https://github.com/wiley/nakadi/compare/v1.1.11...v1.1.12) (2022-11-21)
 
 
