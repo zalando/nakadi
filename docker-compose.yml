@@ -27,8 +27,8 @@ services:
     image: postgres:9.6.16
     ports:
     - "5432:5432"
-    volumes:
-    - "./database/nakadi:/docker-entrypoint-initdb.d"
+#    volumes:
+#    - "./database/nakadi:/docker-entrypoint-initdb.d"
     environment:
       POSTGRES_USER: nakadi
       POSTGRES_PASSWORD: nakadi
