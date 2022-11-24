@@ -21,7 +21,9 @@ review:
     HELM_UPGRADE_VALUES_FILE: .gitlab/auto-deploy-values-review.yaml
   after_script:
     - echo "HOST_IP=$(kubectl get pods -l app=$APP_NAME-$CI_ENVIRONMENT_SLUG --sort-by=.metadata.creationTimestamp -o jsonpath='{.items[-1:]..status.podIP}' -n epdcs-review)" >> deploy.env
-
+stop_review:
+  variables:
+    KUBE_NAMESPACE: epdcs-review
 
 review-integrationtest:
   image: artifactory.aws.wiley.com/docker/openjdk:11-jdk
