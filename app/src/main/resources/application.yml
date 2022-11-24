@@ -31,6 +31,8 @@ spring:
     user: ${spring.datasource.username}
     password: ${spring.datasource.password}
     change-log: classpath:/database/changelog/changelog-master.xml
+  profiles:
+    active: local
 
 nakadi:
   admin.default:
@@ -92,7 +94,6 @@ nakadi:
 
   oauth2:
     mode: OFF
-    adminClientId: adminClientId
     tokenInfoUrl: https://example.com/tokeninfo
     localTokenInfoUrl: "http://localhost:9021/oauth2/tokeninfo"
     clientId: stups_aruha-event-store-poc

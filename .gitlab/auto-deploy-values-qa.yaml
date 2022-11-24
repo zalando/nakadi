@@ -23,7 +23,7 @@ readinessProbe:
   probeType: "httpGet"
 serviceAccount:
   annotations:
-    eks.amazonaws.com/role-arn: arn:aws:iam::281595016440:role/epdcs-qa-dev-use1
+    eks.amazonaws.com/role-arn: arn:aws:iam::281595016440:role/eventhub-qa-dev-use1
   createNew: true
 resources:
   limits:
