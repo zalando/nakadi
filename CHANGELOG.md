@@ -1,3 +1,5 @@
+## [1.1.15]
+
 ## [1.1.14](https://github.com/wiley/nakadi/compare/v1.1.13...v1.1.14) (2022-11-24)
 
 ### Bug Fixes
