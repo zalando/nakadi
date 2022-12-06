@@ -1,6 +1,5 @@
 ## [1.1.14](https://github.com/wiley/nakadi/compare/v1.1.13...v1.1.14) (2022-11-24)
 
-
 ### Bug Fixes
 
 * disable inti db execution when postgres container startup in linux machines because the liquibase is also executing afterwards ([0963ff6](https://github.com/wiley/nakadi/commit/0963ff602e89354b7651757fb4612770de0e0903))
