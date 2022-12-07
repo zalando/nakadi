@@ -40,7 +40,7 @@ dependencies {
     compile project(':core-common')
     compile project(':core-metastore')
     compile project(':core-services')
-    
+
     compile "org.springframework.boot:spring-boot-starter-parent:${springBootVersion}"
     compile project(':api-publishing')
     compile project(':api-consumption')
@@ -99,12 +99,9 @@ dependencies {
     testCompile 'junit:junit:4.13.1'
 }
 
-task acceptanceTest(type: Test) {
+tasks.register("acceptanceTest", Test.class) {
     classpath = sourceSets.acceptanceTest.runtimeClasspath
     testClassesDirs = sourceSets.acceptanceTest.output.classesDirs
-}
-
-acceptanceTest {
     testLogging {
         events "passed", "skipped", "failed"
     }

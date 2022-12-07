@@ -49,9 +49,9 @@ subprojects {
         maxParallelForks = Runtime.runtime.availableProcessors()
     }
 
-    task testWithReport() {
-        dependsOn test
-        finalizedBy jacocoTestReport
+    tasks.register("testWithReport") {
+        dependsOn tasks.named("test")
+        finalizedBy tasks.named("jacocoTestReport")
     }
     dependencies {
         ext {
@@ -65,29 +65,27 @@ subprojects {
     }
 }
 
-task startNakadi(type: Exec) {
+tasks.register("startNakadi", Exec.class) {
     commandLine "bash", "-c", "./nakadi.sh start-nakadi"
 }
 
-task fullAcceptanceTest(type: Exec) {
+tasks.register("fullAcceptanceTest", Exec.class) {
     commandLine "bash", "-c", "./nakadi.sh acceptance-tests"
 }
 
-task stopNakadi(type: Exec) {
+tasks.register("stopNakadi", Exec.class) {
     commandLine "bash", "-c", "./nakadi.sh stop-nakadi"
 }
 
-task startStorages(type: Exec) {
+tasks.register("startStorages", Exec.class) {
     commandLine "bash", "-c", "./nakadi.sh start-storages"
 }
 
-task checkstyle {
+tasks.register("checkstyle") {
     subprojects.each { dependsOn(":${it.name}:checkstyleMain") }
     subprojects.each { dependsOn(":${it.name}:checkstyleTest") }
-    dependsOn(":acceptance-test:checkstyleMain")
-    dependsOn(":acceptance-test:checkstyleAcceptanceTest")
 }
 
-task test {
+tasks.register("test") {
     subprojects.each { dependsOn(":${it.name}:testWithReport") }
 }
