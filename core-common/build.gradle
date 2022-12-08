@@ -32,104 +32,115 @@ dependencies {
     ext['jsonassert'] = '1.5.0'
 
     // spring
-    compile("org.springframework.boot:spring-boot-starter-web") {
+    implementation("org.springframework.boot:spring-boot-starter-web") {
         exclude module: 'logback-classic'
         exclude module: 'log4j-over-slf4j'
         exclude module: 'spring-boot-starter-tomcat'
     }
-    compile "org.springframework.boot:spring-boot-starter-jetty"
+    implementation "org.springframework.boot:spring-boot-starter-jetty"
 
     // oauth
-    compile('org.springframework.security.oauth:spring-security-oauth2:2.5.0.RELEASE') {
+    implementation('org.springframework.security.oauth:spring-security-oauth2:2.5.0.RELEASE') {
         exclude module: 'spring-webmvc'
         exclude module: 'spring-security-config'
         exclude module: 'spring-beans'
         exclude module: 'spring-core'
         exclude module: 'spring-context'
     }
-    compile('org.springframework.boot:spring-boot-starter-security') {
+    implementation('org.springframework.boot:spring-boot-starter-security') {
         exclude module: "logback-classic"
     }
 
-    compile 'org.zalando:nakadi-plugin-api:3.2.1'
-    compile 'com.google.guava:guava:30.1-jre'
-    compile 'org.apache.commons:commons-lang3:3.8.1'
-
-    compile "org.springframework.boot:spring-boot-starter-json"
-    compile "com.fasterxml.jackson.datatype:jackson-datatype-joda:$jacksonVersion"
-    compile 'org.zalando:jackson-datatype-problem:0.22.0'
-    compile 'org.zalando:problem:0.22.0'
-    compile 'org.json:json:20180130'
-
+    implementation "org.zalando:nakadi-plugin-api:$nakadiPluginApiVersion"
+    implementation 'com.google.guava:guava:30.1-jre'
+    implementation 'org.apache.commons:commons-lang3:3.8.1'
+    implementation "org.springframework.boot:spring-boot-starter-json"
+    implementation "com.fasterxml.jackson.datatype:jackson-datatype-joda:$jacksonVersion"
+    implementation 'org.zalando:jackson-datatype-problem:0.22.0'
+    implementation 'org.zalando:problem:0.22.0'
+    implementation 'org.json:json:20180130'
 
     // open tracing
-    compile "io.opentracing:opentracing-api:$opentracingVersion"
-    compile "io.opentracing:opentracing-util:$opentracingVersion"
+    implementation "io.opentracing:opentracing-api:$opentracingVersion"
+    implementation "io.opentracing:opentracing-util:$opentracingVersion"
 
-    compile "org.apache.kafka:kafka-clients:$kafkaClientVersion"
-
-    compile("org.apache.curator:curator-recipes:$curatorVersion") {
+    implementation "org.apache.kafka:kafka-clients:$kafkaClientVersion"
+    implementation("org.apache.curator:curator-recipes:$curatorVersion") {
         exclude module: "zookeeper"
     }
-    compile("org.apache.zookeeper:zookeeper:$zookeeperVersion") {
+    implementation("org.apache.zookeeper:zookeeper:$zookeeperVersion") {
         exclude module: "log4j"
     }
 
-    compile 'org.echocat.jomon:runtime:1.6.3'
-    compile 'com.googlecode.libphonenumber:libphonenumber:8.12.7'
-
-    compile "io.dropwizard.metrics:metrics-core:$dropwizardVersion"
-    compile("com.ryantenney.metrics:metrics-spring:$dropwizardVersion") {
-        exclude module: 'spring-core'
-    }
-    compile "io.dropwizard.metrics:metrics-servlets:$dropwizardVersion"
-    compile "io.dropwizard.metrics:metrics-jvm:$dropwizardVersion"
-
-    compile("org.springframework.boot:spring-boot-starter-jdbc") {
+    implementation 'org.echocat.jomon:runtime:1.6.3'
+    implementation "io.dropwizard.metrics:metrics-core:$dropwizardVersion"
+    implementation "io.dropwizard.metrics:metrics-servlets:$dropwizardVersion"
+    implementation("org.springframework.boot:spring-boot-starter-jdbc") {
         exclude module: 'HikariCP'
     }
-    compile 'org.apache.tomcat:tomcat-jdbc'
-    compile 'org.postgresql:postgresql:42.3.2'
-
-    compile('commons-beanutils:commons-beanutils:1.9.4')
-    compile('com.github.everit-org.json-schema:org.everit.json.schema:1.8.0') {
+    implementation('com.github.everit-org.json-schema:org.everit.json.schema:1.8.0') {
         exclude module: "json"
     }
-    compile 'org.zalando:problem-spring-web:0.23.0'
+    implementation "org.apache.avro:avro:1.11.0"
+    implementation "com.fasterxml.jackson.dataformat:jackson-dataformat-avro:2.8.5"
+    implementation "com.fasterxml.jackson.core:jackson-annotations:$fasterXmlJacksonVersion"
+    implementation "com.fasterxml.jackson.core:jackson-core:$fasterXmlJacksonVersion"
+    implementation "com.fasterxml.jackson.core:jackson-databind:$fasterXmlJacksonDatabindVersion"
+    implementation "com.fasterxml.jackson.datatype:jackson-datatype-jdk8:$fasterXmlJacksonVersion"
+    implementation 'com.github.luben:zstd-jni:1.5.2-2'
+    implementation 'com.google.code.findbugs:jsr305:3.0.2'
+    implementation 'commons-codec:commons-codec:1.15'
+    implementation 'org.slf4j:slf4j-api:1.7.36'
+    implementation 'joda-time:joda-time:2.9.4'
+    implementation 'jakarta.servlet:jakarta.servlet-api:4.0.4'
+    implementation 'javax.validation:validation-api:2.0.1.Final'
+    implementation 'org.apache.curator:curator-client:5.1.0'
+    implementation 'org.apache.curator:curator-framework:5.1.0'
+    implementation 'org.apache.zookeeper:zookeeper-jute:3.6.1'
+    implementation 'org.springframework.boot:spring-boot:2.5.12'
+    implementation 'org.springframework.security:spring-security-core:5.5.5'
+    implementation "org.springframework:spring-beans:$springframeworkVersion"
+    implementation "org.springframework:spring-context:$springframeworkVersion"
+    implementation "org.springframework:spring-core:$springframeworkVersion"
+    implementation "org.springframework:spring-jdbc:$springframeworkVersion"
+    implementation "org.springframework:spring-tx:$springframeworkVersion"
+    implementation "org.springframework:spring-web:$springframeworkVersion"
 
-    // avro
-    compile "org.apache.avro:avro:1.11.0"
-    compile "com.fasterxml.jackson.dataformat:jackson-dataformat-avro:2.8.5"
-
-    compile 'com.github.luben:zstd-jni:1.5.2-2'
+    runtimeOnly "org.postgresql:postgresql:$postgresqlVersion"
+    runtimeOnly("com.ryantenney.metrics:metrics-spring:$dropwizardVersion") {
+        exclude module: 'spring-core'
+    }
 
     // tests
-    testCompile 'org.slf4j:slf4j-log4j12'
-    testCompile 'org.hamcrest:hamcrest-all:1.3'
-    testCompile("org.springframework.boot:spring-boot-starter-validation")
-    testCompile('org.junit.jupiter:junit-jupiter:5.7.2') {
-        exclude module: "hamcrest-core"
-    }
-    testRuntimeOnly 'org.junit.vintage:junit-vintage-engine:5.7.2'
-    testCompile 'junit:junit:4.13.1'
-
-
-    testCompile "org.springframework:spring-test"
-    testCompile 'org.springframework.boot:spring-boot-test'
-    testCompile 'org.springframework.boot:spring-boot-starter-test'
-    testCompile 'org.skyscreamer:jsonassert'
-    testCompile 'uk.co.datumedge:hamcrest-json:0.2'
-    testCompile('com.jayway.restassured:rest-assured:2.9.0') {
+    testImplementation 'org.slf4j:slf4j-log4j12'
+    testImplementation 'org.hamcrest:hamcrest-all:1.3'
+    testImplementation("org.springframework.boot:spring-boot-starter-validation")
+    testImplementation 'junit:junit:4.13.1'
+    testImplementation "org.springframework:spring-test"
+    testImplementation 'org.springframework.boot:spring-boot-starter-test'
+    testImplementation 'uk.co.datumedge:hamcrest-json:0.2'
+    testImplementation('com.jayway.restassured:rest-assured:2.9.0') {
         exclude module: "hamcrest-core"
         exclude module: "hamcrest-library"
     }
-    testCompile 'com.jayway.jsonpath:json-path'
-    testRuntime 'org.pegdown:pegdown:1.6.0'
+    testImplementation 'org.hamcrest:hamcrest:2.2'
+    testImplementation 'org.mockito:mockito-core:3.9.0'
+    testImplementation 'commons-io:commons-io:2.5'
+    testImplementation 'jakarta.validation:jakarta.validation-api:2.0.2'
+    testImplementation 'org.eclipse.jetty:jetty-server:9.4.45.v20220203'
+    testImplementation 'org.junit.jupiter:junit-jupiter-api:5.7.2'
+    testImplementation 'org.junit.jupiter:junit-jupiter-params:5.7.2'
+    testImplementation('org.junit.jupiter:junit-jupiter:5.7.2') {
+        exclude module: "hamcrest-core"
+    }
+
+    testRuntimeOnly 'org.junit.vintage:junit-vintage-engine:5.7.2'
+    testRuntimeOnly 'org.pegdown:pegdown:1.6.0'
 }
 // end::dependencies[]
 
 configurations {
-    testOutput.extendsFrom(testCompile)
+    testOutput.extendsFrom(testImplementation)
 }
 
 tasks.register("jarTest", Jar.class) {

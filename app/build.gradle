@@ -27,113 +27,109 @@ dependencies {
     ext['json-path'] = '2.4.0'
     ext['jsonassert'] = '1.5.0'
 
-    compile project(':core-common')
-    compile project(':core-metastore')
-    compile project(':core-services')
+    implementation project(':core-common')
+    implementation project(':core-metastore')
+    implementation project(':core-services')
 
-    compile project(':api-publishing')
-    compile project(':api-consumption')
-    compile project(':api-metastore')
-    compile project(':api-cursors')
-    compile project(':api-misc')
+    implementation project(':api-publishing')
+    implementation project(':api-consumption')
+    implementation project(':api-metastore')
+    implementation project(':api-cursors')
+    implementation project(':api-misc')
 
-    compile "org.glassfish.jaxb:jaxb-runtime"
-
-    compile "org.apache.kafka:kafka-clients:$kafkaClientVersion"
-
-    compile "org.springframework.boot:spring-boot-starter-parent:${springBootVersion}"
-    implementation 'org.springframework.boot:spring-boot-starter'
-
-    compile "org.springframework.boot:spring-boot-starter-security"
 
     // spring
-    compile("org.springframework.boot:spring-boot-starter-web") {
+    implementation 'org.springframework.boot:spring-boot-starter'
+    implementation "org.springframework.boot:spring-boot-starter-security"
+    implementation("org.springframework.boot:spring-boot-starter-web") {
         exclude module: 'logback-classic'
         exclude module: 'log4j-over-slf4j'
         exclude module: 'spring-boot-starter-tomcat'
     }
-    compile "org.springframework:spring-core"
-    compile "org.springframework:spring-beans"
-    compile "org.springframework:spring-context"
-    compile "org.springframework:spring-web"
-    compile "org.springframework:spring-webmvc"
-    compile "org.springframework.boot:spring-boot-starter-jetty"
+    implementation "org.springframework:spring-core"
+    implementation "org.springframework:spring-beans"
+    implementation "org.springframework:spring-context"
+    implementation "org.springframework:spring-web"
+    implementation "org.springframework:spring-webmvc"
+    implementation "org.springframework.boot:spring-boot-starter-jetty"
 
     // oauth
-    compile('org.springframework.security.oauth:spring-security-oauth2:2.5.0.RELEASE') {
+    implementation('org.springframework.security.oauth:spring-security-oauth2:2.5.0.RELEASE') {
         exclude module: 'spring-webmvc'
         exclude module: 'spring-security-config'
         exclude module: 'spring-beans'
         exclude module: 'spring-core'
         exclude module: 'spring-context'
     }
-    compile('org.springframework.boot:spring-boot-starter-security') {
+    implementation('org.springframework.boot:spring-boot-starter-security') {
         exclude module: "logback-classic"
     }
 
     // actuator
-    compile "org.springframework.boot:spring-boot-starter-actuator"
-    compile('org.zalando.zmon:zmon-actuator:0.9.8') {
-        exclude module: 'spring-webmvc'
-        exclude module: 'spring-boot-autoconfigure'
-    }
+    implementation "org.springframework.boot:spring-boot-starter-actuator"
 
     // storage
-    compile("org.springframework.boot:spring-boot-starter-jdbc") {
+    implementation("org.springframework.boot:spring-boot-starter-jdbc") {
         exclude module: 'HikariCP'
     }
-    compile 'org.apache.tomcat:tomcat-jdbc'
-    compile 'org.postgresql:postgresql:42.3.2'
 
     // misc
-    compile 'org.apache.httpcomponents:httpclient'
-    compile('org.zalando.stups:stups-spring-oauth2-server:1.0.24') {
+    implementation 'org.apache.httpcomponents:httpclient'
+    implementation('org.zalando.stups:stups-spring-oauth2-server:1.0.24') {
         exclude module: "httpclient"
     }
-    compile 'org.zalando:jackson-datatype-problem:0.22.0'
-    compile 'org.zalando:problem:0.22.0'
-    compile 'org.zalando:problem-spring-web:0.23.0'
-    compile 'com.google.guava:guava:30.1-jre'
-    compile 'org.slf4j:slf4j-log4j12'
-    compile "io.dropwizard.metrics:metrics-core:$dropwizardVersion"
-    compile("com.ryantenney.metrics:metrics-spring:$dropwizardVersion") {
+    implementation 'org.zalando:problem:0.22.0'
+    implementation 'com.google.guava:guava:30.1-jre'
+    implementation "io.dropwizard.metrics:metrics-core:$dropwizardVersion"
+    implementation("com.ryantenney.metrics:metrics-spring:$dropwizardVersion") {
         exclude module: 'spring-core'
     }
-    compile "io.dropwizard.metrics:metrics-servlets:$dropwizardVersion"
-    compile "io.dropwizard.metrics:metrics-jvm:$dropwizardVersion"
-    compile 'org.apache.commons:commons-lang3:3.8.1'
-    compile 'org.zalando:nakadi-plugin-api:3.2.1'
-    compile 'org.echocat.jomon:runtime:1.6.3'
-    compile 'com.googlecode.libphonenumber:libphonenumber:8.12.7'
-
-    compile("org.apache.curator:curator-recipes:$curatorVersion") {
-        exclude module: "zookeeper"
-    }
-    compile("org.apache.zookeeper:zookeeper:$zookeeperVersion"){
+    implementation "io.dropwizard.metrics:metrics-servlets:$dropwizardVersion"
+    implementation "io.dropwizard.metrics:metrics-jvm:$dropwizardVersion"
+    implementation "org.zalando:nakadi-plugin-api:$nakadiPluginApiVersion"
+    implementation("org.apache.zookeeper:zookeeper:$zookeeperVersion"){
         exclude module: "log4j"
     }
+    implementation "org.springframework.boot:spring-boot-starter-json"
+    implementation 'javax.servlet:javax.servlet-api:4.0.1'
+    implementation 'log4j:log4j:1.2.17'
+    implementation "org.apache.avro:avro:1.11.0"
+    implementation 'ch.qos.reload4j:reload4j:1.2.19'
+    implementation "com.fasterxml.jackson.core:jackson-core:$fasterXmlJacksonVersion"
+    implementation "com.fasterxml.jackson.core:jackson-databind:$fasterXmlJacksonDatabindVersion"
+    implementation 'jakarta.annotation:jakarta.annotation-api:1.3.5'
+    implementation 'jakarta.servlet:jakarta.servlet-api:4.0.4'
+    implementation 'joda-time:joda-time:2.9.4'
+    implementation 'org.apache.curator:curator-client:5.1.0'
+    implementation 'org.apache.curator:curator-framework:5.1.0'
+    implementation 'org.apache.httpcomponents:httpcore:4.4.15'
+    implementation 'org.eclipse.jetty:jetty-http:9.4.45.v20220203'
+    implementation 'org.eclipse.jetty:jetty-server:9.4.45.v20220203'
+    implementation 'org.eclipse.jetty:jetty-util:9.4.45.v20220203'
+    implementation 'org.slf4j:slf4j-api:1.7.36'
+    implementation 'org.springframework.boot:spring-boot-autoconfigure:2.5.12'
+    implementation 'org.springframework.boot:spring-boot:2.5.12'
+    implementation 'org.springframework.security:spring-security-config:5.5.5'
+    implementation 'org.springframework.security:spring-security-core:5.5.5'
+    implementation 'org.springframework.security:spring-security-web:5.5.5'
 
-    compile('commons-beanutils:commons-beanutils:1.9.4')
-    compile('com.github.everit-org.json-schema:org.everit.json.schema:1.8.0') {
-        exclude module: "json"
-    }
-    compile "org.springframework.boot:spring-boot-starter-json"
-    compile 'org.json:json:20180130'
-
-    // open tracing
-    compile "io.opentracing:opentracing-api:$opentracingVersion"
-    compile "io.opentracing:opentracing-util:$opentracingVersion"
+    runtimeOnly "org.postgresql:postgresql:$postgresqlVersion"
+    runtimeOnly "org.glassfish.jaxb:jaxb-runtime"
+    runtimeOnly 'org.echocat.jomon:runtime:1.6.3'
+    runtimeOnly "org.apache.kafka:kafka-clients:$kafkaClientVersion"
+    runtimeOnly 'org.zalando:jackson-datatype-problem:0.22.0'
 
     // tests
-    testCompile 'org.hamcrest:hamcrest-all:1.3'
-    testCompile('org.junit.jupiter:junit-jupiter-api:5.5.2') {
-        exclude module: "hamcrest-core"
-    }
-    testCompile "org.springframework:spring-test"
-    testCompile 'org.springframework.boot:spring-boot-test'
-    testCompile 'org.springframework.boot:spring-boot-starter-test'
-    testCompile project(path: ':core-common', configuration: 'testOutput')
-    testCompile project(path: ':core-services', configuration: 'testOutput')
+    testImplementation 'org.hamcrest:hamcrest-all:1.3'
+    testImplementation "org.springframework:spring-test"
+    testImplementation 'org.springframework.boot:spring-boot-test'
+    testImplementation 'org.springframework.boot:spring-boot-starter-test'
+    testImplementation 'com.google.code.findbugs:jsr305:3.0.2'
+    testImplementation 'junit:junit:4.13.2'
+    testImplementation 'org.hamcrest:hamcrest:2.2'
+    testImplementation 'org.mockito:mockito-core:3.9.0'
+    testImplementation project(path: ':core-common', configuration: 'testOutput')
+    testImplementation project(path: ':core-services', configuration: 'testOutput')
 }
 // end::dependencies[]
 
