@@ -1,3 +1,11 @@
+## [1.1.17](https://github.com/wiley/nakadi/compare/v1.1.16...v1.1.17) (2022-12-09)
+
+
+### Bug Fixes
+
+* add configs of new eventhub uat cluster ([c3b2be4](https://github.com/wiley/nakadi/commit/c3b2be45c5325004c4dc65a11e94d2582ec28930))
+* test commit ([b3b0a17](https://github.com/wiley/nakadi/commit/b3b0a175989e5eee568e054c328d7f768ef271d2))
+
 ## [1.1.16](https://github.com/wiley/nakadi/compare/v1.1.15...v1.1.16) (2022-12-09)
 
 
