@@ -1,5 +1,6 @@
 ## [1.1.16](https://github.com/wiley/nakadi/compare/v1.1.15...v1.1.16) (2022-12-09)
 
+
 ### Bug Fixes
 
 * test ([21f2b0f](https://github.com/wiley/nakadi/commit/21f2b0fad57f5affa3bf2b5c1d24924851321cb7))
