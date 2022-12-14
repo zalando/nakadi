@@ -1,3 +1,11 @@
+## [1.1.18](https://github.com/wiley/nakadi/compare/v1.1.17...v1.1.18) (2022-12-14)
+
+
+### Bug Fixes
+
+* increase linger ms to test performace ([3a31e5e](https://github.com/wiley/nakadi/commit/3a31e5ed8b2c3d3e218e4c346c4c6e83775ed2cd))
+* test ([f1b42f4](https://github.com/wiley/nakadi/commit/f1b42f4e95454f9000d5417cc1c4078e8691dc28))
+
 ## [1.1.17](https://github.com/wiley/nakadi/compare/v1.1.16...v1.1.17) (2022-12-09)
 
 
