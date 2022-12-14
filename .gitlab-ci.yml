@@ -13,10 +13,15 @@ build:
     BP_GRADLE_BUILD_ARGUMENTS: ":app:bootJar"
     AUTO_DEVOPS_BUILD_IMAGE_FORWARDED_CI_VARIABLES: "BP_GRADLE_BUILT_ARTIFACT,BP_GRADLE_BUILD_ARGUMENTS,BP_JVM_VERSION"
   script:
-    - pack trust-builder paketo-buildpacks/gradle
-    - pack trust-builder paketo-buildpacks/apache-tomcat
-    - pack trust-builder paketo-buildpacks/spring-boot
-    - pack trust-builder paketo-buildpacks/dist-zip
+    - pack config trusted-builders add paketo-buildpacks/gradle
+    - pack config trusted-builders add paketo-buildpacks/apache-tomcat
+    - pack config trusted-builders add paketo-buildpacks/spring-boot
+    - pack config trusted-builders add paketo-buildpacks/dist-zip
+    - pack config trusted-builders add paketo-buildpacks/ca-certificates
+    - pack config trusted-builders add paketo-buildpacks/bellsoft-liberica
+    - pack config trusted-builders add paketo-buildpacks/syft
+    - pack config trusted-builders add paketo-buildpacks/executable-jar
+    - pack config trusted-builders add paketo-buildpacks/liberty
     - /build/build.sh
 
 review:
