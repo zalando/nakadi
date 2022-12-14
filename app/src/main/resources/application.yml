@@ -215,6 +215,7 @@ nakadi:
     sasl.mechanism: AWS_MSK_IAM
     sasl.jaas.config: software.amazon.msk.auth.iam.IAMLoginModule required;
     sasl.client.callback.handler.class: software.amazon.msk.auth.iam.IAMClientCallbackHandler
+    linger.ms: 100
   zookeeper:
     connectionString: zookeeper://z-3.eventhubdevmskkafka.xp3u9t.c19.kafka.us-east-1.amazonaws.com:2181,z-2.eventhubdevmskkafka.xp3u9t.c19.kafka.us-east-1.amazonaws.com:2181,z-1.eventhubdevmskkafka.xp3u9t.c19.kafka.us-east-1.amazonaws.com:2181
   features.defaultFeatures:
@@ -248,6 +249,7 @@ nakadi:
     sasl.mechanism: AWS_MSK_IAM
     sasl.jaas.config: software.amazon.msk.auth.iam.IAMLoginModule required;
     sasl.client.callback.handler.class: software.amazon.msk.auth.iam.IAMClientCallbackHandler
+    linger.ms: 200
   zookeeper:
     connectionString: zookeeper://z-1.eventhubuatmskkafka.ujte7x.c2.kafka.us-east-1.amazonaws.com:2181,z-2.eventhubuatmskkafka.ujte7x.c2.kafka.us-east-1.amazonaws.com:2181,z-3.eventhubuatmskkafka.ujte7x.c2.kafka.us-east-1.amazonaws.com:2181
   features.defaultFeatures:
