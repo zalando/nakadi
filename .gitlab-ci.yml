@@ -20,7 +20,6 @@ build:
     - pack config trusted-builders add paketo-buildpacks/ca-certificates
     - pack config trusted-builders add paketo-buildpacks/bellsoft-liberica
     - pack config trusted-builders add paketo-buildpacks/syft
-    - pack config trusted-builders add paketo-buildpacks/executable-jar
     - pack config trusted-builders add paketo-buildpacks/liberty
     - /build/build.sh
 
