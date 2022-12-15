@@ -1,3 +1,10 @@
+# [1.2.0](https://github.com/wiley/nakadi/compare/v1.1.18...v1.2.0) (2022-12-15)
+
+
+### Features
+
+* change request timeout ms according to the linger ms ([4432cdc](https://github.com/wiley/nakadi/commit/4432cdc269f88a84a6bf2c4887f0de82edfcca77))
+
 ## [1.1.18](https://github.com/wiley/nakadi/compare/v1.1.17...v1.1.18) (2022-12-14)
 
 
