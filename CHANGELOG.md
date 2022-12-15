@@ -1,3 +1,11 @@
+## [1.2.1](https://github.com/wiley/nakadi/compare/v1.2.0...v1.2.1) (2022-12-15)
+
+
+### Bug Fixes
+
+* test ([83ac4a4](https://github.com/wiley/nakadi/commit/83ac4a40d5cb1b90c2ab5c8039d53f9d55b3df10))
+* test ([760669d](https://github.com/wiley/nakadi/commit/760669dc33c808279f4722fa92bd974c1f4c17ce))
+
 # [1.2.0](https://github.com/wiley/nakadi/compare/v1.1.18...v1.2.0) (2022-12-15)
 
 
