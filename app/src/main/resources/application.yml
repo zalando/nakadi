@@ -67,7 +67,7 @@ nakadi:
     bootstrap.servers: localhost:29092
     min.insync.replicas: 1
     retries: 5
-    request.timeout.ms: 30000
+    request.timeout.ms: 30300
     instanceType: m5.large
     poll.timeoutMs: 100
     send.timeoutMs: 5000
