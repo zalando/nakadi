@@ -110,7 +110,7 @@ public class EventPublisherTest {
         eventOwnerExtractorFactory = mock(EventOwnerExtractorFactory.class);
         publisher = new EventPublisher(timelineService, cache, partitionResolver, enrichment,
                 nakadiSettings, timelineSync, authzValidator, eventOwnerExtractorFactory,
-                mock(MetricRegistry.class));
+                new MetricRegistry());
     }
 
     @Test
