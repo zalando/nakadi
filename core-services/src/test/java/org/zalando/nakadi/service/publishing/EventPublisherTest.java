@@ -1,5 +1,6 @@
 package org.zalando.nakadi.service.publishing;
 
+import com.codahale.metrics.MetricRegistry;
 import org.apache.avro.specific.SpecificRecord;
 import org.json.JSONArray;
 import org.json.JSONObject;
@@ -108,7 +109,8 @@ public class EventPublisherTest {
 
         eventOwnerExtractorFactory = mock(EventOwnerExtractorFactory.class);
         publisher = new EventPublisher(timelineService, cache, partitionResolver, enrichment,
-                nakadiSettings, timelineSync, authzValidator, eventOwnerExtractorFactory);
+                nakadiSettings, timelineSync, authzValidator, eventOwnerExtractorFactory,
+                new MetricRegistry());
     }
 
     @Test

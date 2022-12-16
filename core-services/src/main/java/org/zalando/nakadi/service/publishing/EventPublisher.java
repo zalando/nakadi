@@ -1,5 +1,7 @@
 package org.zalando.nakadi.service.publishing;
 
+import com.codahale.metrics.Histogram;
+import com.codahale.metrics.MetricRegistry;
 import com.google.common.collect.ImmutableMap;
 import io.opentracing.Span;
 import io.opentracing.Tracer;
@@ -44,7 +46,9 @@ import org.zalando.nakadi.validation.ValidationError;
 
 import java.io.Closeable;
 import java.io.IOException;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 import java.util.concurrent.TimeoutException;
 import java.util.function.Function;
@@ -64,6 +68,9 @@ public class EventPublisher {
     private final TimelineSync timelineSync;
     private final AuthorizationValidator authValidator;
     private final EventOwnerExtractorFactory eventOwnerExtractorFactory;
+    private final Histogram keysPerBatchMetric;
+    private final Histogram eventsPerBatchMetric;
+    private final Histogram eventsPerKeyMetric;
 
     @Autowired
     public EventPublisher(final TimelineService timelineService,
@@ -73,7 +80,8 @@ public class EventPublisher {
                           final NakadiSettings nakadiSettings,
                           final TimelineSync timelineSync,
                           final AuthorizationValidator authValidator,
-                          final EventOwnerExtractorFactory eventOwnerExtractorFactory) {
+                          final EventOwnerExtractorFactory eventOwnerExtractorFactory,
+                          final MetricRegistry metricRegistry) {
         this.timelineService = timelineService;
         this.eventTypeCache = eventTypeCache;
         this.partitionResolver = partitionResolver;
@@ -82,6 +90,9 @@ public class EventPublisher {
         this.timelineSync = timelineSync;
         this.authValidator = authValidator;
         this.eventOwnerExtractorFactory = eventOwnerExtractorFactory;
+        keysPerBatchMetric = metricRegistry.histogram("publishing.keysPerBatch");
+        eventsPerBatchMetric = metricRegistry.histogram("publishing.eventsPerBatch");
+        eventsPerKeyMetric = metricRegistry.histogram("publishing.eventsPerKey");
     }
 
     public EventPublishResult publish(final String events, final String eventTypeName)
@@ -210,11 +221,18 @@ public class EventPublisher {
         }
     }
 
-    private static void assignKey(final List<BatchItem> batch, final EventType eventType) {
+    private void assignKey(final List<BatchItem> batch, final EventType eventType) {
         final Function<BatchItem, String> kafkaKeyExtractor = EventKeyExtractor.kafkaKeyFromBatchItem(eventType);
+        final Map<String, Long> keys = new HashMap<>();
         for (final BatchItem item : batch) {
             item.setEventKey(kafkaKeyExtractor.apply(item));
+            if (item.getEventKey() != null) {
+                keys.compute(item.getEventKey(), (k, v) -> v == null ? 1 : v + 1);
+            }
         }
+        keysPerBatchMetric.update(keys.size());
+        keys.values().forEach((v) -> eventsPerKeyMetric.update(v));
+        eventsPerBatchMetric.update(batch.size());
     }
 
     private void validateEventOwnership(final EventType eventType, final List<BatchItem> batchItems) {
@@ -274,7 +292,7 @@ public class EventPublisher {
 
     private void submit(
             final List<BatchItem> batch, final EventType eventType, final boolean delete)
-        throws EventPublishingException, InternalNakadiException {
+            throws EventPublishingException, InternalNakadiException {
         final Timeline activeTimeline = timelineService.getActiveTimeline(eventType);
         final String topic = activeTimeline.getTopic();
 
