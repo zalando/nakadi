@@ -15,6 +15,13 @@ build:
     APP_NAME: eventhub
     IMAGE_NAME: $CI_REGISTRY/tc/$APP_NAME:latest
   image:
+    name: gradle:5.3.1-jdk11-slim
+  before_script: gradle build
+  artifacts:
+    paths:
+      - app/build/libs/*.[jw]ar
+
+  image:
     name: quay.io/podman/stable
   script:
     #- pack config trusted-builders add paketo-buildpacks/gradle
