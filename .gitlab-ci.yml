@@ -12,16 +12,23 @@ build:
     BP_GRADLE_BUILT_ARTIFACT: "app/build/libs/*.[jw]ar"
     BP_GRADLE_BUILD_ARGUMENTS: ":app:bootJar"
     AUTO_DEVOPS_BUILD_IMAGE_FORWARDED_CI_VARIABLES: "BP_GRADLE_BUILT_ARTIFACT,BP_GRADLE_BUILD_ARGUMENTS,BP_JVM_VERSION"
+    APP_NAME: eventhub
+    IMAGE_NAME: $CI_REGISTRY/tc/$APP_NAME:latest
+  image:
+    name: quay.io/podman/stable
   script:
-    - pack config trusted-builders add paketo-buildpacks/gradle
-    - pack config trusted-builders add paketo-buildpacks/apache-tomcat
-    - pack config trusted-builders add paketo-buildpacks/spring-boot
-    - pack config trusted-builders add paketo-buildpacks/dist-zip
-    - pack config trusted-builders add paketo-buildpacks/ca-certificates
-    - pack config trusted-builders add paketo-buildpacks/bellsoft-liberica
-    - pack config trusted-builders add paketo-buildpacks/syft
-    - pack config trusted-builders add paketo-buildpacks/liberty
-    - /build/build.sh
+    #- pack config trusted-builders add paketo-buildpacks/gradle
+    #- pack config trusted-builders add paketo-buildpacks/apache-tomcat
+    #- pack config trusted-builders add paketo-buildpacks/spring-boot
+    #- pack config trusted-builders add paketo-buildpacks/dist-zip
+    #- pack config trusted-builders add paketo-buildpacks/ca-certificates
+    #- pack config trusted-builders add paketo-buildpacks/bellsoft-liberica
+    #- pack config trusted-builders add paketo-buildpacks/syft
+    #- pack config trusted-builders add paketo-buildpacks/liberty
+    #- /build/build.sh
+    - podman login -u "$CI_REGISTRY_USER" -p "$CI_REGISTRY_PASSWORD" "$CI_REGISTRY"
+    - podman build -t "$IMAGE_NAME" .
+    - podman push "$IMAGE_NAME"
 
 review:
   variables:
