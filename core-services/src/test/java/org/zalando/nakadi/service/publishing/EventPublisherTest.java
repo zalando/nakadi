@@ -32,6 +32,7 @@ import org.zalando.nakadi.exceptions.runtime.EventTypeTimeoutException;
 import org.zalando.nakadi.exceptions.runtime.PartitioningException;
 import org.zalando.nakadi.kpi.event.NakadiAccessLog;
 import org.zalando.nakadi.mapper.NakadiRecordMapper;
+import org.zalando.nakadi.metrics.EventTypeMetricRegistry;
 import org.zalando.nakadi.partitioning.PartitionResolver;
 import org.zalando.nakadi.partitioning.PartitionStrategy;
 import org.zalando.nakadi.plugin.api.authz.Resource;
@@ -96,7 +97,9 @@ public class EventPublisherTest {
             NAKADI_POLL_TIMEOUT, NAKADI_SEND_TIMEOUT, TIMELINE_WAIT_TIMEOUT_MS, NAKADI_EVENT_MAX_BYTES,
             NAKADI_SUBSCRIPTION_MAX_PARTITIONS, "service", "org/zalando/nakadi", "", "",
             "nakadi_archiver", "nakadi_to_s3", 100, 10000);
+
     protected EventOwnerExtractorFactory eventOwnerExtractorFactory;
+    protected EventTypeMetricRegistry eventTypeMetricRegistry;
     protected EventPublisher publisher;
 
     @Before
@@ -108,9 +111,11 @@ public class EventPublisherTest {
         Mockito.when(timelineService.getActiveTimeline(any(EventType.class))).thenReturn(timeline);
 
         eventOwnerExtractorFactory = mock(EventOwnerExtractorFactory.class);
+        eventTypeMetricRegistry = new EventTypeMetricRegistry(new MetricRegistry());
+
         publisher = new EventPublisher(timelineService, cache, partitionResolver, enrichment,
                 nakadiSettings, timelineSync, authzValidator, eventOwnerExtractorFactory,
-                new MetricRegistry());
+                eventTypeMetricRegistry);
     }
 
     @Test
