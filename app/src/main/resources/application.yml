@@ -175,14 +175,14 @@ nakadi:
     default:
       replicaFactor: 2
   kafka:
-    bootstrap.servers: b-1.eventhubdevmskkafka.xp3u9t.c19.kafka.us-east-1.amazonaws.com:9098,b-2.eventhubdevmskkafka.xp3u9t.c19.kafka.us-east-1.amazonaws.com:9098,b-3.eventhubdevmskkafka.xp3u9t.c19.kafka.us-east-1.amazonaws.com:9098
+    bootstrap.servers: b-1.eventhubdevmskkafka.b8f51p.c6.kafka.us-east-1.amazonaws.com:9098,b-2.eventhubdevmskkafka.b8f51p.c6.kafka.us-east-1.amazonaws.com:9098
     min.insync.replicas: 2
     security.protocol: SASL_SSL
     sasl.mechanism: AWS_MSK_IAM
     sasl.jaas.config: software.amazon.msk.auth.iam.IAMLoginModule required;
     sasl.client.callback.handler.class: software.amazon.msk.auth.iam.IAMClientCallbackHandler
   zookeeper:
-    connectionString: zookeeper://z-3.eventhubdevmskkafka.xp3u9t.c19.kafka.us-east-1.amazonaws.com:2181,z-2.eventhubdevmskkafka.xp3u9t.c19.kafka.us-east-1.amazonaws.com:2181,z-1.eventhubdevmskkafka.xp3u9t.c19.kafka.us-east-1.amazonaws.com:2181
+    connectionString: zookeeper://z-1.eventhubdevmskkafka.b8f51p.c6.kafka.us-east-1.amazonaws.com:2181,z-2.eventhubdevmskkafka.b8f51p.c6.kafka.us-east-1.amazonaws.com:2181,z-3.eventhubdevmskkafka.b8f51p.c6.kafka.us-east-1.amazonaws.com:2181
   features.defaultFeatures:
     DISABLE_EVENT_TYPE_CREATION: false
     DISABLE_EVENT_TYPE_DELETION: false
@@ -209,7 +209,7 @@ nakadi:
     default:
       replicaFactor: 2
   kafka:
-    bootstrap.servers: b-1.eventhubdevmskkafka.xp3u9t.c19.kafka.us-east-1.amazonaws.com:9098,b-2.eventhubdevmskkafka.xp3u9t.c19.kafka.us-east-1.amazonaws.com:9098,b-3.eventhubdevmskkafka.xp3u9t.c19.kafka.us-east-1.amazonaws.com:9098
+    bootstrap.servers: b-1.eventhubdevmskkafka.b8f51p.c6.kafka.us-east-1.amazonaws.com:9098,b-2.eventhubdevmskkafka.b8f51p.c6.kafka.us-east-1.amazonaws.com:9098
     min.insync.replicas: 2
     security.protocol: SASL_SSL
     sasl.mechanism: AWS_MSK_IAM
@@ -217,7 +217,7 @@ nakadi:
     sasl.client.callback.handler.class: software.amazon.msk.auth.iam.IAMClientCallbackHandler
     linger.ms: 100
   zookeeper:
-    connectionString: zookeeper://z-3.eventhubdevmskkafka.xp3u9t.c19.kafka.us-east-1.amazonaws.com:2181,z-2.eventhubdevmskkafka.xp3u9t.c19.kafka.us-east-1.amazonaws.com:2181,z-1.eventhubdevmskkafka.xp3u9t.c19.kafka.us-east-1.amazonaws.com:2181
+    connectionString: zookeeper://z-1.eventhubdevmskkafka.b8f51p.c6.kafka.us-east-1.amazonaws.com:2181,z-2.eventhubdevmskkafka.b8f51p.c6.kafka.us-east-1.amazonaws.com:2181,z-3.eventhubdevmskkafka.b8f51p.c6.kafka.us-east-1.amazonaws.com:2181
   features.defaultFeatures:
     DISABLE_EVENT_TYPE_CREATION: false
     DISABLE_EVENT_TYPE_DELETION: false
