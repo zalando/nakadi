@@ -16,7 +16,7 @@ build:
     IMAGE_NAME: $CI_REGISTRY/tc/$APP_NAME:latest
   image:
     name: gradle:5.3.1-jdk11-slim
-  before_script: ./gradle build
+  before_script: ./gradlew build
   artifacts:
     paths:
       - app/build/libs/*.[jw]ar
