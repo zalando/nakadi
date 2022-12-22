@@ -21,7 +21,7 @@ build:
     - echo $JAVA_HOME
     - export JAVA_HOME="/docker-java-home"
     - echo $JAVA_HOME
-    - ./gradlew build
+    - sh $CI_PROJECT_DIR/gradlew build
   artifacts:
     paths:
       - app/build/libs/*.[jw]ar
