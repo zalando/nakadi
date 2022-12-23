@@ -1,6 +1,6 @@
 version: "2017-09-20"
 pipeline:
-  - id: test
+  - id: test-build-push
     type: script
     vm_config:
       type: linux
@@ -10,35 +10,26 @@ pipeline:
       - desc: Checkstyle
         cmd: |
           ./gradlew checkstyle --stacktrace
+
       - desc: Test
         cmd: |
           ./gradlew test --stacktrace
-  - id: acceptance-test
-    type: script
-    vm_config:
-      type: linux
-      size: extra_large
-      image: cdp-runtime/jdk11
-    commands:
-      - desc: Install dependencies
-        cmd: |
-          sudo curl -L "https://github.com/docker/compose/releases/download/1.27.4/docker-compose-$(uname -s)-$(uname -m)" -o /usr/local/bin/docker-compose
-          echo '04216d65ce0cd3c27223eab035abfeb20a8bef20259398e3b9d9aa8de633286d */usr/local/bin/docker-compose' | sha256sum -c
-          sudo chmod +x /usr/local/bin/docker-compose
-          docker-compose --version
+
       - desc: Acceptance Test
         cmd: |
+          if [ ! -f /usr/local/bin/docker-compose ]; then
+            curl -L "https://github.com/docker/compose/releases/download/1.27.4/docker-compose-$(uname -s)-$(uname -m)" -o /usr/local/bin/docker-compose
+            echo '04216d65ce0cd3c27223eab035abfeb20a8bef20259398e3b9d9aa8de633286d */usr/local/bin/docker-compose' | sha256sum -c
+            chmod +x /usr/local/bin/docker-compose
+          fi
+          docker-compose --version
+
           ./gradlew fullAcceptanceTest --stacktrace
-  - id: build-push
-    type: script
-    vm_config:
-      type: linux
-      size: extra_large
-      image: cdp-runtime/jdk11
-    commands:
-      - desc: Build and push to repo
+
+      - desc: Build and push
         cmd: |
           ./gradlew clean app:bootJar
+
           MULTI_ARCH_IMAGE="container-registry-test.zalando.net/aruha/nakadi-oss:${CDP_BUILD_VERSION}"
           IMAGE="registry-write.opensource.zalan.do/aruha/nakadi-oss:${CDP_BUILD_VERSION}"
           if [ "$CDP_PULL_REQUEST_NUMBER" ]; then
@@ -60,6 +51,11 @@ pipeline:
             --push .
           cdp-promote-image ${MULTI_ARCH_IMAGE}
 
-          #echo "Building oss image"
           docker build -t ${IMAGE} .
           docker push ${IMAGE}
+
+    cache:
+      paths:
+        - /usr/local/bin/docker-compose
+        - ~/.gradle/caches
+        - ~/.gradle/wrapper
