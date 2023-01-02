@@ -80,7 +80,7 @@ nakadi:
     linger.ms: 0
     max.in.flight.requests.per.connection: 5
     enable.auto.commit: false
-    delivery.timeout.ms: 30600 # request.timeout.ms + linger.ms
+    delivery.timeout.ms: 30000 # request.timeout.ms + linger.ms
     max.block.ms: 5000 # kafka default 60000
     security.protocol: PLAINTEXT
     sasl.mechanism: PLAIN
@@ -173,10 +173,10 @@ spring:
 nakadi:
   topic:
     default:
-      replicaFactor: 2
+      replicaFactor: 1
   kafka:
     bootstrap.servers: b-1.eventhubdevmskkafka.b8f51p.c6.kafka.us-east-1.amazonaws.com:9098,b-2.eventhubdevmskkafka.b8f51p.c6.kafka.us-east-1.amazonaws.com:9098
-    min.insync.replicas: 2
+    min.insync.replicas: 1
     security.protocol: SASL_SSL
     sasl.mechanism: AWS_MSK_IAM
     sasl.jaas.config: software.amazon.msk.auth.iam.IAMLoginModule required;
@@ -207,15 +207,16 @@ spring:
 nakadi:
   topic:
     default:
-      replicaFactor: 2
+      replicaFactor: 1
   kafka:
     bootstrap.servers: b-1.eventhubdevmskkafka.b8f51p.c6.kafka.us-east-1.amazonaws.com:9098,b-2.eventhubdevmskkafka.b8f51p.c6.kafka.us-east-1.amazonaws.com:9098
-    min.insync.replicas: 2
+    min.insync.replicas: 1
     security.protocol: SASL_SSL
     sasl.mechanism: AWS_MSK_IAM
     sasl.jaas.config: software.amazon.msk.auth.iam.IAMLoginModule required;
     sasl.client.callback.handler.class: software.amazon.msk.auth.iam.IAMClientCallbackHandler
     linger.ms: 100
+    delivery.timeout.ms: 30100 # request.timeout.ms + linger.ms
   zookeeper:
     connectionString: zookeeper://z-1.eventhubdevmskkafka.b8f51p.c6.kafka.us-east-1.amazonaws.com:2181,z-2.eventhubdevmskkafka.b8f51p.c6.kafka.us-east-1.amazonaws.com:2181,z-3.eventhubdevmskkafka.b8f51p.c6.kafka.us-east-1.amazonaws.com:2181
   features.defaultFeatures:
@@ -243,15 +244,16 @@ nakadi:
     default:
       replicaFactor: 2
   kafka:
-    bootstrap.servers: b-1.eventhubuatmskkafka.ujte7x.c2.kafka.us-east-1.amazonaws.com:9098,b-2.eventhubuatmskkafka.ujte7x.c2.kafka.us-east-1.amazonaws.com:9098,b-3.eventhubuatmskkafka.ujte7x.c2.kafka.us-east-1.amazonaws.com:9098
+    bootstrap.servers: b-2.eventhubuatmskkafka.81dgjt.c8.kafka.us-east-1.amazonaws.com:9098,b-1.eventhubuatmskkafka.81dgjt.c8.kafka.us-east-1.amazonaws.com:9098
     min.insync.replicas: 2
     security.protocol: SASL_SSL
     sasl.mechanism: AWS_MSK_IAM
     sasl.jaas.config: software.amazon.msk.auth.iam.IAMLoginModule required;
     sasl.client.callback.handler.class: software.amazon.msk.auth.iam.IAMClientCallbackHandler
     linger.ms: 200
+    delivery.timeout.ms: 30200 # request.timeout.ms + linger.ms
   zookeeper:
-    connectionString: zookeeper://z-1.eventhubuatmskkafka.ujte7x.c2.kafka.us-east-1.amazonaws.com:2181,z-2.eventhubuatmskkafka.ujte7x.c2.kafka.us-east-1.amazonaws.com:2181,z-3.eventhubuatmskkafka.ujte7x.c2.kafka.us-east-1.amazonaws.com:2181
+    connectionString: zookeeper://z-1.eventhubuatmskkafka.81dgjt.c8.kafka.us-east-1.amazonaws.com:2181,z-2.eventhubuatmskkafka.81dgjt.c8.kafka.us-east-1.amazonaws.com:2181,z-3.eventhubuatmskkafka.81dgjt.c8.kafka.us-east-1.amazonaws.com:2181
   features.defaultFeatures:
     DISABLE_EVENT_TYPE_CREATION: false
     DISABLE_EVENT_TYPE_DELETION: false

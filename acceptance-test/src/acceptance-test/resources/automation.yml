@@ -55,8 +55,8 @@ environments:
     zookeeperUrl: z-1.eventhubdevmskkafka.b8f51p.c6.kafka.us-east-1.amazonaws.com:2181,z-2.eventhubdevmskkafka.b8f51p.c6.kafka.us-east-1.amazonaws.com:2181,z-3.eventhubdevmskkafka.b8f51p.c6.kafka.us-east-1.amazonaws.com:2181
     kafka:
       bootstrapServers: b-1.eventhubdevmskkafka.b8f51p.c6.kafka.us-east-1.amazonaws.com:9098,b-2.eventhubdevmskkafka.b8f51p.c6.kafka.us-east-1.amazonaws.com:9098
-      minInSyncReplicas: 2
-      replicaFactor: 2
+      minInSyncReplicas: 1
+      replicaFactor: 1
       securityProtocol: SASL_SSL
       saslMechanism: AWS_MSK_IAM
       saslJaasConfig: software.amazon.msk.auth.iam.IAMLoginModule required;
@@ -80,8 +80,8 @@ environments:
     zookeeperUrl: z-1.eventhubdevmskkafka.b8f51p.c6.kafka.us-east-1.amazonaws.com:2181,z-2.eventhubdevmskkafka.b8f51p.c6.kafka.us-east-1.amazonaws.com:2181,z-3.eventhubdevmskkafka.b8f51p.c6.kafka.us-east-1.amazonaws.com:2181
     kafka:
       bootstrapServers: b-1.eventhubdevmskkafka.b8f51p.c6.kafka.us-east-1.amazonaws.com:9098,b-2.eventhubdevmskkafka.b8f51p.c6.kafka.us-east-1.amazonaws.com:9098
-      minInSyncReplicas: 2
-      replicaFactor: 2
+      minInSyncReplicas: 1
+      replicaFactor: 1
       securityProtocol: SASL_SSL
       saslMechanism: AWS_MSK_IAM
       saslJaasConfig: software.amazon.msk.auth.iam.IAMLoginModule required;
@@ -102,9 +102,9 @@ environments:
   uat:
     apiUrl: https://eventhub.uat.tc.wiley.host
     apiPort: 443
-    zookeeperUrl: z-1.eventhubuatmskkafka.ujte7x.c2.kafka.us-east-1.amazonaws.com:2181,z-2.eventhubuatmskkafka.ujte7x.c2.kafka.us-east-1.amazonaws.com:2181,z-3.eventhubuatmskkafka.ujte7x.c2.kafka.us-east-1.amazonaws.com:2181
+    zookeeperUrl: z-1.eventhubuatmskkafka.81dgjt.c8.kafka.us-east-1.amazonaws.com:2181,z-2.eventhubuatmskkafka.81dgjt.c8.kafka.us-east-1.amazonaws.com:2181,z-3.eventhubuatmskkafka.81dgjt.c8.kafka.us-east-1.amazonaws.com:2181
     kafka:
-      bootstrapServers: b-1.eventhubuatmskkafka.ujte7x.c2.kafka.us-east-1.amazonaws.com:9098,b-2.eventhubuatmskkafka.ujte7x.c2.kafka.us-east-1.amazonaws.com:9098,b-3.eventhubuatmskkafka.ujte7x.c2.kafka.us-east-1.amazonaws.com:9098
+      bootstrapServers: b-2.eventhubuatmskkafka.81dgjt.c8.kafka.us-east-1.amazonaws.com:9098,b-1.eventhubuatmskkafka.81dgjt.c8.kafka.us-east-1.amazonaws.com:9098
       minInSyncReplicas: 2
       replicaFactor: 2
       securityProtocol: SASL_SSL
