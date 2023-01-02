@@ -1,6 +1,7 @@
 include:
   - project: wiley-sons/tc-gitlab-templates
     file: autodevops-gradle.gitlab-ci.yml
+    ref: bugfix/build-issue-SRE-4227
     
 variables:
   APP_NAME: eventhub
