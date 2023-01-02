@@ -1,3 +1,31 @@
+## [1.2.5](https://github.com/wiley/nakadi/compare/v1.2.4...v1.2.5) (2022-12-28)
+
+
+### Bug Fixes
+
+* test ([e82f237](https://github.com/wiley/nakadi/commit/e82f237c3d33f9a4c968edda8049b826e99e0b18))
+
+## [1.2.4](https://github.com/wiley/nakadi/compare/v1.2.3...v1.2.4) (2022-12-27)
+
+### Bug Fixes
+
+* test ([bc95314](https://github.com/wiley/nakadi/commit/bc953148eb60a3e5e1d5be3ac12eb8d988b8ab62))
+* test ([2148982](https://github.com/wiley/nakadi/commit/214898294b52b8781330d3bacaa08bde249a22b0))
+* test ([b126c8c](https://github.com/wiley/nakadi/commit/b126c8c581dd26342cad6932f8a58cce5e8eda7c))
+* test ([2e839d7](https://github.com/wiley/nakadi/commit/2e839d73f5ba0d00a0fe88421b5e954d67c2b793))
+* test ([fa776b9](https://github.com/wiley/nakadi/commit/fa776b94936574308ab6d721f775a260c8b709e7))
+* test ([d9683e7](https://github.com/wiley/nakadi/commit/d9683e785fd35f0fa99747e62e004f8cab4558d7))
+* test ([016d755](https://github.com/wiley/nakadi/commit/016d7552a84814efa1c380d2ac349e24e72bc80c))
+* test ([c5cca8a](https://github.com/wiley/nakadi/commit/c5cca8ab7b22e06bc5e78aa16941299d98e3536c))
+* test ([bb2b599](https://github.com/wiley/nakadi/commit/bb2b599a4188737b81bbb31f99204d2657e3ff9a))
+
+## [1.2.3](https://github.com/wiley/nakadi/compare/v1.2.2...v1.2.3) (2022-12-21)
+
+
+### Bug Fixes
+
+* test ([348b9ed](https://github.com/wiley/nakadi/commit/348b9eddb9588e8e06fbb817fdfa7b1bdd7b68dc))
+
 ## [1.2.2](https://github.com/wiley/nakadi/compare/v1.2.1...v1.2.2) (2022-12-16)
 
 
