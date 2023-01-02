@@ -173,10 +173,10 @@ spring:
 nakadi:
   topic:
     default:
-      replicaFactor: 2
+      replicaFactor: 1
   kafka:
     bootstrap.servers: b-1.eventhubdevmskkafka.b8f51p.c6.kafka.us-east-1.amazonaws.com:9098,b-2.eventhubdevmskkafka.b8f51p.c6.kafka.us-east-1.amazonaws.com:9098
-    min.insync.replicas: 2
+    min.insync.replicas: 1
     security.protocol: SASL_SSL
     sasl.mechanism: AWS_MSK_IAM
     sasl.jaas.config: software.amazon.msk.auth.iam.IAMLoginModule required;
@@ -207,10 +207,10 @@ spring:
 nakadi:
   topic:
     default:
-      replicaFactor: 2
+      replicaFactor: 1
   kafka:
     bootstrap.servers: b-1.eventhubdevmskkafka.b8f51p.c6.kafka.us-east-1.amazonaws.com:9098,b-2.eventhubdevmskkafka.b8f51p.c6.kafka.us-east-1.amazonaws.com:9098
-    min.insync.replicas: 2
+    min.insync.replicas: 1
     security.protocol: SASL_SSL
     sasl.mechanism: AWS_MSK_IAM
     sasl.jaas.config: software.amazon.msk.auth.iam.IAMLoginModule required;
