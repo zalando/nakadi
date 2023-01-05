@@ -76,8 +76,6 @@ public class NakadiMetricsModule extends Module {
             final Snapshot snapshot = histogram.getSnapshot();
             json.writeNumberField("count", histogram.getCount());
             json.writeNumberField("mean", snapshot.getMean());
-            json.writeNumberField("max", snapshot.getMax());
-            json.writeNumberField("min", snapshot.getMin());
 
             if (showSamples) {
                 json.writeObjectField("values", snapshot.getValues());
