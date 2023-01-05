@@ -33,7 +33,6 @@ import org.zalando.nakadi.exceptions.runtime.NoSuchEventTypeException;
 import org.zalando.nakadi.exceptions.runtime.PartitioningException;
 import org.zalando.nakadi.exceptions.runtime.PublishEventOwnershipException;
 import org.zalando.nakadi.exceptions.runtime.ServiceTemporarilyUnavailableException;
-import org.zalando.nakadi.metrics.EventTypeMetricRegistry;
 import org.zalando.nakadi.partitioning.EventKeyExtractor;
 import org.zalando.nakadi.partitioning.PartitionResolver;
 import org.zalando.nakadi.service.AuthorizationValidator;
@@ -45,9 +44,7 @@ import org.zalando.nakadi.validation.ValidationError;
 
 import java.io.Closeable;
 import java.io.IOException;
-import java.util.HashMap;
 import java.util.List;
-import java.util.Map;
 import java.util.Optional;
 import java.util.concurrent.TimeoutException;
 import java.util.function.Function;
@@ -67,7 +64,6 @@ public class EventPublisher {
     private final TimelineSync timelineSync;
     private final AuthorizationValidator authValidator;
     private final EventOwnerExtractorFactory eventOwnerExtractorFactory;
-    private final EventTypeMetricRegistry eventTypeMetricRegistry;
 
     @Autowired
     public EventPublisher(final TimelineService timelineService,
@@ -77,8 +73,7 @@ public class EventPublisher {
                           final NakadiSettings nakadiSettings,
                           final TimelineSync timelineSync,
                           final AuthorizationValidator authValidator,
-                          final EventOwnerExtractorFactory eventOwnerExtractorFactory,
-                          final EventTypeMetricRegistry eventTypeMetricRegistry) {
+                          final EventOwnerExtractorFactory eventOwnerExtractorFactory) {
         this.timelineService = timelineService;
         this.eventTypeCache = eventTypeCache;
         this.partitionResolver = partitionResolver;
@@ -87,7 +82,6 @@ public class EventPublisher {
         this.timelineSync = timelineSync;
         this.authValidator = authValidator;
         this.eventOwnerExtractorFactory = eventOwnerExtractorFactory;
-        this.eventTypeMetricRegistry = eventTypeMetricRegistry;
     }
 
     public EventPublishResult publish(final String events, final String eventTypeName)
@@ -216,23 +210,10 @@ public class EventPublisher {
         }
     }
 
-    private void assignKey(final List<BatchItem> batch, final EventType eventType) {
-        final Map<String, Integer> eventCountPerKey = new HashMap<>();
-
+    private static void assignKey(final List<BatchItem> batch, final EventType eventType) {
         final Function<BatchItem, String> kafkaKeyExtractor = EventKeyExtractor.kafkaKeyFromBatchItem(eventType);
         for (final BatchItem item : batch) {
-            final String key = kafkaKeyExtractor.apply(item);
-            item.setEventKey(key);
-            // only for the metrics:
-            if (key != null) {
-                eventCountPerKey.compute(key, (k, v) -> v == null ? 1 : v + 1);
-            }
-        }
-
-        if (!eventCountPerKey.isEmpty()) {
-                eventTypeMetricRegistry
-                        .metricsFor(eventType.getName())
-                        .reportPerKeyEventCounts(eventCountPerKey.values());
+            item.setEventKey(kafkaKeyExtractor.apply(item));
         }
     }
 
@@ -293,7 +274,7 @@ public class EventPublisher {
 
     private void submit(
             final List<BatchItem> batch, final EventType eventType, final boolean delete)
-            throws EventPublishingException, InternalNakadiException {
+        throws EventPublishingException, InternalNakadiException {
         final Timeline activeTimeline = timelineService.getActiveTimeline(eventType);
         final String topic = activeTimeline.getTopic();
 

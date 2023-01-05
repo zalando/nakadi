@@ -6,7 +6,6 @@ import com.codahale.metrics.MetricRegistry;
 import com.codahale.metrics.Timer;
 import com.google.common.annotations.VisibleForTesting;
 
-import java.util.Collection;
 import java.util.Optional;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
@@ -19,33 +18,24 @@ public class EventTypeMetrics {
     private final String eventTypeName;
     private final MetricRegistry metricRegistry;
 
+    private final Histogram eventsPerBatchHistogram;
+    private final Timer publishingTimer;
     private final Meter eventCountMeter;
     private final Meter trafficInBytesMeter;
     private final Histogram batchSizeInBytesHistogram;
     private final Histogram averageEventSizeInBytesHistogram;
-    private final Histogram eventsPerBatchHistogram;
-    private final Histogram keysPerBatchHistogram;
-    private final Histogram eventsPerKeyHistogram;
-    private final Timer publishingTimer;
-
     private final ConcurrentMap<Integer, Meter> statusCodeMeter = new ConcurrentHashMap<>();
 
     public EventTypeMetrics(final String eventTypeName, final MetricRegistry metricRegistry) {
         this.eventTypeName = eventTypeName;
         this.metricRegistry = metricRegistry;
-
         eventCountMeter = metricRegistry.meter(metricNameFor(eventTypeName, "publishing.events"));
         trafficInBytesMeter = metricRegistry.meter(metricNameFor(eventTypeName, "publishing.trafficInBytes"));
-
         batchSizeInBytesHistogram = metricRegistry.histogram(
                 metricNameFor(eventTypeName, "publishing.batchSizeInBytes"));
+        eventsPerBatchHistogram = metricRegistry.histogram(metricNameFor(eventTypeName, "publishing.eventsPerBatch"));
         averageEventSizeInBytesHistogram = metricRegistry.histogram(
                 metricNameFor(eventTypeName, "publishing.averageEventSizeInBytes"));
-
-        eventsPerBatchHistogram = metricRegistry.histogram(metricNameFor(eventTypeName, "publishing.eventsPerBatch"));
-        keysPerBatchHistogram = metricRegistry.histogram(metricNameFor(eventTypeName, "publishing.keysPerBatch"));
-        eventsPerKeyHistogram = metricRegistry.histogram(metricNameFor(eventTypeName, "publishing.eventsPerKey"));
-
         publishingTimer = metricRegistry.timer(metricNameFor(eventTypeName, "publishing"));
     }
 
@@ -55,11 +45,6 @@ public class EventTypeMetrics {
         trafficInBytesMeter.mark(totalEventSize);
         batchSizeInBytesHistogram.update(totalEventSize);
         averageEventSizeInBytesHistogram.update(eventsPerBatch == 0 ? 0 : totalEventSize / eventsPerBatch);
-    }
-
-    public void reportPerKeyEventCounts(final Collection<Integer> perKeyEventCounts) {
-        keysPerBatchHistogram.update(perKeyEventCounts.size());
-        perKeyEventCounts.forEach(eventsPerKeyHistogram::update);
     }
 
     public void incrementResponseCount(final int code) {
