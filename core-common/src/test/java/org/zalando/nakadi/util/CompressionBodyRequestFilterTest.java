@@ -38,14 +38,14 @@ public class CompressionBodyRequestFilterTest {
 
     @Test
     public void shouldRespondBadRequestIfContentIsNotGZIP() throws ServletException, IOException {
-        var request = new MockHttpServletRequest();
+        final var request = new MockHttpServletRequest();
         request.addHeader(HttpHeaders.CONTENT_ENCODING, "gzip");
         request.setMethod("POST");
         request.setContent("that's test data is not GZIP".getBytes(StandardCharsets.UTF_8));
 
-        var response = new MockHttpServletResponse();
+        final var response = new MockHttpServletResponse();
 
-        var objectMapper = new ObjectMapper();
+        final var objectMapper = new ObjectMapper();
         objectMapper.registerModule(new ProblemModule());
 
         new CompressionBodyRequestFilter(objectMapper)
