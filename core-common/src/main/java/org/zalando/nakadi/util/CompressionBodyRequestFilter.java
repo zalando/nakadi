@@ -44,7 +44,7 @@ public class CompressionBodyRequestFilter implements Filter {
             throws IOException, ServletException {
 
         HttpServletRequest request = (HttpServletRequest) servletRequest;
-        HttpServletResponse response = (HttpServletResponse) servletResponse;
+        final HttpServletResponse response = (HttpServletResponse) servletResponse;
 
         final Optional<String> contentEncodingOpt = Optional.ofNullable(
                 request.getHeader(CONTENT_ENCODING));
@@ -57,12 +57,13 @@ public class CompressionBodyRequestFilter implements Filter {
             if (contentEncoding.contains("gzip")) {
                 try {
                     request = new FilterServletRequestWrapper(request, new GZIPInputStream(request.getInputStream()));
-                } catch (ZipException ze) {
+                } catch (final ZipException ze) {
                     respondWithError(response, Problem.valueOf(Status.BAD_REQUEST, ze.getMessage()));
                     return;
                 }
-            } else if (contentEncoding.contains("zstd"))
+            } else if (contentEncoding.contains("zstd")) {
                 request = new FilterServletRequestWrapper(request, new ZstdInputStream(request.getInputStream()));
+            }
         }
 
         chain.doFilter(request, servletResponse);
