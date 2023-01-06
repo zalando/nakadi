@@ -2,10 +2,9 @@ package org.zalando.nakadi.util;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.github.luben.zstd.ZstdInputStream;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 import org.springframework.http.HttpMethod;
 import org.zalando.problem.Problem;
+import org.zalando.problem.Status;
 
 import javax.servlet.Filter;
 import javax.servlet.FilterChain;
@@ -25,13 +24,12 @@ import java.io.InputStreamReader;
 import java.io.PrintWriter;
 import java.util.Optional;
 import java.util.zip.GZIPInputStream;
+import java.util.zip.ZipException;
 
 import static org.springframework.http.HttpHeaders.CONTENT_ENCODING;
 import static org.zalando.problem.Status.NOT_ACCEPTABLE;
 
 public class CompressionBodyRequestFilter implements Filter {
-
-    private static final Logger LOG = LoggerFactory.getLogger(CompressionBodyRequestFilter.class);
 
     private final ObjectMapper objectMapper;
 
@@ -46,16 +44,23 @@ public class CompressionBodyRequestFilter implements Filter {
             throws IOException, ServletException {
 
         HttpServletRequest request = (HttpServletRequest) servletRequest;
+        final HttpServletResponse response = (HttpServletResponse) servletResponse;
 
         final Optional<String> contentEncodingOpt = Optional.ofNullable(
                 request.getHeader(CONTENT_ENCODING));
         if (contentEncodingOpt.isPresent() && !HttpMethod.POST.matches(request.getMethod())) {
-            reportNotAcceptableError((HttpServletResponse) servletResponse, request);
+            respondWithError(response, Problem.valueOf(NOT_ACCEPTABLE,
+                    request.getMethod() + " method doesn't support gzip content encoding"));
             return;
         } else if (contentEncodingOpt.isPresent()) {
             final String contentEncoding = contentEncodingOpt.get();
             if (contentEncoding.contains("gzip")) {
-                request = new FilterServletRequestWrapper(request, new GZIPInputStream(request.getInputStream()));
+                try {
+                    request = new FilterServletRequestWrapper(request, new GZIPInputStream(request.getInputStream()));
+                } catch (final ZipException ze) {
+                    respondWithError(response, Problem.valueOf(Status.BAD_REQUEST, ze.getMessage()));
+                    return;
+                }
             } else if (contentEncoding.contains("zstd")) {
                 request = new FilterServletRequestWrapper(request, new ZstdInputStream(request.getInputStream()));
             }
@@ -64,14 +69,11 @@ public class CompressionBodyRequestFilter implements Filter {
         chain.doFilter(request, servletResponse);
     }
 
-    private void reportNotAcceptableError(final HttpServletResponse response,
-                                          final HttpServletRequest request)
+    private void respondWithError(final HttpServletResponse response,
+                                  final Problem problem)
             throws IOException {
-
-        response.setStatus(NOT_ACCEPTABLE.getStatusCode());
+        response.setStatus(problem.getStatus().getStatusCode());
         final PrintWriter writer = response.getWriter();
-        final Problem problem = Problem.valueOf(NOT_ACCEPTABLE,
-                request.getMethod() + " method doesn't support gzip content encoding");
         writer.write(objectMapper.writeValueAsString(problem));
         writer.close();
     }
