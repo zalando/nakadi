@@ -35,6 +35,7 @@ import org.zalando.nakadi.exceptions.runtime.PublishEventOwnershipException;
 import org.zalando.nakadi.exceptions.runtime.ServiceTemporarilyUnavailableException;
 import org.zalando.nakadi.partitioning.EventKeyExtractor;
 import org.zalando.nakadi.partitioning.PartitionResolver;
+import org.zalando.nakadi.repository.TopicRepository;
 import org.zalando.nakadi.service.AuthorizationValidator;
 import org.zalando.nakadi.service.TracingService;
 import org.zalando.nakadi.service.timeline.TimelineService;
@@ -278,13 +279,20 @@ public class EventPublisher {
         final Timeline activeTimeline = timelineService.getActiveTimeline(eventType);
         final String topic = activeTimeline.getTopic();
 
+        final Tracer.SpanBuilder topicRepositorySpan = TracingService.buildNewSpan("get_topic_repository")
+                .withTag(Tags.MESSAGE_BUS_DESTINATION.getKey(), topic);
+        final TopicRepository topicRepository;
+        try (Closeable ignored = TracingService.withActiveSpan(topicRepositorySpan)) {
+            topicRepository = timelineService.getTopicRepository(eventType);
+        } catch (final IOException ioe) {
+            throw new InternalNakadiException("Error closing active span scope", ioe);
+        }
+
         final Span publishingSpan = TracingService.buildNewSpan("publishing_to_kafka")
                 .withTag(Tags.MESSAGE_BUS_DESTINATION.getKey(), topic)
                 .start();
         try (Closeable ignored = TracingService.activateSpan(publishingSpan)) {
-            timelineService
-                    .getTopicRepository(eventType)
-                    .syncPostBatch(topic, batch, eventType.getName(), delete);
+            topicRepository.syncPostBatch(topic, batch, eventType.getName(), delete);
         } catch (final EventPublishingException epe) {
             publishingSpan.log(epe.getMessage());
             throw epe;
