@@ -3,6 +3,8 @@ package org.zalando.nakadi.repository.kafka;
 import com.google.common.base.Preconditions;
 import com.google.common.collect.ImmutableMap;
 import com.google.common.collect.Lists;
+import io.opentracing.Tracer;
+import io.opentracing.tag.Tags;
 import org.apache.kafka.clients.admin.AdminClient;
 import org.apache.kafka.clients.admin.AlterConfigOp;
 import org.apache.kafka.clients.admin.ConfigEntry;
@@ -38,6 +40,7 @@ import org.zalando.nakadi.domain.PartitionStatistics;
 import org.zalando.nakadi.domain.Timeline;
 import org.zalando.nakadi.exceptions.runtime.CannotAddPartitionToTopicException;
 import org.zalando.nakadi.exceptions.runtime.EventPublishingException;
+import org.zalando.nakadi.exceptions.runtime.InternalNakadiException;
 import org.zalando.nakadi.exceptions.runtime.InvalidCursorException;
 import org.zalando.nakadi.exceptions.runtime.ServiceTemporarilyUnavailableException;
 import org.zalando.nakadi.exceptions.runtime.TopicConfigException;
@@ -48,8 +51,10 @@ import org.zalando.nakadi.mapper.NakadiRecordMapper;
 import org.zalando.nakadi.repository.EventConsumer;
 import org.zalando.nakadi.repository.NakadiTopicConfig;
 import org.zalando.nakadi.repository.TopicRepository;
+import org.zalando.nakadi.service.TracingService;
 
 import javax.annotation.Nullable;
+import java.io.Closeable;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Collection;
@@ -301,7 +306,16 @@ public class KafkaTopicRepository implements TopicRepository {
             throws EventPublishingException {
         final Producer<byte[], byte[]> producer = kafkaFactory.takeProducer();
         try {
-            final Map<String, String> partitionToBroker = producer.partitionsFor(topicId).stream()
+            final Tracer.SpanBuilder partitionsForSpan = TracingService.buildNewSpan("producer_partitions_for")
+                    .withTag(Tags.MESSAGE_BUS_DESTINATION.getKey(), topicId);
+            final List<PartitionInfo> partitionsInfo;
+            try (Closeable ignore = TracingService.withActiveSpan(partitionsForSpan)) {
+                partitionsInfo = producer.partitionsFor(topicId);
+            } catch (final IOException io) {
+                throw new InternalNakadiException("Error closing active span scope", io);
+            }
+
+            final Map<String, String> partitionToBroker = partitionsInfo.stream()
                     .filter(partitionInfo -> partitionInfo.leader() != null)
                     .collect(
                             Collectors.toMap(
@@ -314,18 +328,25 @@ public class KafkaTopicRepository implements TopicRepository {
             });
 
             final Map<BatchItem, CompletableFuture<Exception>> sendFutures = new HashMap<>();
-            for (final BatchItem item : batch) {
-                final String brokerId = item.getBrokerId();
-                if (brokerId == null) {
-                    item.updateStatusAndDetail(EventPublishingStatus.FAILED,
-                            String.format("No leader for partition: %s, topic: %s.", item.getPartition(), topicId));
-                    LOG.error("Failed to publish to kafka. No leader for ({}:{}).",
-                            topicId, item.getPartition());
-                    continue;
+            final Tracer.SpanBuilder sendBatchSpan = TracingService.buildNewSpan("send_batch_to_kafka")
+                    .withTag(Tags.MESSAGE_BUS_DESTINATION.getKey(), topicId);
+            try (Closeable ignore = TracingService.withActiveSpan(sendBatchSpan)) {
+                for (final BatchItem item : batch) {
+                    final String brokerId = item.getBrokerId();
+                    if (brokerId == null) {
+                        item.updateStatusAndDetail(EventPublishingStatus.FAILED,
+                                String.format("No leader for partition: %s, topic: %s.", item.getPartition(), topicId));
+                        LOG.error("Failed to publish to kafka. No leader for ({}:{}).",
+                                topicId, item.getPartition());
+                        continue;
+                    }
+                    item.setStep(EventPublishingStep.PUBLISHING);
+                    sendFutures.put(item, publishItem(producer, topicId, eventType, item, delete));
                 }
-                item.setStep(EventPublishingStep.PUBLISHING);
-                sendFutures.put(item, publishItem(producer, topicId, eventType, item, delete));
+            } catch (IOException io) {
+                throw new InternalNakadiException("Error closing active span scope", io);
             }
+
             final CompletableFuture<Void> multiFuture = CompletableFuture.allOf(
                     sendFutures.values().toArray(new CompletableFuture<?>[sendFutures.size()]));
             multiFuture.get(createSendTimeout(), TimeUnit.MILLISECONDS);
