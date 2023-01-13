@@ -306,16 +306,7 @@ public class KafkaTopicRepository implements TopicRepository {
             throws EventPublishingException {
         final Producer<byte[], byte[]> producer = kafkaFactory.takeProducer();
         try {
-            final Tracer.SpanBuilder partitionsForSpan = TracingService.buildNewSpan("producer_partitions_for")
-                    .withTag(Tags.MESSAGE_BUS_DESTINATION.getKey(), topicId);
-            final List<PartitionInfo> partitionsInfo;
-            try (Closeable ignore = TracingService.withActiveSpan(partitionsForSpan)) {
-                partitionsInfo = producer.partitionsFor(topicId);
-            } catch (final IOException io) {
-                throw new InternalNakadiException("Error closing active span scope", io);
-            }
-
-            final Map<String, String> partitionToBroker = partitionsInfo.stream()
+            final Map<String, String> partitionToBroker = producer.partitionsFor(topicId).stream()
                     .filter(partitionInfo -> partitionInfo.leader() != null)
                     .collect(
                             Collectors.toMap(
@@ -349,7 +340,14 @@ public class KafkaTopicRepository implements TopicRepository {
 
             final CompletableFuture<Void> multiFuture = CompletableFuture.allOf(
                     sendFutures.values().toArray(new CompletableFuture<?>[sendFutures.size()]));
-            multiFuture.get(createSendTimeout(), TimeUnit.MILLISECONDS);
+
+            final Tracer.SpanBuilder partitionsForSpan = TracingService.buildNewSpan("wait_for_batch_sent")
+                    .withTag(Tags.MESSAGE_BUS_DESTINATION.getKey(), topicId);
+            try (Closeable ignore = TracingService.withActiveSpan(partitionsForSpan)) {
+                multiFuture.get(createSendTimeout(), TimeUnit.MILLISECONDS);
+            } catch (final IOException io) {
+                throw new InternalNakadiException("Error closing active span scope", io);
+            }
 
             // Now lets check for errors
             final Optional<Exception> needReset = sendFutures.entrySet().stream()
