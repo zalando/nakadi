@@ -341,9 +341,9 @@ public class KafkaTopicRepository implements TopicRepository {
             final CompletableFuture<Void> multiFuture = CompletableFuture.allOf(
                     sendFutures.values().toArray(new CompletableFuture<?>[sendFutures.size()]));
 
-            final Tracer.SpanBuilder partitionsForSpan = TracingService.buildNewSpan("wait_for_batch_sent")
+            final Tracer.SpanBuilder waitForBatchSentSpan = TracingService.buildNewSpan("wait_for_batch_sent")
                     .withTag(Tags.MESSAGE_BUS_DESTINATION.getKey(), topicId);
-            try (Closeable ignore = TracingService.withActiveSpan(partitionsForSpan)) {
+            try (Closeable ignore = TracingService.withActiveSpan(waitForBatchSentSpan)) {
                 multiFuture.get(createSendTimeout(), TimeUnit.MILLISECONDS);
             } catch (final IOException io) {
                 throw new InternalNakadiException("Error closing active span scope", io);
