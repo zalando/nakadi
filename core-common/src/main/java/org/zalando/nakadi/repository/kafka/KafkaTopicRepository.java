@@ -306,7 +306,16 @@ public class KafkaTopicRepository implements TopicRepository {
             throws EventPublishingException {
         final Producer<byte[], byte[]> producer = kafkaFactory.takeProducer();
         try {
-            final Map<String, String> partitionToBroker = producer.partitionsFor(topicId).stream()
+            final Tracer.SpanBuilder partitionsForSpan = TracingService.buildNewSpan("producer_partitions_for")
+                    .withTag(Tags.MESSAGE_BUS_DESTINATION.getKey(), topicId);
+            final List<PartitionInfo> partitionsInfo;
+            try (Closeable ignore = TracingService.withActiveSpan(partitionsForSpan)) {
+                partitionsInfo = producer.partitionsFor(topicId);
+            } catch (final IOException io) {
+                throw new InternalNakadiException("Error closing active span scope", io);
+            }
+
+            final Map<String, String> partitionToBroker = partitionsInfo.stream()
                     .filter(partitionInfo -> partitionInfo.leader() != null)
                     .collect(
                             Collectors.toMap(
