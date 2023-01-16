@@ -1,7 +1,5 @@
 package org.zalando.nakadi.repository.kafka;
 
-import com.codahale.metrics.Counter;
-import com.codahale.metrics.MetricRegistry;
 import org.apache.kafka.clients.consumer.Consumer;
 import org.apache.kafka.clients.consumer.ConsumerRecords;
 import org.apache.kafka.clients.consumer.KafkaConsumer;
@@ -31,18 +29,13 @@ public class KafkaFactory {
 
     private static final Logger LOG = LoggerFactory.getLogger(KafkaFactory.class);
     private final KafkaLocationManager kafkaLocationManager;
-    private final Counter useCountMetric;
-    private final Counter producerTerminations;
     private final Map<Producer<byte[], byte[]>, AtomicInteger> useCount;
     private final ReadWriteLock rwLock;
     private final List<Producer<byte[], byte[]>> activeProducers;
     private final AtomicLong activeProducerCounter;
 
-    public KafkaFactory(final KafkaLocationManager kafkaLocationManager, final MetricRegistry metricRegistry,
-            final int numActiveProducers) {
+    public KafkaFactory(final KafkaLocationManager kafkaLocationManager, final int numActiveProducers) {
         this.kafkaLocationManager = kafkaLocationManager;
-        this.useCountMetric = metricRegistry.counter("kafka.producer.use_count");
-        this.producerTerminations = metricRegistry.counter("kafka.producer.termination_count");
 
         this.useCount = new ConcurrentHashMap<>();
         this.rwLock = new ReentrantReadWriteLock();
@@ -92,7 +85,6 @@ public class KafkaFactory {
         if (null == result) {
             result = takeUnderLock(index, true);
         }
-        useCountMetric.inc();
         return result;
     }
 
@@ -103,7 +95,6 @@ public class KafkaFactory {
      * @param producer Producer to release.
      */
     public void releaseProducer(final Producer<byte[], byte[]> producer) {
-        useCountMetric.dec();
         final AtomicInteger counter = useCount.get(producer);
         if (counter != null && 0 == counter.decrementAndGet()) {
             final boolean deleteProducer;
@@ -143,7 +134,6 @@ public class KafkaFactory {
         try {
             final int index = activeProducers.indexOf(producer);
             if (index >= 0) {
-                producerTerminations.inc();
                 activeProducers.set(index, null);
             } else {
                 LOG.info("Signal for producer termination already received: " + producer);

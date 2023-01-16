@@ -1,7 +1,5 @@
 package org.zalando.nakadi.repository.kafka;
 
-import com.codahale.metrics.Counter;
-import com.codahale.metrics.MetricRegistry;
 import org.apache.kafka.clients.producer.Producer;
 import org.junit.Assert;
 import org.junit.Test;
@@ -14,8 +12,8 @@ import java.util.stream.IntStream;
 public class KafkaFactoryTest {
     private static class FakeKafkaFactory extends KafkaFactory {
 
-        FakeKafkaFactory(final MetricRegistry metricRegistry, final int numActiveProducers) {
-            super(null, metricRegistry, numActiveProducers);
+        FakeKafkaFactory(final int numActiveProducers) {
+            super(null, numActiveProducers);
         }
 
         @Override
@@ -24,15 +22,9 @@ public class KafkaFactoryTest {
         }
     }
 
-    private static KafkaFactory createTestKafkaFactory(final int numActiveProducers) {
-        final MetricRegistry reg = Mockito.mock(MetricRegistry.class);
-        Mockito.when(reg.counter(Mockito.anyString())).thenReturn(Mockito.mock(Counter.class));
-        return new FakeKafkaFactory(reg, numActiveProducers);
-    }
-
     @Test
     public void whenSingleProducerThenTheSameProducerIsGiven() {
-        final KafkaFactory factory = createTestKafkaFactory(1);
+        final KafkaFactory factory = new FakeKafkaFactory(1);
         final Producer<byte[], byte[]> producer1 = factory.takeProducer();
         try {
             Assert.assertNotNull(producer1);
@@ -50,7 +42,7 @@ public class KafkaFactoryTest {
 
     @Test
     public void verifySingleProducerIsClosedAtCorrectTime() {
-        final KafkaFactory factory = createTestKafkaFactory(1);
+        final KafkaFactory factory = new FakeKafkaFactory(1);
 
         final List<Producer<byte[], byte[]>> producers1 = IntStream.range(0, 10)
                 .mapToObj(ignore -> factory.takeProducer()).collect(Collectors.toList());
@@ -81,7 +73,7 @@ public class KafkaFactoryTest {
 
     @Test
     public void verifyNewProducerCreatedAfterCloseOfSingle() {
-        final KafkaFactory factory = createTestKafkaFactory(1);
+        final KafkaFactory factory = new FakeKafkaFactory(1);
         final Producer<byte[], byte[]> producer1 = factory.takeProducer();
         Assert.assertNotNull(producer1);
         factory.terminateProducer(producer1);
@@ -97,7 +89,7 @@ public class KafkaFactoryTest {
 
     @Test
     public void testGoldenPathWithManyActiveProducers() {
-        final KafkaFactory factory = createTestKafkaFactory(4);
+        final KafkaFactory factory = new FakeKafkaFactory(4);
 
         final List<Producer<byte[], byte[]>> producers = IntStream.range(0, 10)
                 .mapToObj(ignore -> factory.takeProducer()).collect(Collectors.toList());
