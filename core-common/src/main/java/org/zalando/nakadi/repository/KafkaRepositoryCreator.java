@@ -64,9 +64,8 @@ public class KafkaRepositoryCreator implements TopicRepositoryCreator {
                     zookeeperSettings.getZkConnectionTimeoutMs(),
                     nakadiSettings);
             final KafkaLocationManager kafkaLocationManager = new KafkaLocationManager(zooKeeperHolder, kafkaSettings);
-            final int kafkaActiveProducersCount = nakadiSettings.getKafkaActiveProducersCount();
             final KafkaFactory kafkaFactory =
-                    new KafkaFactory(kafkaLocationManager, metricRegistry, kafkaActiveProducersCount);
+                    new KafkaFactory(kafkaLocationManager, nakadiSettings.getKafkaActiveProducersCount());
             final KafkaZookeeper zk = new KafkaZookeeper(zooKeeperHolder, objectMapper);
             final KafkaTopicRepository kafkaTopicRepository =
                     new KafkaTopicRepository.Builder()
