@@ -47,6 +47,7 @@ public class KafkaRepositoryAT extends BaseAT {
     private static final int ZK_SESSION_TIMEOUT = 30000;
     private static final int ZK_CONNECTION_TIMEOUT = 10000;
     private static final int ZK_MAX_IN_FLIGHT_REQUESTS = 1000;
+    private static final int ACTIVE_PRODUCERS_COUNT = 4;
     private static final int NAKADI_SEND_TIMEOUT = 10000;
     private static final int NAKADI_POLL_TIMEOUT = 10000;
     private static final Long DEFAULT_RETENTION_TIME = 100L;
@@ -91,6 +92,7 @@ public class KafkaRepositoryAT extends BaseAT {
                 DEFAULT_TOPIC_RETENTION,
                 DEFAULT_TOPIC_ROTATION,
                 DEFAULT_COMMIT_TIMEOUT,
+                ACTIVE_PRODUCERS_COUNT,
                 NAKADI_POLL_TIMEOUT,
                 NAKADI_SEND_TIMEOUT,
                 TIMELINE_WAIT_TIMEOUT,

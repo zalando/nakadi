@@ -91,7 +91,7 @@ public class EventPublisherTest {
     protected final Enrichment enrichment = mock(Enrichment.class);
     protected final AuthorizationValidator authzValidator = mock(AuthorizationValidator.class);
     protected final TimelineService timelineService = Mockito.mock(TimelineService.class);
-    protected final NakadiSettings nakadiSettings = new NakadiSettings(0, 0, 0, TOPIC_RETENTION_TIME_MS, 0, 60,
+    protected final NakadiSettings nakadiSettings = new NakadiSettings(0, 0, 0, TOPIC_RETENTION_TIME_MS, 0, 60, 1,
             NAKADI_POLL_TIMEOUT, NAKADI_SEND_TIMEOUT, TIMELINE_WAIT_TIMEOUT_MS, NAKADI_EVENT_MAX_BYTES,
             NAKADI_SUBSCRIPTION_MAX_PARTITIONS, "service", "org/zalando/nakadi", "", "",
             "nakadi_archiver", "nakadi_to_s3", 100, 10000);
