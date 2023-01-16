@@ -21,8 +21,8 @@ import java.util.Map;
 import java.util.Properties;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.Future;
-import java.util.concurrent.ThreadLocalRandom;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReadWriteLock;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
@@ -33,9 +33,10 @@ public class KafkaFactory {
     private final KafkaLocationManager kafkaLocationManager;
     private final Counter useCountMetric;
     private final Counter producerTerminations;
-    private final Map<Producer<byte[], byte[]>, AtomicInteger> useCount = new ConcurrentHashMap<>();
-    private final ReadWriteLock rwLock = new ReentrantReadWriteLock();
+    private final Map<Producer<byte[], byte[]>, AtomicInteger> useCount;
+    private final ReadWriteLock rwLock;
     private final List<Producer<byte[], byte[]>> activeProducers;
+    private final AtomicLong activeProducerCounter;
 
     public KafkaFactory(final KafkaLocationManager kafkaLocationManager, final MetricRegistry metricRegistry,
             final int numActiveProducers) {
@@ -43,10 +44,15 @@ public class KafkaFactory {
         this.useCountMetric = metricRegistry.counter("kafka.producer.use_count");
         this.producerTerminations = metricRegistry.counter("kafka.producer.termination_count");
 
+        this.useCount = new ConcurrentHashMap<>();
+        this.rwLock = new ReentrantReadWriteLock();
+
         this.activeProducers = new ArrayList<>(numActiveProducers);
         for (int i = 0; i < numActiveProducers; ++i) {
             this.activeProducers.add(null);
         }
+
+        this.activeProducerCounter = new AtomicLong(0);
     }
 
     @Nullable
@@ -80,8 +86,7 @@ public class KafkaFactory {
      * @return Initialized kafka producer instance.
      */
     public Producer<byte[], byte[]> takeProducer() {
-        // utilize thread-local random to avoid write contention
-        final int index = ThreadLocalRandom.current().nextInt(activeProducers.size());
+        final int index = (int)(activeProducerCounter.incrementAndGet() % activeProducers.size());
 
         Producer<byte[], byte[]> result = takeUnderLock(index, false);
         if (null == result) {

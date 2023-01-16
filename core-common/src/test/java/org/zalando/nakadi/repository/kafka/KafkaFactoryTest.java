@@ -14,8 +14,8 @@ import java.util.stream.IntStream;
 public class KafkaFactoryTest {
     private static class FakeKafkaFactory extends KafkaFactory {
 
-        FakeKafkaFactory(final MetricRegistry metricRegistry) {
-            super(null, metricRegistry, 1);
+        FakeKafkaFactory(final MetricRegistry metricRegistry, final int numActiveProducers) {
+            super(null, metricRegistry, numActiveProducers);
         }
 
         @Override
@@ -24,15 +24,15 @@ public class KafkaFactoryTest {
         }
     }
 
-    private static KafkaFactory createTestKafkaFactory() {
+    private static KafkaFactory createTestKafkaFactory(final int numActiveProducers) {
         final MetricRegistry reg = Mockito.mock(MetricRegistry.class);
         Mockito.when(reg.counter(Mockito.anyString())).thenReturn(Mockito.mock(Counter.class));
-        return new FakeKafkaFactory(reg);
+        return new FakeKafkaFactory(reg, numActiveProducers);
     }
- 
+
     @Test
-    public void verifySameProducerUsed() {
-        final KafkaFactory factory = createTestKafkaFactory();
+    public void whenSingleProducerThenTheSameProducerIsGiven() {
+        final KafkaFactory factory = createTestKafkaFactory(1);
         final Producer<byte[], byte[]> producer1 = factory.takeProducer();
         try {
             Assert.assertNotNull(producer1);
@@ -49,8 +49,8 @@ public class KafkaFactoryTest {
     }
 
     @Test
-    public void verifyProducerIsClosedAtCorrectTime() {
-        final KafkaFactory factory = createTestKafkaFactory();
+    public void verifySingleProducerIsClosedAtCorrectTime() {
+        final KafkaFactory factory = createTestKafkaFactory(1);
 
         final List<Producer<byte[], byte[]>> producers1 = IntStream.range(0, 10)
                 .mapToObj(ignore -> factory.takeProducer()).collect(Collectors.toList());
@@ -80,8 +80,8 @@ public class KafkaFactoryTest {
     }
 
     @Test
-    public void verifyNewProducerCreatedAfterClose() {
-        final KafkaFactory factory = createTestKafkaFactory();
+    public void verifyNewProducerCreatedAfterCloseOfSingle() {
+        final KafkaFactory factory = createTestKafkaFactory(1);
         final Producer<byte[], byte[]> producer1 = factory.takeProducer();
         Assert.assertNotNull(producer1);
         factory.terminateProducer(producer1);
@@ -93,5 +93,16 @@ public class KafkaFactoryTest {
         Assert.assertNotSame(producer1, producer2);
         factory.releaseProducer(producer2);
         Mockito.verify(producer2, Mockito.times(0)).close();
+    }
+
+    @Test
+    public void testGoldenPathWithManyActiveProducers() {
+        final KafkaFactory factory = createTestKafkaFactory(4);
+
+        final List<Producer<byte[], byte[]>> producers = IntStream.range(0, 10)
+                .mapToObj(ignore -> factory.takeProducer()).collect(Collectors.toList());
+
+        producers.forEach(Assert::assertNotNull);
+        producers.forEach(factory::releaseProducer);
     }
 }
