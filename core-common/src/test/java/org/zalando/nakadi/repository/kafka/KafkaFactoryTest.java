@@ -15,7 +15,7 @@ public class KafkaFactoryTest {
     private static class FakeKafkaFactory extends KafkaFactory {
 
         FakeKafkaFactory(final MetricRegistry metricRegistry) {
-            super(null, metricRegistry);
+            super(null, metricRegistry, 1);
         }
 
         @Override
