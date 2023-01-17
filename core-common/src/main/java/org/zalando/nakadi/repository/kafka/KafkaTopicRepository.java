@@ -52,6 +52,7 @@ import org.zalando.nakadi.repository.EventConsumer;
 import org.zalando.nakadi.repository.NakadiTopicConfig;
 import org.zalando.nakadi.repository.TopicRepository;
 import org.zalando.nakadi.service.TracingService;
+import org.zalando.nakadi.util.SLOBuckets;
 
 import javax.annotation.Nullable;
 import java.io.Closeable;
@@ -157,6 +158,7 @@ public class KafkaTopicRepository implements TopicRepository {
     }
 
     private CompletableFuture<Exception> publishItem(
+            final String sloBucketName,
             final Producer<byte[], byte[]> producer,
             final String topicId,
             final String eventType,
@@ -189,7 +191,7 @@ public class KafkaTopicRepository implements TopicRepository {
             item.updateStatusAndDetail(EventPublishingStatus.FAILED, "internal error");
             throw new EventPublishingException("Error publishing message to kafka", e, topicId, eventType);
         } catch (final RuntimeException e) {
-            kafkaFactory.terminateProducer(producer);
+            kafkaFactory.terminateProducer(sloBucketName, producer);
             item.updateStatusAndDetail(EventPublishingStatus.FAILED, "internal error");
             throw new EventPublishingException("Error publishing message to kafka", e, topicId, eventType);
         }
@@ -230,9 +232,13 @@ public class KafkaTopicRepository implements TopicRepository {
             if (!Boolean.TRUE.equals(areNewPartitionsAdded)) {
                 throw new TopicConfigException(String.format("Failed to repartition topic to %s", partitionsNumber));
             }
-            final Producer<byte[], byte[]> producer = kafkaFactory.takeProducer();
-            kafkaFactory.terminateProducer(producer);
-            kafkaFactory.releaseProducer(producer);
+            // Man, WTF!?..
+            final Producer<byte[], byte[]> producer = kafkaFactory.takeDefaultProducer();
+            try {
+                kafkaFactory.terminateDefaultProducer(producer);
+            } finally {
+                kafkaFactory.releaseDefaultProducer(producer);
+            }
         } catch (Exception e) {
             throw new CannotAddPartitionToTopicException(String
                     .format("Failed to increase the number of partition for %s topic to %s", topic,
@@ -304,7 +310,14 @@ public class KafkaTopicRepository implements TopicRepository {
     public void syncPostBatch(
             final String topicId, final List<BatchItem> batch, final String eventType, final boolean delete)
             throws EventPublishingException {
-        final Producer<byte[], byte[]> producer = kafkaFactory.takeProducer();
+
+        long totalRawSize = 0;
+        for (final BatchItem item : batch) {
+            totalRawSize += item.getEventSize();
+        }
+        final String sloBucketName = SLOBuckets.getNameForBatchSize(totalRawSize);
+
+        final Producer<byte[], byte[]> producer = kafkaFactory.takeProducer(sloBucketName);
         try {
             final Map<String, String> partitionToBroker = producer.partitionsFor(topicId).stream()
                     .filter(partitionInfo -> partitionInfo.leader() != null)
@@ -332,7 +345,7 @@ public class KafkaTopicRepository implements TopicRepository {
                         continue;
                     }
                     item.setStep(EventPublishingStep.PUBLISHING);
-                    sendFutures.put(item, publishItem(producer, topicId, eventType, item, delete));
+                    sendFutures.put(item, publishItem(sloBucketName, producer, topicId, eventType, item, delete));
                 }
             } catch (IOException io) {
                 throw new InternalNakadiException("Error closing active span scope", io);
@@ -357,10 +370,10 @@ public class KafkaTopicRepository implements TopicRepository {
             if (needReset.isPresent()) {
                 LOG.info("Terminating producer while publishing to topic {} because of unrecoverable exception",
                         topicId, needReset.get());
-                kafkaFactory.terminateProducer(producer);
+                kafkaFactory.terminateProducer(sloBucketName, producer);
             }
         } catch (final TimeoutException ex) {
-            kafkaFactory.terminateProducer(producer);
+            kafkaFactory.terminateProducer(sloBucketName, producer);
             failUnpublished(topicId, eventType, batch, "timed out");
             throw new EventPublishingException("Timeout publishing message to kafka", ex, topicId, eventType);
         } catch (final ExecutionException ex) {
@@ -371,7 +384,7 @@ public class KafkaTopicRepository implements TopicRepository {
             failUnpublished(topicId, eventType, batch, "interrupted");
             throw new EventPublishingException("Interrupted publishing message to kafka", ex, topicId, eventType);
         } finally {
-            kafkaFactory.releaseProducer(producer);
+            kafkaFactory.releaseProducer(sloBucketName, producer);
         }
         final boolean atLeastOneFailed = batch.stream()
                 .anyMatch(item -> item.getResponse().getPublishingStatus() == EventPublishingStatus.FAILED);
@@ -443,7 +456,8 @@ public class KafkaTopicRepository implements TopicRepository {
      */
     public List<NakadiRecordResult> sendEvents(final String topic,
                                                final List<NakadiRecord> nakadiRecords) {
-        final Producer<byte[], byte[]> producer = kafkaFactory.takeProducer();
+
+        final Producer<byte[], byte[]> producer = kafkaFactory.takeDefaultProducer();
         final CountDownLatch latch = new CountDownLatch(nakadiRecords.size());
         final Map<NakadiRecord, NakadiRecordResult> responses = new ConcurrentHashMap<>();
         try {
@@ -482,7 +496,7 @@ public class KafkaTopicRepository implements TopicRepository {
                     .map(NakadiRecordResult::getException)
                     .anyMatch(KafkaTopicRepository::isExceptionShouldLeadToReset);
             if (shouldResetProducer) {
-                kafkaFactory.terminateProducer(producer);
+                kafkaFactory.terminateDefaultProducer(producer);
             }
 
             return prepareResponse(nakadiRecords, responses,
@@ -491,14 +505,14 @@ public class KafkaTopicRepository implements TopicRepository {
             Thread.currentThread().interrupt();
             return prepareResponse(nakadiRecords, responses, e);
         } catch (final RuntimeException e) {
-            kafkaFactory.terminateProducer(producer);
+            kafkaFactory.terminateDefaultProducer(producer);
             LOG.debug("RuntimeException:{}", e.getMessage(), e);
             return prepareResponse(nakadiRecords, responses, e);
         } catch (final IOException ioe) {
             LOG.debug("IOException:{}", ioe.getMessage(), ioe);
             return prepareResponse(nakadiRecords, responses, ioe);
         } finally {
-            kafkaFactory.releaseProducer(producer);
+            kafkaFactory.releaseDefaultProducer(producer);
         }
     }
 
@@ -704,14 +718,14 @@ public class KafkaTopicRepository implements TopicRepository {
     }
 
     public List<String> listPartitionNamesInternal(final String topicId) {
-        final Producer<byte[], byte[]> producer = kafkaFactory.takeProducer();
+        final Producer<byte[], byte[]> producer = kafkaFactory.takeDefaultProducer();
         try {
             return unmodifiableList(producer.partitionsFor(topicId)
                     .stream()
                     .map(partitionInfo -> KafkaCursor.toNakadiPartition(partitionInfo.partition()))
                     .collect(toList()));
         } finally {
-            kafkaFactory.releaseProducer(producer);
+            kafkaFactory.releaseDefaultProducer(producer);
         }
     }
 

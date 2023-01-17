@@ -12,8 +12,8 @@ import java.util.stream.IntStream;
 public class KafkaFactoryTest {
     private static class FakeKafkaFactory extends KafkaFactory {
 
-        FakeKafkaFactory(final int numActiveProducers) {
-            super(null, numActiveProducers);
+        FakeKafkaFactory() {
+            super(null);
         }
 
         @Override
@@ -24,77 +24,88 @@ public class KafkaFactoryTest {
 
     @Test
     public void whenSingleProducerThenTheSameProducerIsGiven() {
-        final KafkaFactory factory = new FakeKafkaFactory(1);
-        final Producer<byte[], byte[]> producer1 = factory.takeProducer();
+        final KafkaFactory factory = new FakeKafkaFactory();
+        final Producer<byte[], byte[]> producer1 = factory.takeDefaultProducer();
         try {
             Assert.assertNotNull(producer1);
         } finally {
-            factory.releaseProducer(producer1);
+            factory.releaseDefaultProducer(producer1);
         }
 
-        final Producer<byte[], byte[]> producer2 = factory.takeProducer();
+        final Producer<byte[], byte[]> producer2 = factory.takeDefaultProducer();
         try {
             Assert.assertSame(producer1, producer2);
         } finally {
-            factory.releaseProducer(producer2);
+            factory.releaseDefaultProducer(producer2);
         }
     }
 
     @Test
     public void verifySingleProducerIsClosedAtCorrectTime() {
-        final KafkaFactory factory = new FakeKafkaFactory(1);
+        final KafkaFactory factory = new FakeKafkaFactory();
 
         final List<Producer<byte[], byte[]>> producers1 = IntStream.range(0, 10)
-                .mapToObj(ignore -> factory.takeProducer()).collect(Collectors.toList());
+                .mapToObj(ignore -> factory.takeDefaultProducer()).collect(Collectors.toList());
         final Producer<byte[], byte[]> producer = producers1.get(0);
         Assert.assertNotNull(producer);
         producers1.forEach(p -> Assert.assertSame(producer, p));
-        producers1.forEach(factory::releaseProducer);
+        producers1.forEach(factory::releaseDefaultProducer);
 
         Mockito.verify(producer, Mockito.times(0)).close();
 
 
         final List<Producer<byte[], byte[]>> producers2 = IntStream.range(0, 10)
-                .mapToObj(ignore -> factory.takeProducer()).collect(Collectors.toList());
-        final Producer<byte[], byte[]> additionalProducer = factory.takeProducer();
+                .mapToObj(ignore -> factory.takeDefaultProducer()).collect(Collectors.toList());
+        final Producer<byte[], byte[]> additionalProducer = factory.takeDefaultProducer();
 
         Assert.assertSame(producer, additionalProducer);
         producers2.forEach(p -> Assert.assertSame(producer, p));
 
-        factory.terminateProducer(producers2.get(0));
+        factory.terminateDefaultProducer(producers2.get(0));
         Mockito.verify(producer, Mockito.times(0)).close();
 
-        producers2.forEach(factory::releaseProducer);
+        producers2.forEach(factory::releaseDefaultProducer);
         Mockito.verify(producer, Mockito.times(0)).close();
 
-        factory.releaseProducer(additionalProducer);
+        factory.releaseDefaultProducer(additionalProducer);
         Mockito.verify(producer, Mockito.times(1)).close();
     }
 
     @Test
     public void verifyNewProducerCreatedAfterCloseOfSingle() {
-        final KafkaFactory factory = new FakeKafkaFactory(1);
-        final Producer<byte[], byte[]> producer1 = factory.takeProducer();
+        final KafkaFactory factory = new FakeKafkaFactory();
+        final Producer<byte[], byte[]> producer1 = factory.takeDefaultProducer();
         Assert.assertNotNull(producer1);
-        factory.terminateProducer(producer1);
-        factory.releaseProducer(producer1);
+        factory.terminateDefaultProducer(producer1);
+        factory.releaseDefaultProducer(producer1);
         Mockito.verify(producer1, Mockito.times(1)).close();
 
-        final Producer<byte[], byte[]> producer2 = factory.takeProducer();
+        final Producer<byte[], byte[]> producer2 = factory.takeDefaultProducer();
         Assert.assertNotNull(producer2);
         Assert.assertNotSame(producer1, producer2);
-        factory.releaseProducer(producer2);
+        factory.releaseDefaultProducer(producer2);
         Mockito.verify(producer2, Mockito.times(0)).close();
     }
 
     @Test
-    public void testGoldenPathWithManyActiveProducers() {
-        final KafkaFactory factory = new FakeKafkaFactory(4);
+    public void testTakingProducerForTheSameOrDifferentKey() {
+        final KafkaFactory factory = new FakeKafkaFactory();
 
-        final List<Producer<byte[], byte[]>> producers = IntStream.range(0, 10)
-                .mapToObj(ignore -> factory.takeProducer()).collect(Collectors.toList());
+        final Producer<byte[], byte[]> producer1 = factory.takeProducer("key1");
+        Assert.assertNotNull(producer1);
 
-        producers.forEach(Assert::assertNotNull);
-        producers.forEach(factory::releaseProducer);
+        final Producer<byte[], byte[]> producer2 = factory.takeProducer("key2");
+        Assert.assertNotNull(producer2);
+
+        Assert.assertNotSame(producer1, producer2);
+
+        final Producer<byte[], byte[]> producer3 = factory.takeProducer("key1");
+        Assert.assertNotNull(producer3);
+
+        Assert.assertSame(producer3, producer1);
+
+        factory.releaseProducer("key1", producer1);
+        factory.releaseProducer("key2", producer2);
+        factory.releaseProducer("key1", producer3);
     }
 }

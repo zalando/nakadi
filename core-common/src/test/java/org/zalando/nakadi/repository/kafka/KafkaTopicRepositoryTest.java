@@ -596,7 +596,7 @@ public class KafkaTopicRepositoryTest {
 
         when(kafkaFactory.getConsumer(KAFKA_CLIENT_ID)).thenReturn(consumer);
         when(kafkaFactory.getConsumer()).thenReturn(consumer);
-        when(kafkaFactory.takeProducer()).thenReturn(kafkaProducer);
+        when(kafkaFactory.takeProducer(anyString())).thenReturn(kafkaProducer);
 
         return kafkaFactory;
     }
