@@ -119,6 +119,7 @@ public class KafkaTopicRepositoryTest {
 
     private final KafkaTopicRepository kafkaTopicRepository;
     private final KafkaProducer<byte[], byte[]> kafkaProducer;
+    private final KafkaProducer<byte[], byte[]> defaultKafkaProducer;
     private final KafkaFactory kafkaFactory;
 
     @SuppressWarnings("unchecked")
@@ -127,6 +128,12 @@ public class KafkaTopicRepositoryTest {
         when(kafkaProducer.partitionsFor(anyString())).then(
                 invocation -> partitionsOfTopic((String) invocation.getArguments()[0])
         );
+
+        defaultKafkaProducer = mock(KafkaProducer.class);
+        when(defaultKafkaProducer.partitionsFor(anyString())).then(
+                invocation -> partitionsOfTopic((String) invocation.getArguments()[0])
+        );
+
         nakadiRecordMapper = TestUtils.getNakadiRecordMapper();
         kafkaFactory = createKafkaFactory();
         kafkaTopicRepository = createKafkaRepository(kafkaFactory);
@@ -449,7 +456,7 @@ public class KafkaTopicRepositoryTest {
         final var nakadiRecord = getTestNakadiRecord("0");
         final List<NakadiRecord> nakadiRecords = Lists.newArrayList(nakadiRecord, nakadiRecord, nakadiRecord);
 
-        when(kafkaProducer.send(any(), any())).thenAnswer(invocation -> {
+        when(defaultKafkaProducer.send(any(), any())).thenAnswer(invocation -> {
             final Callback callback = (Callback) invocation.getArguments()[1];
             callback.onCompletion(null, null);
             return null;
@@ -471,7 +478,7 @@ public class KafkaTopicRepositoryTest {
                 getTestNakadiRecord("3"));
 
         final Exception exception = new Exception();
-        when(kafkaProducer.send(any(), any())).thenAnswer(invocation -> {
+        when(defaultKafkaProducer.send(any(), any())).thenAnswer(invocation -> {
             final ProducerRecord record = (ProducerRecord) invocation.getArguments()[0];
             final Callback callback = (Callback) invocation.getArguments()[1];
             if (record.partition() % 2 == 0) {
@@ -505,7 +512,7 @@ public class KafkaTopicRepositoryTest {
                 getTestNakadiRecord("3"));
 
         final KafkaException exception = new KafkaException();
-        when(kafkaProducer.send(any(), any())).thenAnswer(invocation -> {
+        when(defaultKafkaProducer.send(any(), any())).thenAnswer(invocation -> {
             final ProducerRecord record = (ProducerRecord) invocation.getArguments()[0];
             final Callback callback = (Callback) invocation.getArguments()[1];
             if (record.partition() <= 1) {
@@ -596,6 +603,7 @@ public class KafkaTopicRepositoryTest {
 
         when(kafkaFactory.getConsumer(KAFKA_CLIENT_ID)).thenReturn(consumer);
         when(kafkaFactory.getConsumer()).thenReturn(consumer);
+        when(kafkaFactory.takeDefaultProducer()).thenReturn(defaultKafkaProducer);
         when(kafkaFactory.takeProducer(anyString())).thenReturn(kafkaProducer);
 
         return kafkaFactory;
