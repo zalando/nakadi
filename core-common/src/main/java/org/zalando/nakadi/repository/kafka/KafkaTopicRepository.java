@@ -223,7 +223,7 @@ public class KafkaTopicRepository implements TopicRepository {
 
             final long timeoutMillis = TimeUnit.SECONDS.toMillis(5);
             final Boolean areNewPartitionsAdded = Retryer.executeWithRetry(() -> {
-                        try (final Consumer<byte[], byte[]> consumer = kafkaFactory.getConsumer()) {
+                        try (Consumer<byte[], byte[]> consumer = kafkaFactory.getConsumer()) {
                             final List<PartitionInfo> partitions = consumer.partitionsFor(topic);
                             final int partitionsCount = partitions.size();
                             final int leadersCount = (int) partitions.stream().filter(p -> p.leader() != null).count();
