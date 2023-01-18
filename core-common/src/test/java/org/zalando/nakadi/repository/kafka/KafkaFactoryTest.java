@@ -17,7 +17,7 @@ public class KafkaFactoryTest {
         }
 
         @Override
-        protected Producer<byte[], byte[]> createProducerInstance() {
+        protected Producer<byte[], byte[]> createProducerInstance(final String clientId) {
             return Mockito.mock(Producer.class);
         }
     }
@@ -29,14 +29,14 @@ public class KafkaFactoryTest {
         try {
             Assert.assertNotNull(producer1);
         } finally {
-            factory.releaseDefaultProducer(producer1);
+            factory.releaseProducer(producer1);
         }
 
         final Producer<byte[], byte[]> producer2 = factory.takeDefaultProducer();
         try {
             Assert.assertSame(producer1, producer2);
         } finally {
-            factory.releaseDefaultProducer(producer2);
+            factory.releaseProducer(producer2);
         }
     }
 
@@ -49,7 +49,7 @@ public class KafkaFactoryTest {
         final Producer<byte[], byte[]> producer = producers1.get(0);
         Assert.assertNotNull(producer);
         producers1.forEach(p -> Assert.assertSame(producer, p));
-        producers1.forEach(factory::releaseDefaultProducer);
+        producers1.forEach(factory::releaseProducer);
 
         Mockito.verify(producer, Mockito.times(0)).close();
 
@@ -61,13 +61,13 @@ public class KafkaFactoryTest {
         Assert.assertSame(producer, additionalProducer);
         producers2.forEach(p -> Assert.assertSame(producer, p));
 
-        factory.terminateDefaultProducer(producers2.get(0));
+        factory.terminateProducer(producers2.get(0));
         Mockito.verify(producer, Mockito.times(0)).close();
 
-        producers2.forEach(factory::releaseDefaultProducer);
+        producers2.forEach(factory::releaseProducer);
         Mockito.verify(producer, Mockito.times(0)).close();
 
-        factory.releaseDefaultProducer(additionalProducer);
+        factory.releaseProducer(additionalProducer);
         Mockito.verify(producer, Mockito.times(1)).close();
     }
 
@@ -76,14 +76,14 @@ public class KafkaFactoryTest {
         final KafkaFactory factory = new FakeKafkaFactory();
         final Producer<byte[], byte[]> producer1 = factory.takeDefaultProducer();
         Assert.assertNotNull(producer1);
-        factory.terminateDefaultProducer(producer1);
-        factory.releaseDefaultProducer(producer1);
+        factory.terminateProducer(producer1);
+        factory.releaseProducer(producer1);
         Mockito.verify(producer1, Mockito.times(1)).close();
 
         final Producer<byte[], byte[]> producer2 = factory.takeDefaultProducer();
         Assert.assertNotNull(producer2);
         Assert.assertNotSame(producer1, producer2);
-        factory.releaseDefaultProducer(producer2);
+        factory.releaseProducer(producer2);
         Mockito.verify(producer2, Mockito.times(0)).close();
     }
 
@@ -104,8 +104,8 @@ public class KafkaFactoryTest {
 
         Assert.assertSame(producer3, producer1);
 
-        factory.releaseProducer("key1", producer1);
-        factory.releaseProducer("key2", producer2);
-        factory.releaseProducer("key1", producer3);
+        factory.releaseProducer(producer1);
+        factory.releaseProducer(producer2);
+        factory.releaseProducer(producer3);
     }
 }
