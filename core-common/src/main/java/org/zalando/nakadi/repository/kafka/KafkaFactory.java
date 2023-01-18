@@ -28,15 +28,16 @@ public class KafkaFactory {
 
     private static final Logger LOG = LoggerFactory.getLogger(KafkaFactory.class);
     private final KafkaLocationManager kafkaLocationManager;
-    private final Map<Producer<byte[], byte[]>, AtomicInteger> useCount;
+
     private final ReadWriteLock rwLock;
+    private final Map<Producer<byte[], byte[]>, AtomicInteger> useCountByProducer;
     private final Map<String, Producer<byte[], byte[]>> activeProducerByKey;
 
     public KafkaFactory(final KafkaLocationManager kafkaLocationManager) {
         this.kafkaLocationManager = kafkaLocationManager;
 
-        this.useCount = new ConcurrentHashMap<>();
         this.rwLock = new ReentrantReadWriteLock();
+        this.useCountByProducer = new ConcurrentHashMap<>();
         this.activeProducerByKey = new ConcurrentHashMap<>();
     }
 
@@ -47,11 +48,11 @@ public class KafkaFactory {
         try {
             Producer<byte[], byte[]> producer = activeProducerByKey.get(key);
             if (null != producer) {
-                useCount.get(producer).incrementAndGet();
+                useCountByProducer.get(producer).incrementAndGet();
                 return producer;
             } else if (canCreate) {
                 producer = createProducerInstance();
-                useCount.put(producer, new AtomicInteger(1));
+                useCountByProducer.put(producer, new AtomicInteger(1));
                 activeProducerByKey.put(key, producer);
 
                 LOG.info("New producer instance created for key {}: {}", key, producer);
@@ -89,7 +90,7 @@ public class KafkaFactory {
      * @param producer Producer to release.
      */
     public void releaseProducer(final String key, final Producer<byte[], byte[]> producer) {
-        final AtomicInteger counter = useCount.get(producer);
+        final AtomicInteger counter = useCountByProducer.get(producer);
         if (counter != null && 0 == counter.decrementAndGet()) {
             final boolean deleteProducer;
             rwLock.readLock().lock();
@@ -101,7 +102,7 @@ public class KafkaFactory {
             if (deleteProducer) {
                 rwLock.writeLock().lock();
                 try {
-                    if (counter.get() == 0 && null != useCount.remove(producer)) {
+                    if (counter.get() == 0 && null != useCountByProducer.remove(producer)) {
                         LOG.info("Stopping producer instance - It was reported that instance should be refreshed " +
                                 "and it is not used anymore: {}", producer);
                         producer.close();
