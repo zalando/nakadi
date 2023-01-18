@@ -52,6 +52,7 @@ import org.zalando.nakadi.repository.EventConsumer;
 import org.zalando.nakadi.repository.NakadiTopicConfig;
 import org.zalando.nakadi.repository.TopicRepository;
 import org.zalando.nakadi.service.TracingService;
+import org.zalando.nakadi.util.SLOBuckets;
 
 import javax.annotation.Nullable;
 import java.io.Closeable;
@@ -218,21 +219,23 @@ public class KafkaTopicRepository implements TopicRepository {
             TopicConfigException {
         try (AdminClient adminClient = AdminClient.create(kafkaLocationManager.getProperties())) {
             adminClient.createPartitions(ImmutableMap.of(topic, NewPartitions.increaseTo(partitionsNumber)));
+
             final long timeoutMillis = TimeUnit.SECONDS.toMillis(5);
             final Boolean areNewPartitionsAdded = Retryer.executeWithRetry(() -> {
                         try (Consumer<byte[], byte[]> consumer = kafkaFactory.getConsumer()) {
-                            return consumer.partitionsFor(topic).size() == partitionsNumber;
+                            final List<PartitionInfo> partitions = consumer.partitionsFor(topic);
+                            LOG.info("Repartitioning topic {} partitions: {}, expected: {}",
+                                     topic, partitions.size(), partitionsNumber);
+                            return partitions.size() == partitionsNumber;
                         }
                     },
                     new RetryForSpecifiedTimeStrategy<Boolean>(timeoutMillis)
-                            .withWaitBetweenEachTry(100L)
+                            .withWaitBetweenEachTry(1000L)
                             .withResultsThatForceRetry(Boolean.FALSE));
+
             if (!Boolean.TRUE.equals(areNewPartitionsAdded)) {
                 throw new TopicConfigException(String.format("Failed to repartition topic to %s", partitionsNumber));
             }
-            final Producer<byte[], byte[]> producer = kafkaFactory.takeProducer();
-            kafkaFactory.terminateProducer(producer);
-            kafkaFactory.releaseProducer(producer);
         } catch (Exception e) {
             throw new CannotAddPartitionToTopicException(String
                     .format("Failed to increase the number of partition for %s topic to %s", topic,
@@ -304,7 +307,14 @@ public class KafkaTopicRepository implements TopicRepository {
     public void syncPostBatch(
             final String topicId, final List<BatchItem> batch, final String eventType, final boolean delete)
             throws EventPublishingException {
-        final Producer<byte[], byte[]> producer = kafkaFactory.takeProducer();
+
+        long totalRawSize = 0;
+        for (final BatchItem item : batch) {
+            totalRawSize += item.getEventSize();
+        }
+        final String sloBucketName = SLOBuckets.getNameForBatchSize(totalRawSize);
+
+        final Producer<byte[], byte[]> producer = kafkaFactory.takeProducer(sloBucketName);
         try {
             final Map<String, String> partitionToBroker = producer.partitionsFor(topicId).stream()
                     .filter(partitionInfo -> partitionInfo.leader() != null)
@@ -443,7 +453,8 @@ public class KafkaTopicRepository implements TopicRepository {
      */
     public List<NakadiRecordResult> sendEvents(final String topic,
                                                final List<NakadiRecord> nakadiRecords) {
-        final Producer<byte[], byte[]> producer = kafkaFactory.takeProducer();
+
+        final Producer<byte[], byte[]> producer = kafkaFactory.takeDefaultProducer();
         final CountDownLatch latch = new CountDownLatch(nakadiRecords.size());
         final Map<NakadiRecord, NakadiRecordResult> responses = new ConcurrentHashMap<>();
         try {
@@ -704,7 +715,7 @@ public class KafkaTopicRepository implements TopicRepository {
     }
 
     public List<String> listPartitionNamesInternal(final String topicId) {
-        final Producer<byte[], byte[]> producer = kafkaFactory.takeProducer();
+        final Producer<byte[], byte[]> producer = kafkaFactory.takeDefaultProducer();
         try {
             return unmodifiableList(producer.partitionsFor(topicId)
                     .stream()

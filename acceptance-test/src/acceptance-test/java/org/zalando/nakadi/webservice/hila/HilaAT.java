@@ -100,20 +100,27 @@ public class HilaAT extends BaseAT {
         final EventType eventType = NakadiTestUtils.createBusinessEventTypeWithPartitions(1);
         NakadiTestUtils.publishBusinessEventWithUserDefinedPartition(
                 eventType.getName(), 1, x -> "{\"foo\":\"bar\"}", p -> "0");
+
         NakadiTestUtils.repartitionEventType(eventType, 2);
+        Thread.sleep(1500);
+
         final Subscription subscription = createSubscription(
                 RandomSubscriptionBuilder.builder()
                         .withEventType(eventType.getName())
                         .withStartFrom(BEGIN)
                         .buildSubscriptionBase());
+
         final TestStreamingClient clientAfterRepartitioning = TestStreamingClient
                 .create(URL, subscription.getId(), "")
                 .start();
+
         NakadiTestUtils.publishBusinessEventWithUserDefinedPartition(
                 eventType.getName(), 1, x -> "{\"foo\":\"bar" + x + "\"}", p -> "1");
+
         waitFor(() -> assertThat(clientAfterRepartitioning.getJsonBatches(), Matchers.hasSize(2)));
+
         Assert.assertTrue(clientAfterRepartitioning.getJsonBatches().stream()
-                .anyMatch(event -> event.getCursor().getPartition().equals("1")));
+                .anyMatch(batch -> batch.getCursor().getPartition().equals("1")));
     }
 
     @Test(timeout = 10000)
