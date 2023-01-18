@@ -220,24 +220,24 @@ public class KafkaTopicRepository implements TopicRepository {
             TopicConfigException {
         try (AdminClient adminClient = AdminClient.create(kafkaLocationManager.getProperties())) {
             adminClient.createPartitions(ImmutableMap.of(topic, NewPartitions.increaseTo(partitionsNumber)));
+
             final long timeoutMillis = TimeUnit.SECONDS.toMillis(5);
             final Boolean areNewPartitionsAdded = Retryer.executeWithRetry(() -> {
-                        try (Consumer<byte[], byte[]> consumer = kafkaFactory.getConsumer()) {
-                            return consumer.partitionsFor(topic).size() == partitionsNumber;
+                        try (final Consumer<byte[], byte[]> consumer = kafkaFactory.getConsumer()) {
+                            final List<PartitionInfo> partitions = consumer.partitionsFor(topic);
+                            final int partitionsCount = partitions.size();
+                            final int leadersCount = (int) partitions.stream().filter(p -> p.leader() != null).count();
+                            LOG.info("Repartitioning topic {} partitions: {}, leaders: {}, expected: {}",
+                                     topic, partitionsCount, leadersCount, partitionsNumber);
+                            return leadersCount == partitionsNumber;
                         }
                     },
                     new RetryForSpecifiedTimeStrategy<Boolean>(timeoutMillis)
                             .withWaitBetweenEachTry(100L)
                             .withResultsThatForceRetry(Boolean.FALSE));
+
             if (!Boolean.TRUE.equals(areNewPartitionsAdded)) {
                 throw new TopicConfigException(String.format("Failed to repartition topic to %s", partitionsNumber));
-            }
-            // Man, WTF!?..
-            final Producer<byte[], byte[]> producer = kafkaFactory.takeDefaultProducer();
-            try {
-                kafkaFactory.terminateDefaultProducer(producer);
-            } finally {
-                kafkaFactory.releaseDefaultProducer(producer);
             }
         } catch (Exception e) {
             throw new CannotAddPartitionToTopicException(String

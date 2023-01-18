@@ -71,6 +71,7 @@ nakadi:
     enable.auto.commit: false
     delivery.timeout.ms: 30000 # request.timeout.ms + linger.ms
     max.block.ms: 5000 # kafka default 60000
+    metadata.max.age.ms: 300000 # 5 min, default
   zookeeper:
     connectionString: zookeeper://zookeeper:2181
     sessionTimeoutMs: 10000
@@ -165,6 +166,8 @@ nakadi:
     AUDIT_LOG_COLLECTION: true
     EVENT_OWNER_SELECTOR_AUTHZ: false
     ACCESS_LOG_ENABLED: true
+  kafka:
+    metadata.max.age.ms: 1000
 kpi:
   config:
     stream-data-collection-frequency-ms: 100
