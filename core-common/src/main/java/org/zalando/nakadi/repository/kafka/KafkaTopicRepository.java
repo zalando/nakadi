@@ -224,15 +224,13 @@ public class KafkaTopicRepository implements TopicRepository {
             final Boolean areNewPartitionsAdded = Retryer.executeWithRetry(() -> {
                         try (Consumer<byte[], byte[]> consumer = kafkaFactory.getConsumer()) {
                             final List<PartitionInfo> partitions = consumer.partitionsFor(topic);
-                            final int partitionsCount = partitions.size();
-                            final int leadersCount = (int) partitions.stream().filter(p -> p.leader() != null).count();
-                            LOG.info("Repartitioning topic {} partitions: {}, leaders: {}, expected: {}",
-                                     topic, partitionsCount, leadersCount, partitionsNumber);
-                            return leadersCount == partitionsNumber;
+                            LOG.info("Repartitioning topic {} partitions: {}, expected: {}",
+                                     topic, partitions.size(), partitionsNumber);
+                            return partitions.size() == partitionsNumber;
                         }
                     },
                     new RetryForSpecifiedTimeStrategy<Boolean>(timeoutMillis)
-                            .withWaitBetweenEachTry(100L)
+                            .withWaitBetweenEachTry(1000L)
                             .withResultsThatForceRetry(Boolean.FALSE));
 
             if (!Boolean.TRUE.equals(areNewPartitionsAdded)) {
