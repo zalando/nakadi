@@ -10,16 +10,22 @@ import org.apache.kafka.clients.producer.ProducerRecord;
 import org.apache.kafka.clients.producer.RecordMetadata;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.zalando.nakadi.util.SLOBuckets;
 
 import javax.annotation.Nullable;
 import java.io.Closeable;
+import java.util.Arrays;
+import java.util.Collection;
 import java.util.HashMap;
+import java.util.Iterator;
+import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.Properties;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.Future;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReadWriteLock;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
@@ -29,11 +35,13 @@ public class KafkaFactory {
     public static final String DEFAULT_PRODUCER_CLIENT_ID = "default";
 
     private static final Logger LOG = LoggerFactory.getLogger(KafkaFactory.class);
-    private final KafkaLocationManager kafkaLocationManager;
+    private static final int ACTIVE_PRODUCERS_COUNT = 2;
 
+    private final KafkaLocationManager kafkaLocationManager;
     private final ReadWriteLock rwLock;
     private final Map<Producer<byte[], byte[]>, AtomicInteger> useCountByProducer;
-    private final Map<String, Producer<byte[], byte[]>> activeProducerByClientId;
+    private final Map<String, List<Producer<byte[], byte[]>>> activeProducerByClientId;
+    private final AtomicLong producersTaken;
 
     public KafkaFactory(final KafkaLocationManager kafkaLocationManager) {
         this.kafkaLocationManager = kafkaLocationManager;
@@ -41,21 +49,29 @@ public class KafkaFactory {
         this.rwLock = new ReentrantReadWriteLock();
         this.useCountByProducer = new ConcurrentHashMap<>();
         this.activeProducerByClientId = new HashMap<>();
+        this.activeProducerByClientId.put(SLOBuckets.BUCKET_NAME_5_KB, Arrays.asList(null, null));
+        this.activeProducerByClientId.put(SLOBuckets.BUCKET_NAME_5_50_KB, Arrays.asList(null));
+        this.activeProducerByClientId.put(SLOBuckets.BUCKET_NAME_MORE_THAN_50_KB, Arrays.asList(null));
+        this.activeProducerByClientId.put(DEFAULT_PRODUCER_CLIENT_ID, Arrays.asList(null));
+        this.producersTaken = new AtomicLong(0);
     }
 
     @Nullable
-    private Producer<byte[], byte[]> takeUnderLock(final String clientId, final boolean canCreate) {
+    private Producer<byte[], byte[]> takeUnderLock(final String clientId,
+                                                   final int index,
+                                                   final boolean canCreate) {
         final Lock lock = canCreate ? rwLock.writeLock() : rwLock.readLock();
         lock.lock();
         try {
-            Producer<byte[], byte[]> producer = activeProducerByClientId.get(clientId);
-            if (null != producer) {
+            final List<Producer<byte[], byte[]>> producers = activeProducerByClientId.get(clientId);
+            Producer<byte[], byte[]> producer = producers.get(index);
+            if (null != producers) {
                 useCountByProducer.get(producer).incrementAndGet();
                 return producer;
             } else if (canCreate) {
                 producer = createProducerInstance(clientId);
                 useCountByProducer.put(producer, new AtomicInteger(1));
-                activeProducerByClientId.put(clientId, producer);
+                producers.set(index, producer);
 
                 LOG.info("New producer instance created with client id '{}': {}", clientId, producer);
                 return producer;
@@ -74,9 +90,11 @@ public class KafkaFactory {
      * @return Initialized kafka producer instance.
      */
     public Producer<byte[], byte[]> takeProducer(final String clientId) {
-        Producer<byte[], byte[]> result = takeUnderLock(clientId, false);
+        final int index = ACTIVE_PRODUCERS_COUNT % (int) producersTaken.incrementAndGet();
+
+        Producer<byte[], byte[]> result = takeUnderLock(clientId, index, false);
         if (null == result) {
-            result = takeUnderLock(clientId, true);
+            result = takeUnderLock(clientId, index, true);
         }
         return result;
     }
@@ -94,14 +112,18 @@ public class KafkaFactory {
     public void releaseProducer(final Producer<byte[], byte[]> producer) {
         final AtomicInteger counter = useCountByProducer.get(producer);
         if (counter != null && 0 == counter.decrementAndGet()) {
-            final boolean deleteProducer;
+            final boolean closeProducer;
             rwLock.readLock().lock();
             try {
-                deleteProducer = !activeProducerByClientId.containsValue(producer);
+                closeProducer = !activeProducerByClientId.values().stream()
+                        .flatMap(Collection::stream)
+                        .filter(p -> p == producer)
+                        .findFirst()
+                        .isPresent();
             } finally {
                 rwLock.readLock().unlock();
             }
-            if (deleteProducer) {
+            if (closeProducer) {
                 rwLock.writeLock().lock();
                 try {
                     if (counter.get() == 0 && null != useCountByProducer.remove(producer)) {
@@ -130,11 +152,11 @@ public class KafkaFactory {
         rwLock.writeLock().lock();
         try {
             final Optional<String> clientId = activeProducerByClientId.entrySet().stream()
-                    .filter(kv -> kv.getValue() == producer)
+                    .filter(kv -> kv.getValue().contains(producer))
                     .map(Map.Entry::getKey)
                     .findFirst();
             if (clientId.isPresent()) {
-                activeProducerByClientId.remove(clientId.get());
+                activeProducerByClientId.get(clientId.get()).remove(producer);
             }
         } finally {
             rwLock.writeLock().unlock();
