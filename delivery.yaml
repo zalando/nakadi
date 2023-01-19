@@ -65,4 +65,4 @@ pipeline:
       paths:
         - /usr/local/bin/docker-compose
         - ~/.gradle/caches/modules-2/
-        - ~/.gradle/wrapper
+        - ~/.gradle/wrapper/
