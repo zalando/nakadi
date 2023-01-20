@@ -6,6 +6,10 @@ pipeline:
       type: linux
       size: extra_large
       image: cdp-runtime/jdk11
+    env:
+      # Ensure that gradle will not be running after we are done using it,
+      # so that we can clean up volatile gradle files in the cache:
+      GRADLE_OPTS: "-Dorg.gradle.daemon=false"
     commands:
       - desc: Checkstyle
         cmd: |
@@ -29,6 +33,9 @@ pipeline:
       - desc: Build and push
         cmd: |
           ./gradlew clean app:bootJar
+
+          # https://docs.gradle.org/current/userguide/dependency_resolution.html#sub:cache_copy
+          rm -f ~/.gradle/caches/modules-2/{*.lock,gc.properties}
 
           MULTI_ARCH_IMAGE="container-registry-test.zalando.net/aruha/nakadi-oss:${CDP_BUILD_VERSION}"
           IMAGE="registry-write.opensource.zalan.do/aruha/nakadi-oss:${CDP_BUILD_VERSION}"
@@ -57,5 +64,5 @@ pipeline:
     cache:
       paths:
         - /usr/local/bin/docker-compose
-        - ~/.gradle/caches
-        - ~/.gradle/wrapper
+        - ~/.gradle/caches/modules-2/
+        - ~/.gradle/wrapper/
