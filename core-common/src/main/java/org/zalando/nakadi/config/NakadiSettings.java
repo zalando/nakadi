@@ -15,6 +15,7 @@ public class NakadiSettings {
     private final long defaultTopicRetentionMs;
     private final long defaultTopicRotationMs;
     private final long maxCommitTimeout;
+    private final int kafkaActiveProducersCount;
     private final long kafkaPollTimeoutMs;
     private final long kafkaSendTimeoutMs;
     private final long timelineWaitTimeoutMs;
@@ -35,6 +36,7 @@ public class NakadiSettings {
                           @Value("${nakadi.topic.default.retentionMs}") final long defaultTopicRetentionMs,
                           @Value("${nakadi.topic.default.rotationMs}") final long defaultTopicRotationMs,
                           @Value("${nakadi.stream.max.commitTimeout}") final long maxCommitTimeout,
+                          @Value("${nakadi.kafka.producers.count}") final int kafkaActiveProducersCount,
                           @Value("${nakadi.kafka.poll.timeoutMs}") final long kafkaPollTimeoutMs,
                           @Value("${nakadi.kafka.send.timeoutMs}") final long kafkaSendTimeoutMs,
                           @Value("${nakadi.timeline.wait.timeoutMs}") final long timelineWaitTimeoutMs,
@@ -58,6 +60,7 @@ public class NakadiSettings {
         this.defaultTopicRetentionMs = defaultTopicRetentionMs;
         this.defaultTopicRotationMs = defaultTopicRotationMs;
         this.maxCommitTimeout = maxCommitTimeout;
+        this.kafkaActiveProducersCount = kafkaActiveProducersCount;
         this.kafkaPollTimeoutMs = kafkaPollTimeoutMs;
         this.kafkaSendTimeoutMs = kafkaSendTimeoutMs;
         this.eventMaxBytes = eventMaxBytes;
@@ -94,6 +97,10 @@ public class NakadiSettings {
 
     public long getMaxCommitTimeout() {
         return maxCommitTimeout;
+    }
+
+    public int getKafkaActiveProducersCount() {
+        return kafkaActiveProducersCount;
     }
 
     public long getKafkaPollTimeoutMs() {

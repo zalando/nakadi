@@ -118,8 +118,6 @@ public class HilaRepartitionAT extends BaseAT {
         NakadiTestUtils.repartitionEventType(eventType, 2);
         TestUtils.waitFor(() -> MatcherAssert.assertThat(client.isRunning(), Matchers.is(false)));
 
-        Thread.sleep(1500);
-
         final TestStreamingClient clientAfterRepartitioning = TestStreamingClient
                 .create(URL, subscription.getId(), "")
                 .startWithAutocommit(streamBatches -> LOG.info("{}", streamBatches));
@@ -155,9 +153,8 @@ public class HilaRepartitionAT extends BaseAT {
         NakadiTestUtils.createTimeline(eventType.getName());
 
         NakadiTestUtils.repartitionEventType(eventType, 2);
-        TestUtils.waitFor(() -> MatcherAssert.assertThat(client.isRunning(), Matchers.is(false)));
 
-        Thread.sleep(1500);
+        TestUtils.waitFor(() -> MatcherAssert.assertThat(client.isRunning(), Matchers.is(false)));
 
         final TestStreamingClient clientAfterRepartitioning = TestStreamingClient
                 .create(URL, subscription.getId(), "")

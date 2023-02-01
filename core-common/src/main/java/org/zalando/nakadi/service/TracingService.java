@@ -17,7 +17,22 @@ import static io.opentracing.propagation.Format.Builtin.HTTP_HEADERS;
 import static io.opentracing.propagation.Format.Builtin.TEXT_MAP;
 
 public class TracingService {
+    private static final String BUCKET_NAME_5_KB = "<5K";
+    private static final String BUCKET_NAME_5_50_KB = "5K-50K";
+    private static final String BUCKET_NAME_MORE_THAN_50_KB = ">50K";
+
+    private static final long BUCKET_5_KB = 5000L;
+    private static final long BUCKET_50_KB = 50000L;
     public static final String ERROR_DESCRIPTION = "error.description";
+
+    public static String getSLOBucketName(final long batchSize) {
+        if (batchSize > BUCKET_50_KB) {
+            return BUCKET_NAME_MORE_THAN_50_KB;
+        } else if (batchSize < BUCKET_5_KB) {
+            return BUCKET_NAME_5_KB;
+        }
+        return BUCKET_NAME_5_50_KB;
+    }
 
     public static Tracer.SpanBuilder buildNewSpan(final String operationName) {
         return GlobalTracer.get().buildSpan(operationName);
