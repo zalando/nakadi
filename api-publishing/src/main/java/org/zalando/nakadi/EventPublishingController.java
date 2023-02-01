@@ -35,7 +35,6 @@ import org.zalando.nakadi.service.TracingService;
 import org.zalando.nakadi.service.publishing.BinaryEventPublisher;
 import org.zalando.nakadi.service.publishing.EventPublisher;
 import org.zalando.nakadi.service.publishing.NakadiKpiPublisher;
-import org.zalando.nakadi.util.SLOBuckets;
 
 import javax.servlet.http.HttpServletRequest;
 import java.io.IOException;
@@ -174,7 +173,7 @@ public class EventPublishingController {
                 final int eventCount = result.getResponses().size();
 
                 final long totalSizeBytes = countingInputStream.getCount();
-                TracingService.setTag("slo_bucket", SLOBuckets.getNameForBatchSize(totalSizeBytes));
+                TracingService.setTag("slo_bucket", TracingService.getSLOBucketName(totalSizeBytes));
 
                 reportMetrics(eventTypeMetrics, result, totalSizeBytes, eventCount);
                 reportSLOs(startingNanos, totalSizeBytes, eventCount, result, eventTypeName, client);
@@ -246,7 +245,7 @@ public class EventPublishingController {
             final EventPublishResult result;
 
             final int totalSizeBytes = eventsAsString.getBytes(Charsets.UTF_8).length;
-            TracingService.setTag("slo_bucket", SLOBuckets.getNameForBatchSize(totalSizeBytes));
+            TracingService.setTag("slo_bucket", TracingService.getSLOBucketName(totalSizeBytes));
 
             if (delete) {
                 result = publisher.delete(eventsAsString, eventTypeName);

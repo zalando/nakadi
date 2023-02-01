@@ -102,7 +102,7 @@ public class EventTypeControllerTestCase {
     @Before
     public void init() throws Exception {
 
-        final NakadiSettings nakadiSettings = new NakadiSettings(32, 0, 0, TOPIC_RETENTION_TIME_MS, 0, 60,
+        final NakadiSettings nakadiSettings = new NakadiSettings(32, 0, 0, TOPIC_RETENTION_TIME_MS, 0, 60, 1,
                 NAKADI_POLL_TIMEOUT, NAKADI_SEND_TIMEOUT, 0, NAKADI_EVENT_MAX_BYTES,
                 NAKADI_SUBSCRIPTION_MAX_PARTITIONS, "service", "org/zalando/nakadi", "I am warning you",
                 "I am warning you, even more", "nakadi_archiver", "nakadi_to_s3", 100, 10000);
