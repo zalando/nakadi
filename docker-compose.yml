@@ -27,7 +27,7 @@ services:
     - SPRING_DATASOURCE_PASSWORD=nakadi
 
   postgres:
-    image: postgres:9.6
+    image: postgres:14
     ports:
     - "5432:5432"
     volumes:
