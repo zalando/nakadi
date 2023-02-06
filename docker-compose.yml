@@ -27,7 +27,7 @@ services:
     - SPRING_DATASOURCE_PASSWORD=nakadi
 
   postgres:
-    image: postgres:9.6.16
+    image: postgres:9.6
     ports:
     - "5432:5432"
     volumes:
@@ -43,7 +43,7 @@ services:
     - "2181:2181"
 
   kafka:
-    image: bitnami/kafka:3.1.1
+    image: bitnami/kafka:3.3
     ports:
     - "29092:29092"
     - "9092:9092"
