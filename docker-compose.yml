@@ -50,13 +50,14 @@ services:
     depends_on:
     - zookeeper
     environment:
-      # listeners
       ALLOW_PLAINTEXT_LISTENER: 'yes'
+      KAFKA_BROKER_ID: 0
       KAFKA_CFG_ADVERTISED_LISTENERS: INTERNAL://kafka:9092,EXTERNAL://localhost:29092
-      KAFKA_CFG_LISTENERS: INTERNAL://kafka:9092,EXTERNAL://0.0.0.0:29092
-      # zookeeper
-      KAFKA_CFG_ZOOKEEPER_CONNECT: zookeeper:2181
-      # config
       KAFKA_CFG_AUTO_CREATE_TOPICS_ENABLE: 'false'
+      KAFKA_CFG_LISTENERS: INTERNAL://kafka:9092,EXTERNAL://0.0.0.0:29092
+      KAFKA_CFG_LISTENER_SECURITY_PROTOCOL_MAP: INTERNAL:PLAINTEXT,EXTERNAL:PLAINTEXT
+      KAFKA_CFG_ZOOKEEPER_CONNECT: zookeeper:2181
+      KAFKA_DELETE_TOPIC_ENABLE: 'true'
+      KAFKA_INTER_BROKER_LISTENER_NAME: INTERNAL
     volumes:
     - /var/run/docker.sock:/var/run/docker.sock
