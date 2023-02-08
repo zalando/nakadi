@@ -1,5 +1,6 @@
 package org.zalando.nakadi.repository.kafka;
 
+import com.google.common.base.Preconditions;
 import com.google.common.collect.ImmutableMap;
 import com.google.common.collect.Lists;
 import io.opentracing.Tracer;
@@ -305,6 +306,11 @@ public class KafkaTopicRepository implements TopicRepository {
             throws EventPublishingException {
         final Producer<byte[], byte[]> producer = kafkaFactory.takeProducer();
         try {
+            batch.forEach(item -> {
+                Preconditions.checkNotNull(
+                        item.getPartition(), "BatchItem partition can't be null at the moment of publishing!");
+            });
+
             final Map<BatchItem, CompletableFuture<Exception>> sendFutures = new HashMap<>();
             final Tracer.SpanBuilder sendBatchSpan = TracingService.buildNewSpan("send_batch_to_kafka")
                     .withTag(Tags.MESSAGE_BUS_DESTINATION.getKey(), topicId);
