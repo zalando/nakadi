@@ -306,31 +306,11 @@ public class KafkaTopicRepository implements TopicRepository {
             throws EventPublishingException {
         final Producer<byte[], byte[]> producer = kafkaFactory.takeProducer();
         try {
-            final Map<String, String> partitionToBroker = producer.partitionsFor(topicId).stream()
-                    .filter(partitionInfo -> partitionInfo.leader() != null)
-                    .collect(
-                            Collectors.toMap(
-                                    p -> String.valueOf(p.partition()),
-                                    p -> p.leader().idString() + "_" + p.leader().host()));
-            batch.forEach(item -> {
-                Preconditions.checkNotNull(
-                        item.getPartition(), "BatchItem partition can't be null at the moment of publishing!");
-                item.setBrokerId(partitionToBroker.get(item.getPartition()));
-            });
-
             final Map<BatchItem, CompletableFuture<Exception>> sendFutures = new HashMap<>();
             final Tracer.SpanBuilder sendBatchSpan = TracingService.buildNewSpan("send_batch_to_kafka")
                     .withTag(Tags.MESSAGE_BUS_DESTINATION.getKey(), topicId);
             try (Closeable ignore = TracingService.withActiveSpan(sendBatchSpan)) {
                 for (final BatchItem item : batch) {
-                    final String brokerId = item.getBrokerId();
-                    if (brokerId == null) {
-                        item.updateStatusAndDetail(EventPublishingStatus.FAILED,
-                                String.format("No leader for partition: %s, topic: %s.", item.getPartition(), topicId));
-                        LOG.error("Failed to publish to kafka. No leader for ({}:{}).",
-                                topicId, item.getPartition());
-                        continue;
-                    }
                     item.setStep(EventPublishingStep.PUBLISHING);
                     sendFutures.put(item, publishItem(producer, topicId, eventType, item, delete));
                 }
