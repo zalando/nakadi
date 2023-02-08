@@ -1,6 +1,5 @@
 package org.zalando.nakadi.repository.kafka;
 
-import com.google.common.base.Preconditions;
 import com.google.common.collect.ImmutableMap;
 import com.google.common.collect.Lists;
 import io.opentracing.Tracer;
