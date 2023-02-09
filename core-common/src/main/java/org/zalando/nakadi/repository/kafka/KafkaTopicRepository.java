@@ -156,14 +156,16 @@ public class KafkaTopicRepository implements TopicRepository {
         }
     }
 
-    private CompletableFuture<Exception> publishItem(
-            final Producer<byte[], byte[]> producer,
+    private CompletableFuture<ExceptionWrap> sendItem(
             final String topicId,
             final String eventType,
             final BatchItem item,
             final boolean delete) throws EventPublishingException {
+        final String producerKey = String.format("%s:%s", topicId, item.getPartition());
+        final Producer<byte[], byte[]> producer = kafkaFactory.takeProducer(producerKey);
+
         try {
-            final CompletableFuture<Exception> result = new CompletableFuture<>();
+            final CompletableFuture<ExceptionWrap> result = new CompletableFuture<>();
             final ProducerRecord<byte[], byte[]> kafkaRecord = new ProducerRecord<>(
                     topicId,
                     KafkaCursor.toKafkaPartition(item.getPartition()),
@@ -177,7 +179,7 @@ public class KafkaTopicRepository implements TopicRepository {
                 if (null != exception) {
                     LOG.warn("Failed to publish to kafka topic {}", topicId, exception);
                     item.updateStatusAndDetail(EventPublishingStatus.FAILED, "internal error");
-                    result.complete(exception);
+                    result.complete(new ExceptionWrap(producerKey, exception));
                 } else {
                     item.updateStatusAndDetail(EventPublishingStatus.SUBMITTED, "");
                     result.complete(null);
@@ -192,10 +194,32 @@ public class KafkaTopicRepository implements TopicRepository {
             kafkaFactory.terminateProducer(producer);
             item.updateStatusAndDetail(EventPublishingStatus.FAILED, "internal error");
             throw new EventPublishingException("Error publishing message to kafka", e, topicId, eventType);
+        } finally {
+            kafkaFactory.releaseProducer(producer);
         }
     }
 
-    private static boolean isExceptionShouldLeadToReset(@Nullable final Exception exception) {
+    private class ExceptionWrap extends Exception {
+        private String producerKey;
+
+        public ExceptionWrap(final String producerKey, final Exception exception) {
+            super(exception);
+            this.producerKey = producerKey;
+        }
+    }
+
+    private void terminateProducer(ExceptionWrap exceptionWrap) {
+        LOG.info("Terminating producer with producer key {} because of unrecoverable exception",
+                exceptionWrap.producerKey, exceptionWrap.getCause());
+        final Producer<byte[], byte[]> producer = kafkaFactory.takeProducer(exceptionWrap.producerKey);
+        try {
+            kafkaFactory.terminateProducer(producer);
+        } finally {
+            kafkaFactory.releaseProducer(producer);
+        }
+    }
+
+    private static boolean isExceptionShouldLeadToReset(@Nullable final Throwable exception) {
         if (null == exception) {
             return false;
         }
@@ -304,19 +328,18 @@ public class KafkaTopicRepository implements TopicRepository {
     public void syncPostBatch(
             final String topicId, final List<BatchItem> batch, final String eventType, final boolean delete)
             throws EventPublishingException {
-        final Producer<byte[], byte[]> producer = kafkaFactory.takeProducer(topicId);
         try {
             batch.forEach(item -> Preconditions.checkNotNull(
-                        item.getPartition(), "BatchItem partition can't be null at the moment of publishing!")
+                    item.getPartition(), "BatchItem partition can't be null at the moment of publishing!")
             );
 
-            final Map<BatchItem, CompletableFuture<Exception>> sendFutures = new HashMap<>();
+            final Map<BatchItem, CompletableFuture<ExceptionWrap>> sendFutures = new HashMap<>();
             final Tracer.SpanBuilder sendBatchSpan = TracingService.buildNewSpan("send_batch_to_kafka")
                     .withTag(Tags.MESSAGE_BUS_DESTINATION.getKey(), topicId);
             try (Closeable ignore = TracingService.withActiveSpan(sendBatchSpan)) {
                 for (final BatchItem item : batch) {
                     item.setStep(EventPublishingStep.PUBLISHING);
-                    sendFutures.put(item, publishItem(producer, topicId, eventType, item, delete));
+                    sendFutures.put(item, sendItem(topicId, eventType, item, delete));
                 }
             } catch (IOException io) {
                 throw new InternalNakadiException("Error closing active span scope", io);
@@ -333,18 +356,11 @@ public class KafkaTopicRepository implements TopicRepository {
                 throw new InternalNakadiException("Error closing active span scope", io);
             }
 
-            // Now lets check for errors
-            final Optional<Exception> needReset = sendFutures.entrySet().stream()
-                    .filter(entry -> isExceptionShouldLeadToReset(entry.getValue().getNow(null)))
+            sendFutures.entrySet().stream()
                     .map(entry -> entry.getValue().getNow(null))
-                    .findAny();
-            if (needReset.isPresent()) {
-                LOG.info("Terminating producer while publishing to topic {} because of unrecoverable exception",
-                        topicId, needReset.get());
-                kafkaFactory.terminateProducer(producer);
-            }
+                    .filter(exceptionWrap -> isExceptionShouldLeadToReset(exceptionWrap.getCause()))
+                    .forEach(exceptionWrap -> terminateProducer(exceptionWrap));
         } catch (final TimeoutException ex) {
-            kafkaFactory.terminateProducer(producer);
             failUnpublished(topicId, eventType, batch, "timed out");
             throw new EventPublishingException("Timeout publishing message to kafka", ex, topicId, eventType);
         } catch (final ExecutionException ex) {
@@ -354,9 +370,8 @@ public class KafkaTopicRepository implements TopicRepository {
             Thread.currentThread().interrupt();
             failUnpublished(topicId, eventType, batch, "interrupted");
             throw new EventPublishingException("Interrupted publishing message to kafka", ex, topicId, eventType);
-        } finally {
-            kafkaFactory.releaseProducer(producer);
         }
+
         final boolean atLeastOneFailed = batch.stream()
                 .anyMatch(item -> item.getResponse().getPublishingStatus() == EventPublishingStatus.FAILED);
         if (atLeastOneFailed) {
