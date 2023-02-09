@@ -14,7 +14,6 @@ import java.util.Map;
 import java.util.Properties;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicInteger;
-import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReadWriteLock;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
@@ -26,7 +25,6 @@ public class KafkaFactory {
     private final Map<Producer<byte[], byte[]>, AtomicInteger> useCount;
     private final ReadWriteLock rwLock;
     private final List<Producer<byte[], byte[]>> activeProducers;
-    private final AtomicLong activeProducerCounter;
 
     public KafkaFactory(final KafkaLocationManager kafkaLocationManager, final int numActiveProducers) {
         this.kafkaLocationManager = kafkaLocationManager;
@@ -38,8 +36,6 @@ public class KafkaFactory {
         for (int i = 0; i < numActiveProducers; ++i) {
             this.activeProducers.add(null);
         }
-
-        this.activeProducerCounter = new AtomicLong(0);
     }
 
     @Nullable
@@ -72,8 +68,8 @@ public class KafkaFactory {
      *
      * @return Initialized kafka producer instance.
      */
-    public Producer<byte[], byte[]> takeProducer() {
-        final int index = (int)(activeProducerCounter.incrementAndGet() % activeProducers.size());
+    public Producer<byte[], byte[]> takeProducer(final String topic) {
+        final int index = Math.abs(topic.hashCode() % activeProducers.size());
 
         Producer<byte[], byte[]> result = takeUnderLock(index, false);
         if (null == result) {
@@ -83,8 +79,8 @@ public class KafkaFactory {
     }
 
     /**
-     * Release kafka producer that was obtained by {@link #takeProducer()} method. If producer was not obtained by
-     * {@link #takeProducer()} call - method will throw {@link NullPointerException}
+     * Release kafka producer that was obtained by {@link #takeProducer(String)} method. If producer was not obtained by
+     * {@link #takeProducer(String)} call - method will throw {@link NullPointerException}
      *
      * @param producer Producer to release.
      */
@@ -115,10 +111,11 @@ public class KafkaFactory {
 
     /**
      * Notifies producer cache, that this producer should be marked as obsolete. All methods, that are using this
-     * producer instance right now can continue using it, but new calls to {@link #takeProducer()} will use some other
-     * producers.
-     * It is allowed to call this method only between {@link #takeProducer()} and {@link #releaseProducer(Producer)}
-     * method calls. (You can not terminate something that you do not own)
+     * producer instance right now can continue using it, but new calls to {@link #takeProducer(String)}
+     * will use some other producers.
+     * It is allowed to call this method only between {@link #takeProducer(String)} and
+     * {@link #releaseProducer(Producer)} method calls.
+     * (You can not terminate something that you do not own)
      *
      * @param producer Producer instance to terminate.
      */

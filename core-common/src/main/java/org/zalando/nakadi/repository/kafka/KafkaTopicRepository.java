@@ -230,7 +230,7 @@ public class KafkaTopicRepository implements TopicRepository {
             if (!Boolean.TRUE.equals(areNewPartitionsAdded)) {
                 throw new TopicConfigException(String.format("Failed to repartition topic to %s", partitionsNumber));
             }
-            final Producer<byte[], byte[]> producer = kafkaFactory.takeProducer();
+            final Producer<byte[], byte[]> producer = kafkaFactory.takeProducer(topic);
             kafkaFactory.terminateProducer(producer);
             kafkaFactory.releaseProducer(producer);
         } catch (Exception e) {
@@ -304,12 +304,11 @@ public class KafkaTopicRepository implements TopicRepository {
     public void syncPostBatch(
             final String topicId, final List<BatchItem> batch, final String eventType, final boolean delete)
             throws EventPublishingException {
-        final Producer<byte[], byte[]> producer = kafkaFactory.takeProducer();
+        final Producer<byte[], byte[]> producer = kafkaFactory.takeProducer(topicId);
         try {
-            batch.forEach(item -> {
-                Preconditions.checkNotNull(
-                        item.getPartition(), "BatchItem partition can't be null at the moment of publishing!");
-            });
+            batch.forEach(item -> Preconditions.checkNotNull(
+                        item.getPartition(), "BatchItem partition can't be null at the moment of publishing!")
+            );
 
             final Map<BatchItem, CompletableFuture<Exception>> sendFutures = new HashMap<>();
             final Tracer.SpanBuilder sendBatchSpan = TracingService.buildNewSpan("send_batch_to_kafka")
@@ -428,7 +427,7 @@ public class KafkaTopicRepository implements TopicRepository {
      */
     public List<NakadiRecordResult> sendEvents(final String topic,
                                                final List<NakadiRecord> nakadiRecords) {
-        final Producer<byte[], byte[]> producer = kafkaFactory.takeProducer();
+        final Producer<byte[], byte[]> producer = kafkaFactory.takeProducer(topic);
         final CountDownLatch latch = new CountDownLatch(nakadiRecords.size());
         final Map<NakadiRecord, NakadiRecordResult> responses = new ConcurrentHashMap<>();
         try {
@@ -689,7 +688,7 @@ public class KafkaTopicRepository implements TopicRepository {
     }
 
     public List<String> listPartitionNamesInternal(final String topicId) {
-        final Producer<byte[], byte[]> producer = kafkaFactory.takeProducer();
+        final Producer<byte[], byte[]> producer = kafkaFactory.takeProducer(topicId);
         try {
             return unmodifiableList(producer.partitionsFor(topicId)
                     .stream()
