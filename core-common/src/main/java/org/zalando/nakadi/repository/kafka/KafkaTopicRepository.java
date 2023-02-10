@@ -156,7 +156,7 @@ public class KafkaTopicRepository implements TopicRepository {
         }
     }
 
-    private CompletableFuture<Exception> publishItem(
+    private CompletableFuture<Exception> sendItem(
             final Producer<byte[], byte[]> producer,
             final String topicId,
             final String eventType,
@@ -304,19 +304,21 @@ public class KafkaTopicRepository implements TopicRepository {
     public void syncPostBatch(
             final String topicId, final List<BatchItem> batch, final String eventType, final boolean delete)
             throws EventPublishingException {
-        final Producer<byte[], byte[]> producer = kafkaFactory.takeProducer(topicId);
+        // acquiring producers according to topic + partition key, it helps to avoid taking producer for every record
+        final Map<String, Producer> producerByKey = new HashMap<>();
         try {
-            batch.forEach(item -> Preconditions.checkNotNull(
-                        item.getPartition(), "BatchItem partition can't be null at the moment of publishing!")
-            );
-
             final Map<BatchItem, CompletableFuture<Exception>> sendFutures = new HashMap<>();
             final Tracer.SpanBuilder sendBatchSpan = TracingService.buildNewSpan("send_batch_to_kafka")
                     .withTag(Tags.MESSAGE_BUS_DESTINATION.getKey(), topicId);
             try (Closeable ignore = TracingService.withActiveSpan(sendBatchSpan)) {
                 for (final BatchItem item : batch) {
+                    Preconditions.checkNotNull(
+                            item.getPartition(), "BatchItem partition can't be null at the moment of publishing!");
                     item.setStep(EventPublishingStep.PUBLISHING);
-                    sendFutures.put(item, publishItem(producer, topicId, eventType, item, delete));
+                    final Producer producer = producerByKey.computeIfAbsent(
+                            getProducerKey(topicId, item.getPartition()),
+                            kafkaFactory::takeProducer);
+                    sendFutures.put(item, sendItem(producer, topicId, eventType, item, delete));
                 }
             } catch (IOException io) {
                 throw new InternalNakadiException("Error closing active span scope", io);
@@ -334,17 +336,16 @@ public class KafkaTopicRepository implements TopicRepository {
             }
 
             // Now lets check for errors
-            final Optional<Exception> needReset = sendFutures.entrySet().stream()
-                    .filter(entry -> isExceptionShouldLeadToReset(entry.getValue().getNow(null)))
+            sendFutures.entrySet().stream()
                     .map(entry -> entry.getValue().getNow(null))
-                    .findAny();
-            if (needReset.isPresent()) {
-                LOG.info("Terminating producer while publishing to topic {} because of unrecoverable exception",
-                        topicId, needReset.get());
-                kafkaFactory.terminateProducer(producer);
-            }
+                    .filter(KafkaTopicRepository::isExceptionShouldLeadToReset)
+                    .findAny()
+                    .ifPresent(exception -> {
+                        LOG.info("Terminating {} producers while publishing to topic " +
+                                "{} because of unrecoverable exception", producerByKey.size(), topicId, exception);
+                        producerByKey.values().forEach(kafkaFactory::terminateProducer);
+                    });
         } catch (final TimeoutException ex) {
-            kafkaFactory.terminateProducer(producer);
             failUnpublished(topicId, eventType, batch, "timed out");
             throw new EventPublishingException("Timeout publishing message to kafka", ex, topicId, eventType);
         } catch (final ExecutionException ex) {
@@ -355,14 +356,19 @@ public class KafkaTopicRepository implements TopicRepository {
             failUnpublished(topicId, eventType, batch, "interrupted");
             throw new EventPublishingException("Interrupted publishing message to kafka", ex, topicId, eventType);
         } finally {
-            kafkaFactory.releaseProducer(producer);
+            producerByKey.values().forEach(kafkaFactory::releaseProducer);
         }
+
         final boolean atLeastOneFailed = batch.stream()
                 .anyMatch(item -> item.getResponse().getPublishingStatus() == EventPublishingStatus.FAILED);
         if (atLeastOneFailed) {
             failUnpublished(topicId, eventType, batch, "internal error");
             throw new EventPublishingException("Internal error publishing message to kafka", topicId, eventType);
         }
+    }
+
+    private static String getProducerKey(final String topicId, final String partition) {
+        return String.format("%s:%s", topicId, partition);
     }
 
     private long createSendTimeout() {
@@ -427,9 +433,10 @@ public class KafkaTopicRepository implements TopicRepository {
      */
     public List<NakadiRecordResult> sendEvents(final String topic,
                                                final List<NakadiRecord> nakadiRecords) {
-        final Producer<byte[], byte[]> producer = kafkaFactory.takeProducer(topic);
         final CountDownLatch latch = new CountDownLatch(nakadiRecords.size());
         final Map<NakadiRecord, NakadiRecordResult> responses = new ConcurrentHashMap<>();
+        // acquiring producers according to topic + partition key, it helps to avoid taking producer for every record
+        final Map<String, Producer> producerByKey = new HashMap<>();
         try {
             for (final NakadiRecord nakadiRecord : nakadiRecords) {
                 final ProducerRecord<byte[], byte[]> producerRecord =
@@ -438,6 +445,10 @@ public class KafkaTopicRepository implements TopicRepository {
                 if (null != nakadiRecord.getOwner()) {
                     nakadiRecord.getOwner().serialize(producerRecord);
                 }
+
+                final Producer producer = producerByKey.computeIfAbsent(
+                        getProducerKey(topic, nakadiRecord.getMetadata().getPartition()),
+                        kafkaFactory::takeProducer);
 
                 producer.send(producerRecord, ((metadata, exception) -> {
                     try {
@@ -466,7 +477,7 @@ public class KafkaTopicRepository implements TopicRepository {
                     .map(NakadiRecordResult::getException)
                     .anyMatch(KafkaTopicRepository::isExceptionShouldLeadToReset);
             if (shouldResetProducer) {
-                kafkaFactory.terminateProducer(producer);
+                producerByKey.values().forEach(kafkaFactory::terminateProducer);
             }
 
             return prepareResponse(nakadiRecords, responses,
@@ -475,14 +486,14 @@ public class KafkaTopicRepository implements TopicRepository {
             Thread.currentThread().interrupt();
             return prepareResponse(nakadiRecords, responses, e);
         } catch (final RuntimeException e) {
-            kafkaFactory.terminateProducer(producer);
+            producerByKey.values().forEach(kafkaFactory::terminateProducer);
             LOG.debug("RuntimeException:{}", e.getMessage(), e);
             return prepareResponse(nakadiRecords, responses, e);
         } catch (final IOException ioe) {
             LOG.debug("IOException:{}", ioe.getMessage(), ioe);
             return prepareResponse(nakadiRecords, responses, ioe);
         } finally {
-            kafkaFactory.releaseProducer(producer);
+            producerByKey.values().forEach(kafkaFactory::releaseProducer);
         }
     }
 
