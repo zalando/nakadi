@@ -2,6 +2,7 @@ package org.zalando.nakadi.service.publishing;
 
 import com.codahale.metrics.Gauge;
 import com.codahale.metrics.MetricRegistry;
+import com.google.common.annotations.VisibleForTesting;
 import com.google.common.collect.ImmutableMap;
 import io.opentracing.Span;
 import io.opentracing.Tracer;
@@ -345,5 +346,10 @@ public class EventPublisher {
 
     private EventPublishResult ok(final List<BatchItem> batch) {
         return new EventPublishResult(EventPublishingStatus.SUBMITTED, EventPublishingStep.NONE, responses(batch));
+    }
+
+    @VisibleForTesting
+    Set<String> getUniqueEventTypePartitions() {
+        return uniqueEventTypePartitions;
     }
 }
