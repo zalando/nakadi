@@ -93,7 +93,7 @@ public class EventPublisher {
         this.eventOwnerExtractorFactory = eventOwnerExtractorFactory;
 
         this.uniqueEventTypePartitions = ConcurrentHashMap.newKeySet();
-        metricRegistry.register(MetricUtils.NAKADI_PREFIX + ".unique-event-type-partitions", new Gauge<Integer>() {
+        metricRegistry.register(MetricUtils.NAKADI_PREFIX + "unique-event-type-partitions", new Gauge<Integer>() {
                 @Override
                 public Integer getValue() {
                     return uniqueEventTypePartitions.size();
