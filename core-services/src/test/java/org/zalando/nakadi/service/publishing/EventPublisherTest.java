@@ -53,6 +53,7 @@ import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
 import java.util.Optional;
+import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.TimeoutException;
 
@@ -518,7 +519,7 @@ public class EventPublisherTest {
 
         final JSONObject event = new JSONObject(
                 "{\"metadata\": {\"partition_compaction_key\": \"compaction_key\"}," +
-                " \"my_field\": \"my_key\"}");
+                        " \"my_field\": \"my_key\"}");
         final JSONArray batch = new JSONArray(List.of(event));
 
         publisher.publish(batch.toString(), eventType.getName());
@@ -669,6 +670,24 @@ public class EventPublisherTest {
         final List<NakadiRecord> records = Collections.singletonList(nakadiRecord);
         eventPublisher.publish(eventType, records);
         Mockito.verify(topicRepository).sendEvents(ArgumentMatchers.eq(topic), ArgumentMatchers.eq(records));
+    }
+
+    @Test
+    public void testUniqueEventTypePartitions() throws Exception {
+        final EventType eventType = buildDefaultEventType();
+        final JSONArray batch = buildDefaultBatch(1);
+
+        mockSuccessfulValidation(eventType);
+        Mockito.when(partitionResolver.resolvePartition(any(), any(BatchItem.class), any()))
+                .thenReturn("0");
+
+        final Set<String> uniqueEventTypePartitions = publisher.getUniqueEventTypePartitions();
+        uniqueEventTypePartitions.clear();
+        publisher.publish(batch.toString(), eventType.getName());
+
+        Assert.assertEquals(1, uniqueEventTypePartitions.size());
+        final String expectedEntry = String.format("%s:%s", eventType.getName(), 0);
+        uniqueEventTypePartitions.forEach((et) -> Assert.assertEquals(expectedEntry, et));
     }
 
     private void mockFailedPublishing() {
