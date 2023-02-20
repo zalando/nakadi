@@ -1,5 +1,6 @@
 package org.zalando.nakadi.service.publishing;
 
+import com.codahale.metrics.MetricRegistry;
 import org.apache.avro.specific.SpecificRecord;
 import org.json.JSONArray;
 import org.json.JSONObject;
@@ -84,6 +85,7 @@ public class EventPublisherTest {
     protected static final long TIMELINE_WAIT_TIMEOUT_MS = 1000;
     protected static final int NAKADI_SUBSCRIPTION_MAX_PARTITIONS = 8;
 
+    protected final MetricRegistry metricRegistry = mock(MetricRegistry.class);
     protected final TopicRepository topicRepository = mock(TopicRepository.class);
     protected final EventTypeCache cache = mock(EventTypeCache.class);
     protected final PartitionResolver partitionResolver = mock(PartitionResolver.class);
@@ -108,7 +110,8 @@ public class EventPublisherTest {
 
         eventOwnerExtractorFactory = mock(EventOwnerExtractorFactory.class);
         publisher = new EventPublisher(timelineService, cache, partitionResolver, enrichment,
-                nakadiSettings, timelineSync, authzValidator, eventOwnerExtractorFactory);
+                nakadiSettings, timelineSync, authzValidator, eventOwnerExtractorFactory,
+                metricRegistry);
     }
 
     @Test
