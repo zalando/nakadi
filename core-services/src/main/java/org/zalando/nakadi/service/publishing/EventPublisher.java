@@ -1,5 +1,7 @@
 package org.zalando.nakadi.service.publishing;
 
+import com.codahale.metrics.Gauge;
+import com.codahale.metrics.MetricRegistry;
 import com.google.common.collect.ImmutableMap;
 import io.opentracing.Span;
 import io.opentracing.Tracer;
@@ -33,6 +35,7 @@ import org.zalando.nakadi.exceptions.runtime.NoSuchEventTypeException;
 import org.zalando.nakadi.exceptions.runtime.PartitioningException;
 import org.zalando.nakadi.exceptions.runtime.PublishEventOwnershipException;
 import org.zalando.nakadi.exceptions.runtime.ServiceTemporarilyUnavailableException;
+import org.zalando.nakadi.metrics.MetricUtils;
 import org.zalando.nakadi.partitioning.EventKeyExtractor;
 import org.zalando.nakadi.partitioning.PartitionResolver;
 import org.zalando.nakadi.repository.TopicRepository;
@@ -47,6 +50,8 @@ import java.io.Closeable;
 import java.io.IOException;
 import java.util.List;
 import java.util.Optional;
+import java.util.Set;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.TimeoutException;
 import java.util.function.Function;
 import java.util.stream.Collectors;
@@ -66,6 +71,8 @@ public class EventPublisher {
     private final AuthorizationValidator authValidator;
     private final EventOwnerExtractorFactory eventOwnerExtractorFactory;
 
+    private final Set<String> uniqueEventTypePartitions;
+
     @Autowired
     public EventPublisher(final TimelineService timelineService,
                           final EventTypeCache eventTypeCache,
@@ -74,7 +81,8 @@ public class EventPublisher {
                           final NakadiSettings nakadiSettings,
                           final TimelineSync timelineSync,
                           final AuthorizationValidator authValidator,
-                          final EventOwnerExtractorFactory eventOwnerExtractorFactory) {
+                          final EventOwnerExtractorFactory eventOwnerExtractorFactory,
+                          final MetricRegistry metricRegistry) {
         this.timelineService = timelineService;
         this.eventTypeCache = eventTypeCache;
         this.partitionResolver = partitionResolver;
@@ -83,6 +91,14 @@ public class EventPublisher {
         this.timelineSync = timelineSync;
         this.authValidator = authValidator;
         this.eventOwnerExtractorFactory = eventOwnerExtractorFactory;
+
+        this.uniqueEventTypePartitions = ConcurrentHashMap.newKeySet();
+        metricRegistry.register(MetricUtils.NAKADI_PREFIX + "unique-event-type-partitions", new Gauge<Integer>() {
+                @Override
+                public Integer getValue() {
+                    return uniqueEventTypePartitions.size();
+                }
+            });
     }
 
     public EventPublishResult publish(final String events, final String eventTypeName)
@@ -204,6 +220,9 @@ public class EventPublisher {
             try {
                 item.setPartitionKeys(keyExtractor.apply(item));
                 item.setPartition(partitionResolver.resolvePartition(eventType, item, orderedPartitions));
+
+                // just collecting some metrics
+                uniqueEventTypePartitions.add(String.format("%s:%s", eventType, item.getPartition()));
             } catch (final PartitioningException e) {
                 item.updateStatusAndDetail(EventPublishingStatus.FAILED, e.getMessage());
                 throw e;
