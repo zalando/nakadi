@@ -93,12 +93,8 @@ public class EventPublisher {
         this.eventOwnerExtractorFactory = eventOwnerExtractorFactory;
 
         this.uniqueEventTypePartitions = ConcurrentHashMap.newKeySet();
-        metricRegistry.register(MetricUtils.NAKADI_PREFIX + "unique-event-type-partitions", new Gauge<Integer>() {
-                @Override
-                public Integer getValue() {
-                    return uniqueEventTypePartitions.size();
-                }
-            });
+        metricRegistry.register(MetricUtils.NAKADI_PREFIX + "unique-event-type-partitions",
+                (Gauge<Integer>) () -> uniqueEventTypePartitions.size());
     }
 
     public EventPublishResult publish(final String events, final String eventTypeName)
@@ -222,7 +218,7 @@ public class EventPublisher {
                 item.setPartition(partitionResolver.resolvePartition(eventType, item, orderedPartitions));
 
                 // just collecting some metrics
-                uniqueEventTypePartitions.add(String.format("%s:%s", eventType, item.getPartition()));
+                uniqueEventTypePartitions.add(String.format("%s:%s", eventType.getName(), item.getPartition()));
             } catch (final PartitioningException e) {
                 item.updateStatusAndDetail(EventPublishingStatus.FAILED, e.getMessage());
                 throw e;
