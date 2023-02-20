@@ -21,7 +21,6 @@ import org.zalando.nakadi.domain.EventPublishingStatus;
 import org.zalando.nakadi.domain.EventPublishingStep;
 import org.zalando.nakadi.domain.EventType;
 import org.zalando.nakadi.domain.EventTypeBase;
-import org.zalando.nakadi.domain.EventTypeStatistics;
 import org.zalando.nakadi.domain.NakadiMetadata;
 import org.zalando.nakadi.domain.NakadiRecord;
 import org.zalando.nakadi.domain.Timeline;
@@ -44,7 +43,6 @@ import org.zalando.nakadi.service.timeline.TimelineService;
 import org.zalando.nakadi.service.timeline.TimelineSync;
 import org.zalando.nakadi.util.MDCUtils;
 import org.zalando.nakadi.utils.EventTypeTestBuilder;
-import org.zalando.nakadi.utils.TestUtils;
 import org.zalando.nakadi.validation.JsonSchemaValidator;
 import org.zalando.nakadi.validation.ValidationError;
 
@@ -65,7 +63,6 @@ import static org.hamcrest.Matchers.isEmptyString;
 import static org.hamcrest.Matchers.startsWith;
 import static org.hamcrest.core.IsEqual.equalTo;
 import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.contains;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Matchers.anyBoolean;
 import static org.mockito.Matchers.anyLong;
@@ -522,7 +519,7 @@ public class EventPublisherTest {
 
         final JSONObject event = new JSONObject(
                 "{\"metadata\": {\"partition_compaction_key\": \"compaction_key\"}," +
-                " \"my_field\": \"my_key\"}");
+                        " \"my_field\": \"my_key\"}");
         final JSONArray batch = new JSONArray(List.of(event));
 
         publisher.publish(batch.toString(), eventType.getName());
