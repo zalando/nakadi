@@ -681,8 +681,10 @@ public class EventPublisherTest {
         Mockito.when(partitionResolver.resolvePartition(any(), any(BatchItem.class), any()))
                 .thenReturn("0");
 
-        publisher.publish(batch.toString(), eventType.getName());
         final Set<String> uniqueEventTypePartitions = publisher.getUniqueEventTypePartitions();
+        uniqueEventTypePartitions.clear();
+        publisher.publish(batch.toString(), eventType.getName());
+
         Assert.assertEquals(1, uniqueEventTypePartitions.size());
         final String expectedEntry = String.format("%s:%s", eventType.getName(), 0);
         uniqueEventTypePartitions.forEach((et) -> Assert.assertEquals(expectedEntry, et));
