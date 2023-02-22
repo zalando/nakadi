@@ -124,6 +124,7 @@ public class KafkaLocationManager {
         producerProps.put(ProducerConfig.MAX_REQUEST_SIZE_CONFIG, kafkaSettings.getMaxRequestSize());
         producerProps.put(ProducerConfig.DELIVERY_TIMEOUT_MS_CONFIG, kafkaSettings.getDeliveryTimeoutMs());
         producerProps.put(ProducerConfig.MAX_BLOCK_MS_CONFIG, kafkaSettings.getMaxBlockMs());
+        producerProps.put(ProducerConfig.SEND_BUFFER_CONFIG, kafkaSettings.getTCPSendBufferSize());
         return producerProps;
     }
 
