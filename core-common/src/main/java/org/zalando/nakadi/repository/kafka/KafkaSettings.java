@@ -25,7 +25,7 @@ public class KafkaSettings {
     private final int maxBlockMs;
     private final String clientRack;
     private final String compressionType;
-    private final int tcpSendBufferSize;
+    private final int socketSendBufferBytes;
 
     @Autowired
     public KafkaSettings(@Value("${nakadi.kafka.retries}") final int retries,
@@ -40,7 +40,7 @@ public class KafkaSettings {
                          @Value("${nakadi.kafka.max.block.ms}") final int maxBlockMs,
                          @Value("${nakadi.kafka.client.rack:}") final String clientRack,
                          @Value("${nakadi.kafka.compression.type:lz4}") final String compressionType,
-                         @Value("${nakadi.kafka.tcp.send.buffer:}") final int tcpSendBufferSize) {
+                         @Value("${nakadi.kafka.socket.send.buffer.bytes:}") final int socketSendBufferBytes) {
         this.retries = retries;
         this.requestTimeoutMs = requestTimeoutMs;
         this.batchSize = batchSize;
@@ -53,7 +53,7 @@ public class KafkaSettings {
         this.maxBlockMs = maxBlockMs;
         this.clientRack = clientRack;
         this.compressionType = compressionType;
-        this.tcpSendBufferSize = tcpSendBufferSize;
+        this.socketSendBufferBytes = socketSendBufferBytes;
     }
 
     public int getRetries() {
@@ -104,7 +104,7 @@ public class KafkaSettings {
         return compressionType;
     }
 
-    public int getTCPSendBufferSize() {
-        return tcpSendBufferSize;
+    public int getSocketSendBufferBytes() {
+        return socketSendBufferBytes;
     }
 }
