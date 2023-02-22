@@ -72,6 +72,7 @@ nakadi:
     enable.auto.commit: false
     delivery.timeout.ms: 30000 # request.timeout.ms + linger.ms
     max.block.ms: 5000 # kafka default 60000
+    socket.send.buffer.bytes: 102400 # default in 3.3.2
   zookeeper:
     connectionString: zookeeper://zookeeper:2181
     sessionTimeoutMs: 10000
