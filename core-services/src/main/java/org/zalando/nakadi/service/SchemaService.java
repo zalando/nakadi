@@ -199,9 +199,9 @@ public class SchemaService implements SchemaProviderService {
             throw new SchemaValidationException("invalid regex pattern in the schema: "
                     + e.getDescription() + " \"" + e.getPattern() + "\"");
         } catch (final JSONException e) {
-            throw new SchemaValidationException("schema must be a valid json");
+            throw new SchemaValidationException("schema must be a valid json: " + e.getMessage());
         } catch (final SchemaException e) {
-            throw new SchemaValidationException("schema must be a valid json-schema");
+            throw new SchemaValidationException("schema must be a valid json-schema: " + e.getMessage());
         }
     }
 
