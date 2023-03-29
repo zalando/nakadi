@@ -244,7 +244,7 @@ public class MultiTimelineEventConsumer implements EventConsumer.ReassignableEve
         for (final Map.Entry<TopicRepository, List<NakadiCursor>> entry : newAssignment.entrySet()) {
             if (!eventConsumers.containsKey(entry.getKey())) {
                 final TopicRepository repo = entry.getKey();
-                LOG.trace("Creating underlying consumer for client id {} and cursors {}",
+                LOG.trace("client:{}, creating underlying consumer, cursors {}",
                         clientId, Arrays.deepToString(entry.getValue().toArray()));
 
                 final EventConsumer.LowLevelConsumer consumer = repo.createEventConsumer(clientId, entry.getValue());
@@ -256,7 +256,7 @@ public class MultiTimelineEventConsumer implements EventConsumer.ReassignableEve
     private void stopAndRemoveConsumer(final TopicRepository toRemove) {
         final EventConsumer realConsumer = eventConsumers.remove(toRemove);
         try {
-            LOG.trace("About to close underlying consumer for client id {}", clientId);
+            LOG.trace("client:{}, about to close underlying consumer", clientId);
             realConsumer.close();
         } catch (IOException ex) {
             LOG.error("Failed to stop one of consumers, but will not care about that, " +
@@ -327,10 +327,25 @@ public class MultiTimelineEventConsumer implements EventConsumer.ReassignableEve
 
     @Override
     public void close() throws IOException {
+        LOG.trace("client:{}, closing consumers", clientId);
         try {
             reassign(Collections.emptySet());
         } catch (final InvalidCursorException e) {
             throw new IOException(e);
         }
+
+        // hack
+        eventConsumers.values().forEach((consumer) -> {
+            try {
+                consumer.close();
+            } catch (Exception e) {
+                // ignore, need to close everything
+                LOG.trace(
+                        "client:{}, failed to close underlying consumer, exception: {}",
+                        clientId, e.getMessage());
+            }
+        });
+
+        eventConsumers.clear();
     }
 }
