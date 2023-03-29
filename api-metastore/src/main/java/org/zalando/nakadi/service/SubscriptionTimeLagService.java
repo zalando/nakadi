@@ -142,9 +142,9 @@ public class SubscriptionTimeLagService {
         private Duration getNextEventTimeLag(final NakadiCursor cursor) throws ErrorGettingCursorTimeLagException,
                 InconsistentStateException {
 
-            try (EventConsumer consumer = timelineService.createEventConsumer(
-                    "time-lag-checker-" + UUID.randomUUID().toString(), ImmutableList.of(cursor))) {
-
+            final String clientId = "time-lag-checker-" + UUID.randomUUID();
+            try (EventConsumer consumer = timelineService.createEventConsumer(clientId, ImmutableList.of(cursor))) {
+                LOG.trace("client:{}, reading events for lag calculation", clientId);
                 final ConsumedEvent nextEvent = executeWithRetry(
                         () -> {
                             // We ignore per event authorization here, because we are not exposing any data.
@@ -163,6 +163,8 @@ public class SubscriptionTimeLagService {
                 throw new InconsistentStateException("Unexpected error happened when getting consumer time lag", e);
             } catch (final InvalidCursorException e) {
                 throw new ErrorGettingCursorTimeLagException(cursor, e);
+            } finally {
+                LOG.trace("client:{}, finished reading events for lag calculation", clientId);
             }
         }
     }
