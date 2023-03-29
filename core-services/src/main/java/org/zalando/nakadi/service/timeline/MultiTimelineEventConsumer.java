@@ -244,7 +244,7 @@ public class MultiTimelineEventConsumer implements EventConsumer.ReassignableEve
         for (final Map.Entry<TopicRepository, List<NakadiCursor>> entry : newAssignment.entrySet()) {
             if (!eventConsumers.containsKey(entry.getKey())) {
                 final TopicRepository repo = entry.getKey();
-                LOG.info("Creating underlying consumer for client id {} and cursors {}",
+                LOG.trace("Creating underlying consumer for client id {} and cursors {}",
                         clientId, Arrays.deepToString(entry.getValue().toArray()));
 
                 final EventConsumer.LowLevelConsumer consumer = repo.createEventConsumer(clientId, entry.getValue());
@@ -256,6 +256,7 @@ public class MultiTimelineEventConsumer implements EventConsumer.ReassignableEve
     private void stopAndRemoveConsumer(final TopicRepository toRemove) {
         final EventConsumer realConsumer = eventConsumers.remove(toRemove);
         try {
+            LOG.trace("About to close underlying consumer for client id {}", clientId);
             realConsumer.close();
         } catch (IOException ex) {
             LOG.error("Failed to stop one of consumers, but will not care about that, " +
