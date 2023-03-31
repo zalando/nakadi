@@ -154,12 +154,18 @@ public class KafkaFactory {
             return getConsumer();
         }
 
+        final Consumer<byte[], byte[]> consumer;
         try {
-            return consumerPool.poll(30, TimeUnit.SECONDS);
+            consumer = consumerPool.poll(30, TimeUnit.SECONDS);
         } catch (final InterruptedException e) {
             Thread.currentThread().interrupt();
             throw new RuntimeException("interrupted while waiting for a consumer from the pool");
         }
+        if (consumer == null) {
+            throw new RuntimeException("timed out while waiting for a consumer from the pool");
+        }
+
+        return consumer;
     }
 
     public void returnConsumer(final Consumer<byte[], byte[]> consumer) {
