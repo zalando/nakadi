@@ -23,7 +23,6 @@ import java.util.Date;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.RejectedExecutionException;
@@ -142,7 +141,8 @@ public class SubscriptionTimeLagService {
         private Duration getNextEventTimeLag(final NakadiCursor cursor) throws ErrorGettingCursorTimeLagException,
                 InconsistentStateException {
 
-            final String clientId = "time-lag-checker-" + UUID.randomUUID();
+            final String clientId = String.format("time-lag-checker-%s-%s",
+                    cursor.getEventType(), cursor.getPartition());
             try (EventConsumer consumer = timelineService.createEventConsumer(clientId, ImmutableList.of(cursor))) {
                 LOG.trace("client:{}, reading events for lag calculation", clientId);
                 final ConsumedEvent nextEvent = executeWithRetry(
