@@ -12,8 +12,8 @@ import java.util.stream.IntStream;
 public class KafkaFactoryTest {
     private static class FakeKafkaFactory extends KafkaFactory {
 
-        FakeKafkaFactory(final int numActiveProducers) {
-            super(null, numActiveProducers);
+        FakeKafkaFactory(final int numActiveProducers, final int consumerPoolSize) {
+            super(null, numActiveProducers, consumerPoolSize);
         }
 
         @Override
@@ -24,7 +24,7 @@ public class KafkaFactoryTest {
 
     @Test
     public void whenSingleProducerThenTheSameProducerIsGiven() {
-        final KafkaFactory factory = new FakeKafkaFactory(1);
+        final KafkaFactory factory = new FakeKafkaFactory(1, 2);
         final Producer<byte[], byte[]> producer1 = factory.takeProducer("topic-id");
         try {
             Assert.assertNotNull(producer1);
@@ -42,7 +42,7 @@ public class KafkaFactoryTest {
 
     @Test
     public void verifySingleProducerIsClosedAtCorrectTime() {
-        final KafkaFactory factory = new FakeKafkaFactory(1);
+        final KafkaFactory factory = new FakeKafkaFactory(1, 2);
 
         final List<Producer<byte[], byte[]>> producers1 = IntStream.range(0, 10)
                 .mapToObj(ignore -> factory.takeProducer("topic-id")).collect(Collectors.toList());
@@ -73,7 +73,7 @@ public class KafkaFactoryTest {
 
     @Test
     public void verifyNewProducerCreatedAfterCloseOfSingle() {
-        final KafkaFactory factory = new FakeKafkaFactory(1);
+        final KafkaFactory factory = new FakeKafkaFactory(1, 2);
         final Producer<byte[], byte[]> producer1 = factory.takeProducer("topic-id");
         Assert.assertNotNull(producer1);
         factory.terminateProducer(producer1);
@@ -89,7 +89,7 @@ public class KafkaFactoryTest {
 
     @Test
     public void testGoldenPathWithManyActiveProducers() {
-        final KafkaFactory factory = new FakeKafkaFactory(4);
+        final KafkaFactory factory = new FakeKafkaFactory(4, 2);
 
         final List<Producer<byte[], byte[]>> producers = IntStream.range(0, 10)
                 .mapToObj(ignore -> factory.takeProducer("topic-id")).collect(Collectors.toList());
