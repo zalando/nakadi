@@ -178,7 +178,9 @@ public class KafkaFactory {
                 .findFirst()
                 .ifPresent(clientId -> {
                     consumersInUse.remove(clientId);
-                    consumerPoolLock.notifyAll();
+                    synchronized (consumerPoolLock) {
+                        consumerPoolLock.notifyAll();
+                    }
                 });
     }
 
