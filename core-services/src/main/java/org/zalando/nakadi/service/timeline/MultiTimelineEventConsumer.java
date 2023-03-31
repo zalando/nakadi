@@ -333,19 +333,5 @@ public class MultiTimelineEventConsumer implements EventConsumer.ReassignableEve
         } catch (final InvalidCursorException e) {
             throw new IOException(e);
         }
-
-        // hack
-        eventConsumers.values().forEach((consumer) -> {
-            try {
-                consumer.close();
-            } catch (Exception e) {
-                // ignore, need to close everything
-                LOG.trace(
-                        "client:{}, failed to close underlying consumer, exception: {}",
-                        clientId, e.getMessage());
-            }
-        });
-
-        eventConsumers.clear();
     }
 }
