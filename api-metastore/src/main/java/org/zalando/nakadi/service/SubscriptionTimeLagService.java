@@ -78,9 +78,9 @@ public class SubscriptionTimeLagService {
                 timeLags.put(partition, futureTimeLags.get(partition).get());
             }
         } catch (RejectedExecutionException | TimeoutException | ExecutionException e) {
-            LOG.warn("caught exception the timelag stats are not complete - " + e);
+            LOG.warn("caught exception the timelag stats are not complete", e);
         } catch (Throwable e) {
-            LOG.warn("caught throwable the timelag stats are not complete - " + e);
+            LOG.warn("caught throwable the timelag stats are not complete", e);
         }
         return timeLags;
     }

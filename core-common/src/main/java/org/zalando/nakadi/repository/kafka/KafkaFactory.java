@@ -13,8 +13,10 @@ import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 import java.util.Properties;
-import java.util.Set;
+import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.LinkedBlockingQueue;
+import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReadWriteLock;
@@ -24,27 +26,29 @@ public class KafkaFactory {
 
     private static final Logger LOG = LoggerFactory.getLogger(KafkaFactory.class);
     private final KafkaLocationManager kafkaLocationManager;
+
     private final Map<Producer<byte[], byte[]>, AtomicInteger> useCount;
     private final ReadWriteLock rwLock;
     private final List<Producer<byte[], byte[]>> activeProducers;
 
-    private final Map<String, Consumer<byte[], byte[]>> consumerPool;
-    private final Set<String> consumersInUse;
-    private final Object consumerPoolLock;
+    private final BlockingQueue<Consumer<byte[], byte[]>> consumerPool;
 
-    public KafkaFactory(final KafkaLocationManager kafkaLocationManager, final int numActiveProducers) {
+    public KafkaFactory(final KafkaLocationManager kafkaLocationManager,
+                        final int numActiveProducers,
+                        final int consumerPoolSize) {
         this.kafkaLocationManager = kafkaLocationManager;
 
         this.useCount = new ConcurrentHashMap<>();
         this.rwLock = new ReentrantReadWriteLock();
 
-        this.consumerPool = new ConcurrentHashMap<>();
-        this.consumersInUse = ConcurrentHashMap.newKeySet();
-        this.consumerPoolLock = new Object();
-
         this.activeProducers = new ArrayList<>(numActiveProducers);
         for (int i = 0; i < numActiveProducers; ++i) {
             this.activeProducers.add(null);
+        }
+
+        this.consumerPool = new LinkedBlockingQueue(consumerPoolSize);
+        for (int i = 0; i < consumerPoolSize; ++i) {
+            this.consumerPool.add(createConsumerProxyInstance());
         }
     }
 
@@ -144,44 +148,35 @@ public class KafkaFactory {
         }
     }
 
-    public Consumer<byte[], byte[]> getConsumer(final String clientId /* ignored! */) {
+    public Consumer<byte[], byte[]> getConsumer(final String clientId) {
+        // HACK: See SubscriptionTimeLagService
         if (clientId == null || !clientId.startsWith("time-lag-checker-")) {
             return getConsumer();
         }
 
-        while (consumersInUse.contains(clientId)) {
-            synchronized (consumerPoolLock) {
-                if (!consumersInUse.contains(clientId)) {
-                    break;
-                }
-
-                try {
-                    consumerPoolLock.wait(100);
-                } catch (InterruptedException e) {
-                    Thread.currentThread().interrupt();
-                }
-            }
+        final Consumer<byte[], byte[]> consumer;
+        try {
+            consumer = consumerPool.poll(30, TimeUnit.SECONDS);
+        } catch (final InterruptedException e) {
+            Thread.currentThread().interrupt();
+            throw new RuntimeException("interrupted while waiting for a consumer from the pool");
+        }
+        if (consumer == null) {
+            throw new RuntimeException("timed out while waiting for a consumer from the pool");
         }
 
-        final Consumer<byte[], byte[]> consumer = consumerPool.computeIfAbsent(clientId, (cid) ->
-                new KafkaConsumerProxy(kafkaLocationManager.getKafkaConsumerProperties()));
-
-        consumer.assign(Collections.emptyList());
-        consumersInUse.add(clientId);
         return consumer;
     }
 
     public void returnConsumer(final Consumer<byte[], byte[]> consumer) {
-        consumerPool.entrySet().stream()
-                .filter((entry) -> entry.getValue() == consumer)
-                .map(Map.Entry::getKey)
-                .findFirst()
-                .ifPresent(clientId -> {
-                    consumersInUse.remove(clientId);
-                    synchronized (consumerPoolLock) {
-                        consumerPoolLock.notifyAll();
-                    }
-                });
+        consumer.assign(Collections.emptyList());
+
+        try {
+            consumerPool.put(consumer);
+        } catch (final InterruptedException e) {
+            Thread.currentThread().interrupt();
+            throw new RuntimeException("interrupted while putting a consumer back to the pool");
+        }
     }
 
     public Consumer<byte[], byte[]> getConsumer() {
@@ -194,6 +189,10 @@ public class KafkaFactory {
 
     protected Producer<byte[], byte[]> createProducerInstance() {
         return new KafkaProducer<byte[], byte[]>(kafkaLocationManager.getKafkaProducerProperties());
+    }
+
+    protected Consumer<byte[], byte[]> createConsumerProxyInstance() {
+        return new KafkaConsumerProxy(kafkaLocationManager.getKafkaConsumerProperties());
     }
 
     public class KafkaConsumerProxy extends KafkaConsumer<byte[], byte[]> {
