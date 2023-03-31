@@ -48,7 +48,7 @@ public class KafkaFactory {
 
         this.consumerPool = new LinkedBlockingQueue(consumerPoolSize);
         for (int i = 0; i < consumerPoolSize; ++i) {
-            this.consumerPool.add(getConsumer());
+            this.consumerPool.add(new KafkaConsumerProxy(kafkaLocationManager.getKafkaConsumerProperties()));
         }
     }
 
