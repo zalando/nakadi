@@ -48,7 +48,7 @@ public class KafkaFactory {
 
         this.consumerPool = new LinkedBlockingQueue(consumerPoolSize);
         for (int i = 0; i < consumerPoolSize; ++i) {
-            this.consumerPool.add(new KafkaConsumerProxy(kafkaLocationManager.getKafkaConsumerProperties()));
+            this.consumerPool.add(createConsumerProxyInstance());
         }
     }
 
@@ -189,6 +189,10 @@ public class KafkaFactory {
 
     protected Producer<byte[], byte[]> createProducerInstance() {
         return new KafkaProducer<byte[], byte[]>(kafkaLocationManager.getKafkaProducerProperties());
+    }
+
+    protected Consumer<byte[], byte[]> createConsumerProxyInstance() {
+        return new KafkaConsumerProxy(kafkaLocationManager.getKafkaConsumerProperties());
     }
 
     public class KafkaConsumerProxy extends KafkaConsumer<byte[], byte[]> {

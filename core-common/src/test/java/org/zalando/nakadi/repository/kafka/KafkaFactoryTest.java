@@ -1,5 +1,6 @@
 package org.zalando.nakadi.repository.kafka;
 
+import org.apache.kafka.clients.consumer.Consumer;
 import org.apache.kafka.clients.producer.Producer;
 import org.junit.Assert;
 import org.junit.Test;
@@ -19,6 +20,11 @@ public class KafkaFactoryTest {
         @Override
         protected Producer<byte[], byte[]> createProducerInstance() {
             return Mockito.mock(Producer.class);
+        }
+
+        @Override
+        protected Consumer<byte[], byte[]> createConsumerProxyInstance() {
+            return Mockito.mock(Consumer.class);
         }
     }
 
