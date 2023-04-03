@@ -41,11 +41,13 @@ public class KafkaFactory {
         this.useCount = new ConcurrentHashMap<>();
         this.rwLock = new ReentrantReadWriteLock();
 
+        LOG.info("Allocating up to {} active Kafka producers", numActiveProducers);
         this.activeProducers = new ArrayList<>(numActiveProducers);
         for (int i = 0; i < numActiveProducers; ++i) {
             this.activeProducers.add(null);
         }
 
+        LOG.info("Preparing timelag checker pool of {} Kafka consumers", consumerPoolSize);
         this.consumerPool = new LinkedBlockingQueue(consumerPoolSize);
         for (int i = 0; i < consumerPoolSize; ++i) {
             this.consumerPool.add(createConsumerProxyInstance());
@@ -154,6 +156,7 @@ public class KafkaFactory {
             return getConsumer();
         }
 
+        LOG.trace("Taking timelag consumer from the pool");
         final Consumer<byte[], byte[]> consumer;
         try {
             consumer = consumerPool.poll(30, TimeUnit.SECONDS);
@@ -169,6 +172,8 @@ public class KafkaFactory {
     }
 
     public void returnConsumer(final Consumer<byte[], byte[]> consumer) {
+        LOG.trace("Returning timelag consumer to the pool");
+
         consumer.assign(Collections.emptyList());
 
         try {
