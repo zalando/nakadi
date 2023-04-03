@@ -13,7 +13,7 @@ import java.lang.annotation.Target;
 @Retention(RetentionPolicy.RUNTIME)
 @Constraint(validatedBy = {DataLakeAnnotationValidator.class})
 public @interface DataLakeValidAnnotations {
-    String message() default "{org.zalando.nakadi.annotations.validation.Annotation.message}}";
+    String message() default "{org.zalando.nakadi.annotations.validation.DataLakeValidAnnotations.message}}";
 
     Class<?>[] groups() default {};
 

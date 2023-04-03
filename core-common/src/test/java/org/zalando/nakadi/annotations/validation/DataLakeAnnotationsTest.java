@@ -17,7 +17,7 @@ public class DataLakeAnnotationsTest {
     public static class TestClass {
         @Valid
         @DataLakeValidAnnotations
-        private Map<
+        private final Map<
                 @Valid @AnnotationKey String,
                 @Valid @AnnotationValue String> annotations;
 
