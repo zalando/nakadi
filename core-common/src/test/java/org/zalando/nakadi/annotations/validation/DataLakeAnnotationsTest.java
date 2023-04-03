@@ -36,7 +36,7 @@ public class DataLakeAnnotationsTest {
     @Test
     public void whenRetentionPeriodThenRetentionReasonRequired() {
         final var annotations = Map.of(
-                DataLakeAnnotationValidator.RetentionPeriodAnnotation, "1 day"
+                DataLakeAnnotationValidator.RETENTION_PERIOD_ANNOTATION, "1 day"
         );
         final Set<ConstraintViolation<TestClass>> result = validator.validate(new TestClass(annotations));
         assertFalse("Missing retention reason is treated valid", result.isEmpty());
@@ -45,8 +45,8 @@ public class DataLakeAnnotationsTest {
     @Test
     public void whenRetentionPeriodFormatIsWrongThenFail() {
         final var annotations = Map.of(
-                DataLakeAnnotationValidator.RetentionPeriodAnnotation, "1 airplane",
-                DataLakeAnnotationValidator.RetentionReasonAnnotation, "I need my data"
+                DataLakeAnnotationValidator.RETENTION_PERIOD_ANNOTATION, "1 airplane",
+                DataLakeAnnotationValidator.RETENTION_REASON_ANNOTATION, "I need my data"
         );
         final Set<ConstraintViolation<TestClass>> result = validator.validate(new TestClass(annotations));
         assertFalse("Missing retention reason is treated valid", result.isEmpty());
@@ -55,8 +55,8 @@ public class DataLakeAnnotationsTest {
     @Test
     public void whenRetentionPeriodAndReasonThenOk() {
         final var annotations = Map.of(
-                DataLakeAnnotationValidator.RetentionPeriodAnnotation, "1 day",
-                DataLakeAnnotationValidator.RetentionReasonAnnotation, "I need my data"
+                DataLakeAnnotationValidator.RETENTION_PERIOD_ANNOTATION, "1 day",
+                DataLakeAnnotationValidator.RETENTION_REASON_ANNOTATION, "I need my data"
         );
         final Set<ConstraintViolation<TestClass>> result = validator.validate(new TestClass(annotations));
         assertTrue("Retention period and reason exist correctly", result.isEmpty());

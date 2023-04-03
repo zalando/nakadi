@@ -6,23 +6,25 @@ import java.util.Map;
 import java.util.regex.Pattern;
 
 public class DataLakeAnnotationValidator implements ConstraintValidator<DataLakeValidAnnotations, Map<String, String>> {
-    final private static Pattern AnnotationsPeriodPattern = Pattern.compile("^(unlimited|(([1-9]\\d{0,2}|[1-2]\\d{3}|3[0-5]\\d{2}|36[0-4]\\d|3650)(\\sdays?))|(([1-9]|[1-9]\\d|[1][01]\\d|120)(\\smonths?))|(([1-9]|(10))(\\syears?)))$");
-    final public static String RetentionPeriodAnnotation = "datalake.zalando.org/retention-period";
-    final public static String RetentionReasonAnnotation = "datalake.zalando.org/retention-period-reason";
+    private static final Pattern ANNOTATIONS_PERIOD_PATTERN = Pattern.compile(
+            "^(unlimited|(([1-9]\\d{0,2}|[1-2]\\d{3}|3[0-5]\\d{2}|36[0-4]\\d|3650)(\\sdays?))|" +
+                    "(([1-9]|[1-9]\\d|[1][01]\\d|120)(\\smonths?))|(([1-9]|(10))(\\syears?)))$");
+    public static final  String RETENTION_PERIOD_ANNOTATION = "datalake.zalando.org/retention-period";
+    public static final String RETENTION_REASON_ANNOTATION = "datalake.zalando.org/retention-period-reason";
 
     @Override
-    public void initialize(DataLakeValidAnnotations constraintAnnotation) {
+    public void initialize(final DataLakeValidAnnotations constraintAnnotation) {
         ConstraintValidator.super.initialize(constraintAnnotation);
     }
 
     @Override
-    public boolean isValid(Map<String, String> annotations, ConstraintValidatorContext context) {
-        if (annotations.containsKey(RetentionPeriodAnnotation)) {
-            if (annotations.getOrDefault(RetentionReasonAnnotation, "").equals("")) {
+    public boolean isValid(final Map<String, String> annotations, final ConstraintValidatorContext context) {
+        if (annotations.containsKey(RETENTION_PERIOD_ANNOTATION)) {
+            if (annotations.getOrDefault(RETENTION_REASON_ANNOTATION, "").equals("")) {
                 return false;
             }
 
-            return AnnotationsPeriodPattern.matcher(annotations.get(RetentionPeriodAnnotation)).find();
+            return ANNOTATIONS_PERIOD_PATTERN.matcher(annotations.get(RETENTION_PERIOD_ANNOTATION)).find();
         }
         return false;
     }
