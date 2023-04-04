@@ -24,6 +24,6 @@ public class DataLakeAnnotationValidator implements ConstraintValidator<DataLake
 
             return ANNOTATIONS_PERIOD_PATTERN.matcher(annotations.get(RETENTION_PERIOD_ANNOTATION)).find();
         }
-        return false;
+        return true;
     }
 }

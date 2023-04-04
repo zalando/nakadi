@@ -24,7 +24,7 @@ import java.lang.annotation.Target;
         message = "Key name should start and end with a letter or a digit")
 @Constraint(validatedBy = {})
 public @interface AnnotationKey {
-    String message() default "{org.zalando.nakadi.annotations.validation.AnnotationKey.message}}";
+    String message() default "{org.zalando.nakadi.annotations.validation.AnnotationKey.message}";
 
     Class<?>[] groups() default {};
 

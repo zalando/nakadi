@@ -61,4 +61,18 @@ public class DataLakeAnnotationsTest {
         final Set<ConstraintViolation<TestClass>> result = validator.validate(new TestClass(annotations));
         assertTrue("Retention period and reason exist correctly", result.isEmpty());
     }
+
+    @Test
+    public void itWorksWithOtherAnnotations() {
+        final var annotations = Map.of("some-annotation", "some-value");
+        final Set<ConstraintViolation<TestClass>> result = validator.validate(new TestClass(annotations));
+        assertTrue("Should not throw errors when few annotations are passed, " +
+                "but none of them belongs to data lake", result.isEmpty());
+    }
+
+    @Test
+    public void itWorksWithoutAnnotations(){
+        final Set<ConstraintViolation<TestClass>> result = validator.validate(new TestClass(null));
+        assertTrue("Should not throw errors when no annotation is passed", result.isEmpty());
+    }
 }
