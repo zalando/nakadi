@@ -15,7 +15,7 @@ import java.lang.annotation.Target;
 @Size(max = 1000)
 @Constraint(validatedBy = {})
 public @interface AnnotationValue {
-    String message() default "{org.zalando.nakadi.annotations.validation.AnnotationValue.message}}";
+    String message() default "{org.zalando.nakadi.annotations.validation.AnnotationValue.message}";
 
     Class<?>[] groups() default {};
 
