@@ -13,11 +13,6 @@ public class DataLakeAnnotationValidator implements ConstraintValidator<DataLake
     public static final String RETENTION_REASON_ANNOTATION = "datalake.zalando.org/retention-period-reason";
 
     @Override
-    public void initialize(final DataLakeValidAnnotations constraintAnnotation) {
-        ConstraintValidator.super.initialize(constraintAnnotation);
-    }
-
-    @Override
     public boolean isValid(final Map<String, String> annotations, final ConstraintValidatorContext context) {
         if (annotations == null || annotations.size() == 0) {
             return true;
