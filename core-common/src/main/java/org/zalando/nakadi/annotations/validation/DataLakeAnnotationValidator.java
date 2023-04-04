@@ -19,10 +19,20 @@ public class DataLakeAnnotationValidator implements ConstraintValidator<DataLake
         }
         if (annotations.containsKey(RETENTION_PERIOD_ANNOTATION)) {
             if (annotations.getOrDefault(RETENTION_REASON_ANNOTATION, "").equals("")) {
+                context.disableDefaultConstraintViolation();
+                context.buildConstraintViolationWithTemplate(
+                                "Retention reason is required, when " + RETENTION_PERIOD_ANNOTATION + " is specified")
+                        .addConstraintViolation();
                 return false;
             }
 
-            return ANNOTATIONS_PERIOD_PATTERN.matcher(annotations.get(RETENTION_PERIOD_ANNOTATION)).find();
+            if (!ANNOTATIONS_PERIOD_PATTERN.matcher(annotations.get(RETENTION_PERIOD_ANNOTATION)).find()) {
+                context.disableDefaultConstraintViolation();
+                context.buildConstraintViolationWithTemplate(RETENTION_PERIOD_ANNOTATION +
+                                " does not comply with pattern: " + ANNOTATIONS_PERIOD_PATTERN)
+                        .addConstraintViolation();
+                return false;
+            }
         }
         return true;
     }

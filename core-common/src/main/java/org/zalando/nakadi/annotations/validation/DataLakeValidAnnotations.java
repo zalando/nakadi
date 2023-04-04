@@ -13,7 +13,8 @@ import java.lang.annotation.Target;
 @Retention(RetentionPolicy.RUNTIME)
 @Constraint(validatedBy = {DataLakeAnnotationValidator.class})
 public @interface DataLakeValidAnnotations {
-    String message() default "{org.zalando.nakadi.annotations.validation.DataLakeValidAnnotations.message}";
+    String message() default "Missing retention reason if retention period is specified, or " +
+            "retention period is not formatted correctly";
 
     Class<?>[] groups() default {};
 
