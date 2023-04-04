@@ -73,8 +73,8 @@ public class EventTypeBase implements EventTypeAuthz {
     @Valid
     private ResourceAuthorization authorization;
 
-    @Nullable
     @Valid
+    @Nullable
     @DataLakeValidAnnotations
     private Map<
             @AnnotationKey String,
