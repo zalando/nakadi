@@ -5,6 +5,7 @@ import com.fasterxml.jackson.annotation.JsonInclude;
 import com.google.common.collect.ImmutableList;
 import org.zalando.nakadi.annotations.validation.AnnotationKey;
 import org.zalando.nakadi.annotations.validation.AnnotationValue;
+import org.zalando.nakadi.annotations.validation.DataLakeValidAnnotations;
 import org.zalando.nakadi.annotations.validation.LabelKey;
 import org.zalando.nakadi.annotations.validation.LabelValue;
 import org.zalando.nakadi.partitioning.PartitionStrategy;
@@ -74,6 +75,7 @@ public class EventTypeBase implements EventTypeAuthz {
 
     @Valid
     @Nullable
+    @DataLakeValidAnnotations
     private Map<
             @AnnotationKey String,
             @AnnotationValue String> annotations;
