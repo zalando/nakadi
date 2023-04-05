@@ -7,13 +7,8 @@ import javax.validation.ConstraintViolation;
 import javax.validation.Valid;
 import javax.validation.Validation;
 import javax.validation.Validator;
-import java.util.HashMap;
 import java.util.Map;
 import java.util.Set;
-import java.util.stream.Collectors;
-
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
 
 public class DataLakeAnnotationsTest {
@@ -60,7 +55,7 @@ public class DataLakeAnnotationsTest {
 
     @Test
     public void whenRetentionPeriodAndReasonThenOk() {
-        String[] validRetentionPeriodValues = {
+        final String[] validRetentionPeriodValues = {
                 "unlimited",
                 "1 day",
                 "2 days",
@@ -71,7 +66,7 @@ public class DataLakeAnnotationsTest {
                 "1 year"
         };
 
-        for (String validRetentionPeriod : validRetentionPeriodValues) {
+        for (final String validRetentionPeriod : validRetentionPeriodValues) {
             final var annotations = Map.of(
                     DataLakeAnnotationValidator.RETENTION_PERIOD_ANNOTATION, validRetentionPeriod,
                     DataLakeAnnotationValidator.RETENTION_REASON_ANNOTATION, "I need my data"
