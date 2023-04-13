@@ -259,7 +259,7 @@ public class SubscriptionAT extends BaseAT {
     public void testSubscriptionAnnotationLabelIsUpdated() throws IOException {
         final String eventType = createEventType().getName();
         final String subscription = "{\"owning_application\":\"app\",\"event_types\":" +
-                "[" + eventType +"]}";
+                "[\"" + eventType +"\"]}";
         final Response response = given()
                 .body(subscription)
                 .contentType(JSON)
