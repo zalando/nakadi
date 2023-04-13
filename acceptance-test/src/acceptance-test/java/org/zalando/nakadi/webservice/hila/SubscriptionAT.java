@@ -285,7 +285,7 @@ public class SubscriptionAT extends BaseAT {
                 .then()
                 .statusCode(HttpStatus.SC_OK)
                 .body("annotations.foo", is("bar"))
-                .body("annotations.kar", is("booz"));
+                .body("labels.kar", is("booz"));
     }
 
     @Test
