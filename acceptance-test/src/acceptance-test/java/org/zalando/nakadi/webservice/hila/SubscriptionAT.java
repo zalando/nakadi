@@ -36,6 +36,7 @@ import org.zalando.problem.Problem;
 
 import java.io.IOException;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
@@ -48,6 +49,7 @@ import static java.text.MessageFormat.format;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.containsInAnyOrder;
 import static org.hamcrest.Matchers.hasSize;
+import static org.hamcrest.Matchers.is;
 import static org.hamcrest.Matchers.isEmptyString;
 import static org.hamcrest.Matchers.not;
 import static org.hamcrest.Matchers.nullValue;
@@ -251,6 +253,39 @@ public class SubscriptionAT extends BaseAT {
                 .then()
                 .statusCode(HttpStatus.SC_OK)
                 .body(JSON_HELPER.matchesObject(expectedList));
+    }
+
+    @Test
+    public void testSubscriptionAnnotationLabelIsUpdated() throws IOException {
+        final String eventType = createEventType().getName();
+        final String subscription = "{\"owning_application\":\"app\",\"event_types\":" +
+                "[\"" + eventType +"\"]}";
+        final Response response = given()
+                .body(subscription)
+                .contentType(JSON)
+                .post(SUBSCRIPTIONS_URL);
+        // assert response
+        response.then().statusCode(HttpStatus.SC_CREATED);
+        final String responseBody = response.print();
+        final Subscription sub = MAPPER.readValue(responseBody, Subscription.class);
+        Assert.assertNotNull(sub.getId());
+
+        sub.setAnnotations(Map.of("foo", "bar"));
+        sub.setLabels(Map.of("kar", "booz"));
+
+        given()
+                .contentType(JSON)
+                .body(TestUtils.OBJECT_MAPPER.writeValueAsString(sub))
+                .put(SUBSCRIPTIONS_URL + "/" + sub.getId())
+                .then()
+                .statusCode(HttpStatus.SC_NO_CONTENT);
+
+        given()
+                .get(SUBSCRIPTIONS_URL + "/" + sub.getId())
+                .then()
+                .statusCode(HttpStatus.SC_OK)
+                .body("annotations.foo", is("bar"))
+                .body("labels.kar", is("booz"));
     }
 
     @Test

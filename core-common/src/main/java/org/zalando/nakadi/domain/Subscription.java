@@ -84,6 +84,8 @@ public class Subscription extends SubscriptionBase {
     public Subscription mergeFrom(final SubscriptionBase newValue) {
         final Subscription subscription = new Subscription(id, createdAt, new DateTime(DateTimeZone.UTC), this);
         subscription.setAuthorization(newValue.getAuthorization());
+        subscription.setAnnotations(newValue.getAnnotations());
+        subscription.setLabels(newValue.getLabels());
         return subscription;
     }
 
