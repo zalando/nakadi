@@ -1,5 +1,7 @@
 package org.zalando.nakadi.repository.kafka;
 
+import com.codahale.metrics.Meter;
+import com.codahale.metrics.MetricRegistry;
 import org.apache.kafka.clients.consumer.Consumer;
 import org.apache.kafka.clients.consumer.KafkaConsumer;
 import org.apache.kafka.clients.producer.KafkaProducer;
@@ -32,8 +34,10 @@ public class KafkaFactory {
     private final List<Producer<byte[], byte[]>> activeProducers;
 
     private final BlockingQueue<Consumer<byte[], byte[]>> consumerPool;
+    private final Meter consumerCreateMeter;
 
     public KafkaFactory(final KafkaLocationManager kafkaLocationManager,
+                        final MetricRegistry metricsRegistry,
                         final int numActiveProducers,
                         final int consumerPoolSize) {
         this.kafkaLocationManager = kafkaLocationManager;
@@ -52,6 +56,8 @@ public class KafkaFactory {
         for (int i = 0; i < consumerPoolSize; ++i) {
             this.consumerPool.add(createConsumerProxyInstance());
         }
+
+        this.consumerCreateMeter = metricsRegistry.meter("nakadi.kafka.consumer.created");
     }
 
     @Nullable
@@ -151,6 +157,10 @@ public class KafkaFactory {
     }
 
     public Consumer<byte[], byte[]> getConsumer(final String clientId) {
+
+        return getConsumer();
+
+        /*
         // HACK: See SubscriptionTimeLagService
         if (clientId == null || !clientId.startsWith("time-lag-checker-")) {
             return getConsumer();
@@ -169,6 +179,7 @@ public class KafkaFactory {
         }
 
         return consumer;
+        */
     }
 
     public void returnConsumer(final Consumer<byte[], byte[]> consumer) {
@@ -189,6 +200,9 @@ public class KafkaFactory {
     }
 
     private Consumer<byte[], byte[]> getConsumer(final Properties properties) {
+
+        consumerCreateMeter.mark();
+
         return new KafkaConsumer<byte[], byte[]>(properties);
     }
 
