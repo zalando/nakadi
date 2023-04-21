@@ -18,7 +18,7 @@ import java.util.Properties;
 import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.LinkedBlockingQueue;
-//import java.util.concurrent.TimeUnit;
+import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReadWriteLock;
@@ -35,6 +35,8 @@ public class KafkaFactory {
 
     private final BlockingQueue<Consumer<byte[], byte[]>> consumerPool;
     private final Meter consumerCreateMeter;
+    private final Meter consumerPoolTakeMeter;
+    private final Meter consumerPoolReturnMeter;
 
     public KafkaFactory(final KafkaLocationManager kafkaLocationManager,
                         final MetricRegistry metricsRegistry,
@@ -58,6 +60,8 @@ public class KafkaFactory {
         }
 
         this.consumerCreateMeter = metricsRegistry.meter("nakadi.kafka.consumer.created");
+        this.consumerPoolTakeMeter = metricsRegistry.meter("nakadi.kafka.consumer.taken");
+        this.consumerPoolReturnMeter = metricsRegistry.meter("nakadi.kafka.consumer.returned");
     }
 
     @Nullable
@@ -157,17 +161,18 @@ public class KafkaFactory {
     }
 
     public Consumer<byte[], byte[]> getConsumer(final String clientId) {
-
-        return getConsumer();
-
-        /*
         // HACK: See SubscriptionTimeLagService
-        if (clientId == null || !clientId.startsWith("time-lag-checker-")) {
-            return getConsumer();
+        if (clientId != null && clientId.startsWith("time-lag-checker-")) {
+            return takeConsumer();
         }
 
-        LOG.trace("Taking timelag consumer from the pool");
+        return getConsumer();
+    }
+
+    public Consumer<byte[], byte[]> takeConsumer() {
         final Consumer<byte[], byte[]> consumer;
+
+        LOG.trace("Taking timelag consumer from the pool");
         try {
             consumer = consumerPool.poll(30, TimeUnit.SECONDS);
         } catch (final InterruptedException e) {
@@ -178,14 +183,17 @@ public class KafkaFactory {
             throw new RuntimeException("timed out while waiting for a consumer from the pool");
         }
 
+        consumerPoolTakeMeter.mark();
+
         return consumer;
-        */
     }
 
     public void returnConsumer(final Consumer<byte[], byte[]> consumer) {
         LOG.trace("Returning timelag consumer to the pool");
 
         consumer.assign(Collections.emptyList());
+
+        consumerPoolReturnMeter.mark();
 
         try {
             consumerPool.put(consumer);
