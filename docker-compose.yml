@@ -50,7 +50,11 @@ services:
     depends_on:
     - zookeeper
     environment:
+      # to debug when the container doesn't start due to invalid config:
+      BITNAMI_DEBUG: 'yes'
+
       ALLOW_PLAINTEXT_LISTENER: 'yes'
+      KAFKA_ENABLE_KRAFT: 'no'
       KAFKA_BROKER_ID: 0
       KAFKA_CFG_ADVERTISED_LISTENERS: INTERNAL://kafka:9092,EXTERNAL://localhost:29092
       KAFKA_CFG_AUTO_CREATE_TOPICS_ENABLE: 'false'
