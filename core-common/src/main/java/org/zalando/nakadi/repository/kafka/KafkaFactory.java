@@ -164,15 +164,11 @@ public class KafkaFactory {
         }
     }
 
-    public Consumer<byte[], byte[]> getConsumer(final String clientId) {
-        if (consumerPool != null) {
-            return takeConsumer();
-        }
-
+    public Consumer<byte[], byte[]> getConsumer(final String clientId /* ignored */) {
         return getConsumer();
     }
 
-    public Consumer<byte[], byte[]> takeConsumer() {
+    private Consumer<byte[], byte[]> takeConsumer() {
         final Consumer<byte[], byte[]> consumer;
 
         LOG.trace("Taking timelag consumer from the pool");
@@ -191,7 +187,7 @@ public class KafkaFactory {
         return consumer;
     }
 
-    public void returnConsumer(final Consumer<byte[], byte[]> consumer) {
+    private void returnConsumer(final Consumer<byte[], byte[]> consumer) {
         LOG.trace("Returning timelag consumer to the pool");
 
         consumer.assign(Collections.emptyList());
@@ -207,6 +203,10 @@ public class KafkaFactory {
     }
 
     public Consumer<byte[], byte[]> getConsumer() {
+        if (consumerPool != null) {
+            return takeConsumer();
+        }
+
         return getConsumer(kafkaLocationManager.getKafkaConsumerProperties());
     }
 
