@@ -53,10 +53,14 @@ public class KafkaFactory {
             this.activeProducers.add(null);
         }
 
-        LOG.info("Preparing timelag checker pool of {} Kafka consumers", consumerPoolSize);
-        this.consumerPool = new LinkedBlockingQueue(consumerPoolSize);
-        for (int i = 0; i < consumerPoolSize; ++i) {
-            this.consumerPool.add(createConsumerProxyInstance());
+        if (consumerPoolSize > 0) {
+            LOG.info("Preparing timelag checker pool of {} Kafka consumers", consumerPoolSize);
+            this.consumerPool = new LinkedBlockingQueue(consumerPoolSize);
+            for (int i = 0; i < consumerPoolSize; ++i) {
+                this.consumerPool.add(createConsumerProxyInstance());
+            }
+        } else {
+            this.consumerPool = null;
         }
 
         this.consumerCreateMeter = metricsRegistry.meter("nakadi.kafka.consumer.created");
@@ -161,8 +165,7 @@ public class KafkaFactory {
     }
 
     public Consumer<byte[], byte[]> getConsumer(final String clientId) {
-        // HACK: See SubscriptionTimeLagService
-        if (clientId != null && clientId.startsWith("time-lag-checker-")) {
+        if (consumerPool != null) {
             return takeConsumer();
         }
 
