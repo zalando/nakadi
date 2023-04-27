@@ -203,7 +203,7 @@ class StreamingState extends State {
             return;
         }
 
-        if (eventConsumer.getAssignment().isEmpty() || pollPaused) {
+        if (eventConsumer.getEventTypeAssignment().isEmpty() || pollPaused) {
             // Small optimization not to waste CPU while not yet assigned to any partitions
             scheduleTask(this::pollDataFromKafka, getKafkaPollTimeout(), TimeUnit.MILLISECONDS);
             return;
@@ -554,7 +554,7 @@ class StreamingState extends State {
                 throw new NakadiRuntimeException(ex);
             }
         }
-        final Set<EventTypePartition> currentAssignment = eventConsumer.getAssignment();
+        final Set<EventTypePartition> currentAssignment = eventConsumer.getEventTypeAssignment();
 
         LOG.info("Changing kafka assignment from {} to {}",
                 Arrays.deepToString(currentAssignment.toArray()),

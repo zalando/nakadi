@@ -75,7 +75,7 @@ public class MultiTimelineEventConsumer implements EventConsumer.ReassignableEve
     }
 
     @Override
-    public Set<EventTypePartition> getAssignment() {
+    public Set<EventTypePartition> getEventTypeAssignment() {
         return latestOffsets.keySet();
     }
 
@@ -236,7 +236,8 @@ public class MultiTimelineEventConsumer implements EventConsumer.ReassignableEve
                 final Set<TopicPartition> oldAssignment = existingEventConsumer.getAssignment();
                 if (!oldAssignment.equals(newTopicPartitions)
                         || oldAssignment.stream().anyMatch(actualReadPositionChanged::contains)) {
-                    stopAndRemoveConsumer(entry.getKey());
+//                    stopAndRemoveConsumer(entry.getKey());
+                    ((EventConsumer.ReassignableEventConsumer) existingEventConsumer).reassign(entry.getValue());
                 }
             }
         }

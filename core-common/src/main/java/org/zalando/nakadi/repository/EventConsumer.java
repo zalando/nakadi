@@ -20,7 +20,7 @@ public interface EventConsumer extends Closeable {
     }
 
     interface ReassignableEventConsumer extends EventConsumer {
-        Set<EventTypePartition> getAssignment();
+        Set<EventTypePartition> getEventTypeAssignment();
 
         void reassign(Collection<NakadiCursor> newValues) throws InvalidCursorException;
     }

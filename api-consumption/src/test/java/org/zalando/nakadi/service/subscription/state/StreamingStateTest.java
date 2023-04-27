@@ -162,7 +162,7 @@ public class StreamingStateTest {
         when(cursorConverter.convert((SubscriptionCursorWithoutToken) any())).thenReturn(anyCursor);
         when(timelineService.getActiveTimelinesOrdered(eq("t"))).thenReturn(Collections.singletonList(timeline));
         final EventConsumer.ReassignableEventConsumer consumer = mock(EventConsumer.ReassignableEventConsumer.class);
-        when(consumer.getAssignment()).thenReturn(Collections.emptySet());
+        when(consumer.getEventTypeAssignment()).thenReturn(Collections.emptySet());
 
         // Throw exception when reassigning partitions to consumer
         doThrow(new InvalidCursorException(CursorError.UNAVAILABLE, anyCursor)).when(consumer).reassign(any());
@@ -192,7 +192,7 @@ public class StreamingStateTest {
         Mockito.when(zkMock.subscribeForOffsetChanges(Mockito.eq(pk), Mockito.any())).thenReturn(offsetSubscription);
 
         final EventConsumer.ReassignableEventConsumer consumer = mock(EventConsumer.ReassignableEventConsumer.class);
-        when(consumer.getAssignment()).thenReturn(Collections.emptySet());
+        when(consumer.getEventTypeAssignment()).thenReturn(Collections.emptySet());
         when(timelineService.createEventConsumer(any())).thenReturn(consumer);
         when(subscription.getEventTypes()).thenReturn(Collections.singleton("t"));
 

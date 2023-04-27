@@ -6,17 +6,21 @@ import org.apache.kafka.clients.consumer.ConsumerRecords;
 import org.apache.kafka.common.TopicPartition;
 import org.zalando.nakadi.domain.ConsumedEvent;
 import org.zalando.nakadi.domain.EventOwnerHeader;
+import org.zalando.nakadi.domain.EventTypePartition;
+import org.zalando.nakadi.domain.NakadiCursor;
 import org.zalando.nakadi.domain.Timeline;
+import org.zalando.nakadi.exceptions.runtime.InvalidCursorException;
 import org.zalando.nakadi.repository.EventConsumer;
 
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.stream.Collectors;
 
-public class NakadiKafkaConsumer implements EventConsumer.LowLevelConsumer {
+public class NakadiKafkaConsumer implements EventConsumer.LowLevelConsumer, EventConsumer.ReassignableEventConsumer {
 
     private final Consumer<byte[], byte[]> kafkaConsumer;
     private final long pollTimeout;
@@ -31,12 +35,17 @@ public class NakadiKafkaConsumer implements EventConsumer.LowLevelConsumer {
         this.pollTimeout = pollTimeout;
         this.timelineMap = timelineMap;
         // define topic/partitions to consume from
+        assign(kafkaCursors);
+    }
+
+    private void assign(final Collection<KafkaCursor> kafkaCursors) {
         final Map<TopicPartition, KafkaCursor> topicCursors = kafkaCursors.stream().collect(
                 Collectors.toMap(
                         cursor -> new TopicPartition(cursor.getTopic(), cursor.getPartition()),
                         cursor -> cursor,
                         (cursor1, cursor2) -> cursor2
                 ));
+
         kafkaConsumer.assign(new ArrayList<>(topicCursors.keySet()));
         topicCursors.forEach((topicPartition, cursor) -> kafkaConsumer.seek(topicPartition, cursor.getOffset()));
     }
@@ -48,6 +57,16 @@ public class NakadiKafkaConsumer implements EventConsumer.LowLevelConsumer {
                         tp.topic(),
                         KafkaCursor.toNakadiPartition(tp.partition())))
                 .collect(Collectors.toSet());
+    }
+
+    @Override
+    public Set<EventTypePartition> getEventTypeAssignment() {
+        throw new RuntimeException();
+    }
+
+    @Override
+    public void reassign(final Collection<NakadiCursor> newValues) throws InvalidCursorException {
+        assign(newValues.stream().map(NakadiCursor::asKafkaCursor).collect(Collectors.toList()));
     }
 
     @Override
