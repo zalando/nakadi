@@ -237,6 +237,7 @@ public class MultiTimelineEventConsumer implements EventConsumer.ReassignableEve
                 if (!oldAssignment.equals(newTopicPartitions)
                         || oldAssignment.stream().anyMatch(actualReadPositionChanged::contains)) {
 //                    stopAndRemoveConsumer(entry.getKey());
+                    LOG.error("existingEventConsumer.reassign(entry.getValue())");
                     ((EventConsumer.ReassignableEventConsumer) existingEventConsumer).reassign(entry.getValue());
                 }
             }

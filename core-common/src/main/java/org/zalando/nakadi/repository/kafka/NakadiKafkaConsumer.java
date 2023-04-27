@@ -4,6 +4,8 @@ import org.apache.kafka.clients.consumer.Consumer;
 import org.apache.kafka.clients.consumer.ConsumerRecord;
 import org.apache.kafka.clients.consumer.ConsumerRecords;
 import org.apache.kafka.common.TopicPartition;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.zalando.nakadi.domain.ConsumedEvent;
 import org.zalando.nakadi.domain.EventOwnerHeader;
 import org.zalando.nakadi.domain.EventTypePartition;
@@ -22,6 +24,7 @@ import java.util.stream.Collectors;
 
 public class NakadiKafkaConsumer implements EventConsumer.LowLevelConsumer, EventConsumer.ReassignableEventConsumer {
 
+    private static final Logger LOG = LoggerFactory.getLogger(NakadiKafkaConsumer.class);
     private final Consumer<byte[], byte[]> kafkaConsumer;
     private final long pollTimeout;
     private final Map<TopicPartition, Timeline> timelineMap;
@@ -66,6 +69,7 @@ public class NakadiKafkaConsumer implements EventConsumer.LowLevelConsumer, Even
 
     @Override
     public void reassign(final Collection<NakadiCursor> newValues) throws InvalidCursorException {
+        LOG.error("reassign(final Collection<NakadiCursor> newValues)");
         kafkaConsumer.assign(Collections.emptyList());
         assign(newValues.stream().map(NakadiCursor::asKafkaCursor).collect(Collectors.toList()));
     }
