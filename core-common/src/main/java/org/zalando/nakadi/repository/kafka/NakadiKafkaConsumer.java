@@ -66,6 +66,7 @@ public class NakadiKafkaConsumer implements EventConsumer.LowLevelConsumer, Even
 
     @Override
     public void reassign(final Collection<NakadiCursor> newValues) throws InvalidCursorException {
+        kafkaConsumer.assign(Collections.emptyList());
         assign(newValues.stream().map(NakadiCursor::asKafkaCursor).collect(Collectors.toList()));
     }
 
