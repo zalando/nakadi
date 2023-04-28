@@ -3,7 +3,6 @@ package org.zalando.nakadi.repository;
 import org.zalando.nakadi.domain.ConsumedEvent;
 import org.zalando.nakadi.domain.EventTypePartition;
 import org.zalando.nakadi.domain.NakadiCursor;
-import org.zalando.nakadi.domain.PartitionStatistics;
 import org.zalando.nakadi.domain.TopicPartition;
 import org.zalando.nakadi.exceptions.runtime.InvalidCursorException;
 
