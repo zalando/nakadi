@@ -95,7 +95,5 @@ public interface TopicRepository {
 
     void updateTopicConfig(String topic, Long retentionMs, CleanupPolicy cleanupPolicy) throws TopicConfigException;
 
-    default void reassign(EventConsumer.LowLevelConsumer consumer, List<NakadiCursor> cursors) {
-
-    }
+    void reassign(EventConsumer.LowLevelConsumer consumer, List<NakadiCursor> cursors);
 }

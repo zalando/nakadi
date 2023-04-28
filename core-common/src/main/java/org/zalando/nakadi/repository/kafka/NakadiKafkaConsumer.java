@@ -15,6 +15,7 @@ import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.HashMap;
+import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -61,8 +62,10 @@ public class NakadiKafkaConsumer implements EventConsumer.LowLevelConsumer {
     @Override
     public void reassign(final Collection<NakadiCursor> cursors)
             throws InvalidCursorException {
+
         final Map<NakadiCursor, KafkaCursor> cursorMapping = cursors.stream()
                 .collect(Collectors.toMap(nc -> nc, NakadiCursor::asKafkaCursor));
+
         final Map<TopicPartition, Timeline> tpToTimelines = cursorMapping.entrySet().stream()
                 .collect(Collectors.toMap(
                         entry -> new TopicPartition(entry.getValue().getTopic(), entry.getValue().getPartition()),
@@ -77,6 +80,7 @@ public class NakadiKafkaConsumer implements EventConsumer.LowLevelConsumer {
                 // because Nakadi `BEGIN` offset is -1
                 .map(kafkaCursor -> kafkaCursor.addOffset(1))
                 .collect(toList());
+
         assign(kafkaCursors);
     }
 

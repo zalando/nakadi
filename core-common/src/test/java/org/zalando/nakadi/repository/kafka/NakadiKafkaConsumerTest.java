@@ -51,13 +51,6 @@ public class NakadiKafkaConsumerTest {
         return new KafkaCursor(topic, partition, offset);
     }
 
-//    private static Map<TopicPartition, Timeline> createTpTimelineMap() {
-//        final Timeline timeline = buildTimeline(TOPIC, TOPIC, CREATED_AT);
-//        final Map<TopicPartition, Timeline> mockMap = mock(Map.class);
-//        when(mockMap.get(any())).thenReturn(timeline);
-//        return mockMap;
-//    }
-
     @Test
     @SuppressWarnings("unchecked")
     public void whenCreateConsumerThenKafkaConsumerConfiguredCorrectly() {
