@@ -75,6 +75,7 @@ public class NakadiKafkaConsumer implements EventConsumer.LowLevelConsumer {
                         entry -> new TopicPartition(entry.getValue().getTopic(), entry.getValue().getPartition()),
                         entry -> entry.getKey().getTimeline(),
                         (v1, v2) -> v2));
+
         final List<KafkaCursor> kafkaCursors = cursorMapping.values().stream()
                 .map(kafkaCursor -> kafkaCursor.addOffset(1))
                 .collect(toList());
@@ -95,6 +96,7 @@ public class NakadiKafkaConsumer implements EventConsumer.LowLevelConsumer {
                     statistics.stream().filter(t -> Objects.equals(t.getPartition(), position.getPartition()))
                             .filter(t -> Objects.equals(t.getTimeline().getTopic(), position.getTopic()))
                             .findAny();
+
             if (!partition.isPresent()) {
                 throw new InvalidCursorException(PARTITION_NOT_FOUND, position);
             }
@@ -113,6 +115,7 @@ public class NakadiKafkaConsumer implements EventConsumer.LowLevelConsumer {
                 result.put(position, toCheck);
             }
         }
+
         return result;
     }
 

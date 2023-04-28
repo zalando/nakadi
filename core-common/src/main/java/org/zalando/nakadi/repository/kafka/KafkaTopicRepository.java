@@ -715,8 +715,10 @@ public class KafkaTopicRepository implements TopicRepository {
             @Nullable final String clientId,
             final List<NakadiCursor> cursors)
             throws ServiceTemporarilyUnavailableException, InvalidCursorException {
-        final List<Timeline> timelines = cursors.stream().map(NakadiCursor::getTimeline).distinct().collect(toList());
-        final List<PartitionStatistics> statistics = loadTopicStatistics(timelines);
+        final List<PartitionStatistics> statistics = loadTopicStatistics(cursors.stream()
+                .map(NakadiCursor::getTimeline)
+                .distinct()
+                .collect(toList()));
         final NakadiKafkaConsumer nakadiKafkaConsumer = new NakadiKafkaConsumer(
                 kafkaFactory.getConsumer(clientId),
                 nakadiSettings.getKafkaPollTimeoutMs());

@@ -75,9 +75,9 @@ public class NakadiKafkaConsumerTest {
         doNothing().when(kafkaConsumerMock).seek(tpCaptor.capture(), offsetCaptor.capture());
 
         final List<KafkaCursor> kafkaCursors = ImmutableList.of(
-                kafkaCursor(TOPIC, randomUInt(), randomULong()),
-                kafkaCursor(TOPIC, randomUInt(), randomULong()),
-                kafkaCursor(TOPIC, randomUInt(), randomULong()));
+                kafkaCursor(TOPIC, randomUInt(), randomUInt()),
+                kafkaCursor(TOPIC, randomUInt(), randomUInt()),
+                kafkaCursor(TOPIC, randomUInt(), randomUInt()));
 
         // ACT //
         final Map<String, String> cursors = kafkaCursors.stream().collect(Collectors.toMap(kafkaCursor ->
@@ -88,7 +88,7 @@ public class NakadiKafkaConsumerTest {
                 .map(kafkaCursor -> new KafkaPartitionStatistics(
                         timeline,
                         kafkaCursor.getPartition(),
-                        kafkaCursor.getOffset(), 0))
+                        0, kafkaCursor.getOffset()))
                 .collect(Collectors.toList());
         final List<NakadiCursor> nakadiCursors = kafkaCursors.stream()
                 .map(kafkaCursor -> kafkaCursor.toNakadiCursor(timeline)).collect(Collectors.toList());
@@ -113,7 +113,7 @@ public class NakadiKafkaConsumerTest {
                 .entrySet().forEach(cursor -> {
             assertThat(topicPartitions,
                     Matchers.hasItem(new TopicPartition(TOPIC, toKafkaPartition(cursor.getKey()))));
-            assertThat(offsets, Matchers.hasItem(toKafkaOffset(cursor.getValue())));
+            assertThat(offsets, Matchers.hasItem(toKafkaOffset(cursor.getValue()) + 1));
         });
     }
 
