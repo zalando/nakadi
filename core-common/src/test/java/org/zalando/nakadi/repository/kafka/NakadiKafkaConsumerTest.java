@@ -13,7 +13,6 @@ import org.junit.Test;
 import org.mockito.ArgumentCaptor;
 import org.zalando.nakadi.domain.ConsumedEvent;
 import org.zalando.nakadi.domain.NakadiCursor;
-import org.zalando.nakadi.domain.PartitionStatistics;
 import org.zalando.nakadi.domain.Timeline;
 import org.zalando.nakadi.utils.TestUtils;
 
@@ -84,18 +83,12 @@ public class NakadiKafkaConsumerTest {
                         toNakadiPartition(kafkaCursor.getPartition()),
                 kafkaCursor -> toNakadiOffset(kafkaCursor.getOffset())));
         final Timeline timeline = buildTimeline(TOPIC, TOPIC, CREATED_AT);
-        final List<PartitionStatistics> statistics = kafkaCursors.stream()
-                .map(kafkaCursor -> new KafkaPartitionStatistics(
-                        timeline,
-                        kafkaCursor.getPartition(),
-                        0, kafkaCursor.getOffset()))
-                .collect(Collectors.toList());
         final List<NakadiCursor> nakadiCursors = kafkaCursors.stream()
                 .map(kafkaCursor -> kafkaCursor.toNakadiCursor(timeline)).collect(Collectors.toList());
 
         final NakadiKafkaConsumer consumer =
                 new NakadiKafkaConsumer(kafkaConsumerMock, POLL_TIMEOUT);
-        consumer.reassign(nakadiCursors, statistics);
+        consumer.reassign(nakadiCursors);
 
         // ASSERT //
         final List<TopicPartition> assignedPartitions = partitionsCaptor.getValue();
@@ -111,10 +104,10 @@ public class NakadiKafkaConsumerTest {
         assertThat(offsets, hasSize(cursors.size()));
         cursors
                 .entrySet().forEach(cursor -> {
-            assertThat(topicPartitions,
-                    Matchers.hasItem(new TopicPartition(TOPIC, toKafkaPartition(cursor.getKey()))));
-            assertThat(offsets, Matchers.hasItem(toKafkaOffset(cursor.getValue()) + 1));
-        });
+                    assertThat(topicPartitions,
+                            Matchers.hasItem(new TopicPartition(TOPIC, toKafkaPartition(cursor.getKey()))));
+                    assertThat(offsets, Matchers.hasItem(toKafkaOffset(cursor.getValue()) + 1));
+                });
     }
 
     @Test
@@ -141,18 +134,12 @@ public class NakadiKafkaConsumerTest {
         final List<KafkaCursor> cursors = ImmutableList.of(kafkaCursor(TOPIC, PARTITION, 0));
 
         // ACT //
-        final List<PartitionStatistics> statistics = cursors.stream()
-                .map(kafkaCursor -> new KafkaPartitionStatistics(
-                        timeline,
-                        kafkaCursor.getPartition(),
-                        kafkaCursor.getOffset(), 0))
-                .collect(Collectors.toList());
         final List<NakadiCursor> nakadiCursors = cursors.stream()
                 .map(kafkaCursor -> kafkaCursor.toNakadiCursor(timeline)).collect(Collectors.toList());
 
         final NakadiKafkaConsumer consumer =
                 new NakadiKafkaConsumer(kafkaConsumerMock, POLL_TIMEOUT);
-        consumer.reassign(nakadiCursors, statistics);
+        consumer.reassign(nakadiCursors);
         final List<ConsumedEvent> consumedEvents = consumer.readEvents();
 
         // ASSERT //
