@@ -51,7 +51,7 @@ class StreamingState extends State {
     // correctly, and p0 is not receiving any updates - reassignment won't complete.
     private final Map<EventTypePartition, Long> releasingPartitions = new HashMap<>();
     private ZkSubscription<ZkSubscriptionClient.Topology> topologyChangeSubscription;
-    private EventConsumer.ReassignableEventConsumer eventConsumer;
+    private EventConsumer.HighLevelConsumer eventConsumer;
     private boolean pollPaused;
     private long committedEvents;
     private long sentEvents;
@@ -203,7 +203,7 @@ class StreamingState extends State {
             return;
         }
 
-        if (eventConsumer.getEventTypeAssignment().isEmpty() || pollPaused) {
+        if (eventConsumer.getAssignment().isEmpty() || pollPaused) {
             // Small optimization not to waste CPU while not yet assigned to any partitions
             scheduleTask(this::pollDataFromKafka, getKafkaPollTimeout(), TimeUnit.MILLISECONDS);
             return;
@@ -554,7 +554,7 @@ class StreamingState extends State {
                 throw new NakadiRuntimeException(ex);
             }
         }
-        final Set<EventTypePartition> currentAssignment = eventConsumer.getEventTypeAssignment();
+        final Set<EventTypePartition> currentAssignment = eventConsumer.getAssignment();
 
         LOG.info("Changing kafka assignment from {} to {}",
                 Arrays.deepToString(currentAssignment.toArray()),

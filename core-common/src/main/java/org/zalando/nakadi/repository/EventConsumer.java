@@ -15,16 +15,13 @@ public interface EventConsumer extends Closeable {
 
     List<ConsumedEvent> readEvents();
 
+    void reassign(Collection<NakadiCursor> cursors) throws InvalidCursorException;
+
     interface LowLevelConsumer extends EventConsumer {
         Set<TopicPartition> getAssignment();
-
-        default void reassign(Collection<NakadiCursor> cursors) throws InvalidCursorException {
-        }
     }
 
-    interface ReassignableEventConsumer extends EventConsumer {
-        Set<EventTypePartition> getEventTypeAssignment();
-
-        void reassign(Collection<NakadiCursor> newValues) throws InvalidCursorException;
+    interface HighLevelConsumer extends EventConsumer {
+        Set<EventTypePartition> getAssignment();
     }
 }

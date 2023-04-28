@@ -34,7 +34,7 @@ import java.util.function.Consumer;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 
-public class MultiTimelineEventConsumer implements EventConsumer.ReassignableEventConsumer {
+public class MultiTimelineEventConsumer implements EventConsumer.HighLevelConsumer {
     private static final Logger LOG = LoggerFactory.getLogger(MultiTimelineEventConsumer.class);
     private final String clientId;
     /**
@@ -75,7 +75,7 @@ public class MultiTimelineEventConsumer implements EventConsumer.ReassignableEve
     }
 
     @Override
-    public Set<EventTypePartition> getEventTypeAssignment() {
+    public Set<EventTypePartition> getAssignment() {
         return latestOffsets.keySet();
     }
 

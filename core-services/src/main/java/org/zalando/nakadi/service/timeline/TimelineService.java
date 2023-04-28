@@ -299,7 +299,7 @@ public class TimelineService {
         return result;
     }
 
-    public EventConsumer.ReassignableEventConsumer createEventConsumer(@Nullable final String clientId) {
+    public EventConsumer.HighLevelConsumer createEventConsumer(@Nullable final String clientId) {
         return new MultiTimelineEventConsumer(
                 clientId, this, timelineSync, new NakadiCursorComparator(eventTypeCache));
     }
