@@ -67,7 +67,7 @@ public class NakadiKafkaConsumer implements EventConsumer.LowLevelConsumer {
     }
 
     @Override
-    public void reassign(final Collection<NakadiCursor> cursors, List<PartitionStatistics> statistics)
+    public void reassign(final Collection<NakadiCursor> cursors, final List<PartitionStatistics> statistics)
             throws InvalidCursorException {
         final Map<NakadiCursor, KafkaCursor> cursorMapping = convertToKafkaCursors(cursors, statistics);
         final Map<TopicPartition, Timeline> timelineMap = cursorMapping.entrySet().stream()
@@ -79,8 +79,8 @@ public class NakadiKafkaConsumer implements EventConsumer.LowLevelConsumer {
                 .map(kafkaCursor -> kafkaCursor.addOffset(1))
                 .collect(toList());
 
-        timelineMap.clear();
-        timelineMap.putAll(timelineMap);
+        this.timelineMap.clear();
+        this.timelineMap.putAll(timelineMap);
         kafkaConsumer.assign(Collections.emptyList());
         assign(kafkaCursors);
     }
