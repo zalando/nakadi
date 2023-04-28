@@ -200,8 +200,8 @@ public class KafkaTopicRepository implements TopicRepository {
             return false;
         }
         return Stream.of(NotLeaderForPartitionException.class, UnknownTopicOrPartitionException.class,
-                org.apache.kafka.common.errors.TimeoutException.class, NetworkException.class,
-                UnknownServerException.class)
+                        org.apache.kafka.common.errors.TimeoutException.class, NetworkException.class,
+                        UnknownServerException.class)
                 .anyMatch(clazz -> clazz.isAssignableFrom(exception.getClass()));
     }
 
@@ -715,14 +715,11 @@ public class KafkaTopicRepository implements TopicRepository {
             @Nullable final String clientId,
             final List<NakadiCursor> cursors)
             throws ServiceTemporarilyUnavailableException, InvalidCursorException {
-        final List<PartitionStatistics> statistics = loadTopicStatistics(cursors.stream()
-                .map(NakadiCursor::getTimeline)
-                .distinct()
-                .collect(toList()));
+        validateReadCursors(cursors);
         final NakadiKafkaConsumer nakadiKafkaConsumer = new NakadiKafkaConsumer(
                 kafkaFactory.getConsumer(clientId),
                 nakadiSettings.getKafkaPollTimeoutMs());
-        nakadiKafkaConsumer.reassign(cursors, statistics);
+        nakadiKafkaConsumer.reassign(cursors);
         return nakadiKafkaConsumer;
 
     }
@@ -733,20 +730,6 @@ public class KafkaTopicRepository implements TopicRepository {
         final List<Timeline> timelines = cursors.stream().map(NakadiCursor::getTimeline).distinct().collect(toList());
         final List<PartitionStatistics> statistics = loadTopicStatistics(timelines);
 
-        convertToKafkaCursors(cursors, statistics);
-    }
-
-    @Override
-    public void reassign(final EventConsumer.LowLevelConsumer consumer, final List<NakadiCursor> cursors) {
-        final List<Timeline> timelines = cursors.stream().map(NakadiCursor::getTimeline).distinct().collect(toList());
-        final List<PartitionStatistics> statistics = loadTopicStatistics(timelines);
-        consumer.reassign(cursors, statistics);
-    }
-
-    private Map<NakadiCursor, KafkaCursor> convertToKafkaCursors(final List<NakadiCursor> cursors,
-                                                                 final List<PartitionStatistics> statistics)
-            throws ServiceTemporarilyUnavailableException, InvalidCursorException {
-        final Map<NakadiCursor, KafkaCursor> result = new HashMap<>();
         for (final NakadiCursor position : cursors) {
             validateCursorForNulls(position);
             final Optional<PartitionStatistics> partition =
@@ -767,11 +750,14 @@ public class KafkaTopicRepository implements TopicRepository {
             final KafkaCursor newestPosition = KafkaCursor.fromNakadiCursor(partition.get().getLast());
             if (toCheck.compareTo(newestPosition) > 0) {
                 throw new InvalidCursorException(UNAVAILABLE, position);
-            } else {
-                result.put(position, toCheck);
             }
         }
-        return result;
+    }
+
+    @Override
+    public void reassign(final EventConsumer.LowLevelConsumer consumer, final List<NakadiCursor> cursors) {
+        validateReadCursors(cursors);
+        consumer.reassign(cursors);
     }
 
     @Override

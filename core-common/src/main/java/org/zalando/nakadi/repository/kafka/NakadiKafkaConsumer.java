@@ -7,10 +7,8 @@ import org.apache.kafka.common.TopicPartition;
 import org.zalando.nakadi.domain.ConsumedEvent;
 import org.zalando.nakadi.domain.EventOwnerHeader;
 import org.zalando.nakadi.domain.NakadiCursor;
-import org.zalando.nakadi.domain.PartitionStatistics;
 import org.zalando.nakadi.domain.Timeline;
 import org.zalando.nakadi.exceptions.runtime.InvalidCursorException;
-import org.zalando.nakadi.exceptions.runtime.ServiceTemporarilyUnavailableException;
 import org.zalando.nakadi.repository.EventConsumer;
 
 import java.util.ArrayList;
@@ -19,16 +17,10 @@ import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.Objects;
-import java.util.Optional;
 import java.util.Set;
 import java.util.stream.Collectors;
 
 import static java.util.stream.Collectors.toList;
-import static org.zalando.nakadi.domain.CursorError.NULL_OFFSET;
-import static org.zalando.nakadi.domain.CursorError.NULL_PARTITION;
-import static org.zalando.nakadi.domain.CursorError.PARTITION_NOT_FOUND;
-import static org.zalando.nakadi.domain.CursorError.UNAVAILABLE;
 
 public class NakadiKafkaConsumer implements EventConsumer.LowLevelConsumer {
 
@@ -67,65 +59,25 @@ public class NakadiKafkaConsumer implements EventConsumer.LowLevelConsumer {
     }
 
     @Override
-    public void reassign(final Collection<NakadiCursor> cursors, final List<PartitionStatistics> statistics)
+    public void reassign(final Collection<NakadiCursor> cursors)
             throws InvalidCursorException {
-        final Map<NakadiCursor, KafkaCursor> cursorMapping = convertToKafkaCursors(cursors, statistics);
-        final Map<TopicPartition, Timeline> timelineMap = cursorMapping.entrySet().stream()
+        final Map<NakadiCursor, KafkaCursor> cursorMapping = cursors.stream()
+                .collect(Collectors.toMap(nc -> nc, NakadiCursor::asKafkaCursor));
+        final Map<TopicPartition, Timeline> tpToTimelines = cursorMapping.entrySet().stream()
                 .collect(Collectors.toMap(
                         entry -> new TopicPartition(entry.getValue().getTopic(), entry.getValue().getPartition()),
                         entry -> entry.getKey().getTimeline(),
                         (v1, v2) -> v2));
 
+        this.timelineMap.clear();
+        this.timelineMap.putAll(tpToTimelines);
+        kafkaConsumer.assign(Collections.emptyList());
+
         final List<KafkaCursor> kafkaCursors = cursorMapping.values().stream()
+                // because Nakadi `BEGIN` offset is -1
                 .map(kafkaCursor -> kafkaCursor.addOffset(1))
                 .collect(toList());
-
-        this.timelineMap.clear();
-        this.timelineMap.putAll(timelineMap);
-        kafkaConsumer.assign(Collections.emptyList());
         assign(kafkaCursors);
-    }
-
-    private Map<NakadiCursor, KafkaCursor> convertToKafkaCursors(final Collection<NakadiCursor> cursors,
-                                                                 final List<PartitionStatistics> statistics)
-            throws ServiceTemporarilyUnavailableException, InvalidCursorException {
-        final Map<NakadiCursor, KafkaCursor> result = new HashMap<>();
-        for (final NakadiCursor position : cursors) {
-            validateCursorForNulls(position);
-            final Optional<PartitionStatistics> partition =
-                    statistics.stream().filter(t -> Objects.equals(t.getPartition(), position.getPartition()))
-                            .filter(t -> Objects.equals(t.getTimeline().getTopic(), position.getTopic()))
-                            .findAny();
-
-            if (!partition.isPresent()) {
-                throw new InvalidCursorException(PARTITION_NOT_FOUND, position);
-            }
-            final KafkaCursor toCheck = position.asKafkaCursor();
-
-            // Checking oldest position
-            final KafkaCursor oldestCursor = KafkaCursor.fromNakadiCursor(partition.get().getBeforeFirst());
-            if (toCheck.compareTo(oldestCursor) < 0) {
-                throw new InvalidCursorException(UNAVAILABLE, position);
-            }
-            // checking newest position
-            final KafkaCursor newestPosition = KafkaCursor.fromNakadiCursor(partition.get().getLast());
-            if (toCheck.compareTo(newestPosition) > 0) {
-                throw new InvalidCursorException(UNAVAILABLE, position);
-            } else {
-                result.put(position, toCheck);
-            }
-        }
-
-        return result;
-    }
-
-    private void validateCursorForNulls(final NakadiCursor cursor) throws InvalidCursorException {
-        if (cursor.getPartition() == null) {
-            throw new InvalidCursorException(NULL_PARTITION, cursor);
-        }
-        if (cursor.getOffset() == null) {
-            throw new InvalidCursorException(NULL_OFFSET, cursor);
-        }
     }
 
     @Override

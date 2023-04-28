@@ -19,8 +19,7 @@ public interface EventConsumer extends Closeable {
     interface LowLevelConsumer extends EventConsumer {
         Set<TopicPartition> getAssignment();
 
-        default void reassign(Collection<NakadiCursor> cursors,
-                              List<PartitionStatistics> statistics) throws InvalidCursorException {
+        default void reassign(Collection<NakadiCursor> cursors) throws InvalidCursorException {
         }
     }
 
