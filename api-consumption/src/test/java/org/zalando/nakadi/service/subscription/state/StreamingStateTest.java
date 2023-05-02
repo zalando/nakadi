@@ -66,7 +66,7 @@ public class StreamingStateTest {
     @Mock
     private SubscriptionOutput out;
     @Mock
-    private EventConsumer.ReassignableEventConsumer eventConsumer;
+    private EventConsumer.HighLevelConsumer eventConsumer;
     @Mock
     private StreamingContext contextMock;
     @Mock
@@ -161,7 +161,7 @@ public class StreamingStateTest {
 
         when(cursorConverter.convert((SubscriptionCursorWithoutToken) any())).thenReturn(anyCursor);
         when(timelineService.getActiveTimelinesOrdered(eq("t"))).thenReturn(Collections.singletonList(timeline));
-        final EventConsumer.ReassignableEventConsumer consumer = mock(EventConsumer.ReassignableEventConsumer.class);
+        final EventConsumer.HighLevelConsumer consumer = mock(EventConsumer.HighLevelConsumer.class);
         when(consumer.getAssignment()).thenReturn(Collections.emptySet());
 
         // Throw exception when reassigning partitions to consumer
@@ -191,7 +191,7 @@ public class StreamingStateTest {
         final EventTypePartition pk = new EventTypePartition("t", "0");
         Mockito.when(zkMock.subscribeForOffsetChanges(Mockito.eq(pk), Mockito.any())).thenReturn(offsetSubscription);
 
-        final EventConsumer.ReassignableEventConsumer consumer = mock(EventConsumer.ReassignableEventConsumer.class);
+        final EventConsumer.HighLevelConsumer consumer = mock(EventConsumer.HighLevelConsumer.class);
         when(consumer.getAssignment()).thenReturn(Collections.emptySet());
         when(timelineService.createEventConsumer(any())).thenReturn(consumer);
         when(subscription.getEventTypes()).thenReturn(Collections.singleton("t"));

@@ -12,6 +12,7 @@ import org.hamcrest.Matchers;
 import org.junit.Test;
 import org.mockito.ArgumentCaptor;
 import org.zalando.nakadi.domain.ConsumedEvent;
+import org.zalando.nakadi.domain.NakadiCursor;
 import org.zalando.nakadi.domain.Timeline;
 import org.zalando.nakadi.utils.TestUtils;
 
@@ -24,7 +25,6 @@ import static junit.framework.TestCase.fail;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.equalTo;
 import static org.hamcrest.Matchers.hasSize;
-import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.doNothing;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.times;
@@ -51,13 +51,6 @@ public class NakadiKafkaConsumerTest {
         return new KafkaCursor(topic, partition, offset);
     }
 
-    private static Map<TopicPartition, Timeline> createTpTimelineMap() {
-        final Timeline timeline = buildTimeline(TOPIC, TOPIC, CREATED_AT);
-        final Map<TopicPartition, Timeline> mockMap = mock(Map.class);
-        when(mockMap.get(any())).thenReturn(timeline);
-        return mockMap;
-    }
-
     @Test
     @SuppressWarnings("unchecked")
     public void whenCreateConsumerThenKafkaConsumerConfiguredCorrectly() {
@@ -74,18 +67,23 @@ public class NakadiKafkaConsumerTest {
         doNothing().when(kafkaConsumerMock).seek(tpCaptor.capture(), offsetCaptor.capture());
 
         final List<KafkaCursor> kafkaCursors = ImmutableList.of(
-                kafkaCursor(TOPIC, randomUInt(), randomULong()),
-                kafkaCursor(TOPIC, randomUInt(), randomULong()),
-                kafkaCursor(TOPIC, randomUInt(), randomULong()));
+                kafkaCursor(TOPIC, randomUInt(), randomUInt()),
+                kafkaCursor(TOPIC, randomUInt(), randomUInt()),
+                kafkaCursor(TOPIC, randomUInt(), randomUInt()));
 
         // ACT //
-        new NakadiKafkaConsumer(kafkaConsumerMock, kafkaCursors, createTpTimelineMap(), POLL_TIMEOUT);
-
-        // ASSERT //
         final Map<String, String> cursors = kafkaCursors.stream().collect(Collectors.toMap(kafkaCursor ->
                         toNakadiPartition(kafkaCursor.getPartition()),
                 kafkaCursor -> toNakadiOffset(kafkaCursor.getOffset())));
+        final Timeline timeline = buildTimeline(TOPIC, TOPIC, CREATED_AT);
+        final List<NakadiCursor> nakadiCursors = kafkaCursors.stream()
+                .map(kafkaCursor -> kafkaCursor.toNakadiCursor(timeline)).collect(Collectors.toList());
 
+        final NakadiKafkaConsumer consumer =
+                new NakadiKafkaConsumer(kafkaConsumerMock, POLL_TIMEOUT);
+        consumer.reassign(nakadiCursors);
+
+        // ASSERT //
         final List<TopicPartition> assignedPartitions = partitionsCaptor.getValue();
         assertThat(assignedPartitions, hasSize(cursors.size()));
         assignedPartitions.forEach(partition -> {
@@ -99,10 +97,10 @@ public class NakadiKafkaConsumerTest {
         assertThat(offsets, hasSize(cursors.size()));
         cursors
                 .entrySet().forEach(cursor -> {
-            assertThat(topicPartitions,
-                    Matchers.hasItem(new TopicPartition(TOPIC, toKafkaPartition(cursor.getKey()))));
-            assertThat(offsets, Matchers.hasItem(toKafkaOffset(cursor.getValue())));
-        });
+                    assertThat(topicPartitions,
+                            Matchers.hasItem(new TopicPartition(TOPIC, toKafkaPartition(cursor.getKey()))));
+                    assertThat(offsets, Matchers.hasItem(toKafkaOffset(cursor.getValue()) + 1));
+                });
     }
 
     @Test
@@ -129,8 +127,12 @@ public class NakadiKafkaConsumerTest {
         final List<KafkaCursor> cursors = ImmutableList.of(kafkaCursor(TOPIC, PARTITION, 0));
 
         // ACT //
-        final NakadiKafkaConsumer consumer = new NakadiKafkaConsumer(
-                kafkaConsumerMock, cursors, createTpTimelineMap(), POLL_TIMEOUT);
+        final List<NakadiCursor> nakadiCursors = cursors.stream()
+                .map(kafkaCursor -> kafkaCursor.toNakadiCursor(timeline)).collect(Collectors.toList());
+
+        final NakadiKafkaConsumer consumer =
+                new NakadiKafkaConsumer(kafkaConsumerMock, POLL_TIMEOUT);
+        consumer.reassign(nakadiCursors);
         final List<ConsumedEvent> consumedEvents = consumer.readEvents();
 
         // ASSERT //
@@ -167,8 +169,7 @@ public class NakadiKafkaConsumerTest {
             try {
 
                 // ACT //
-                final NakadiKafkaConsumer consumer = new NakadiKafkaConsumer(kafkaConsumerMock,
-                        ImmutableList.of(), createTpTimelineMap(), POLL_TIMEOUT);
+                final NakadiKafkaConsumer consumer = new NakadiKafkaConsumer(kafkaConsumerMock, POLL_TIMEOUT);
                 consumer.readEvents();
 
                 // ASSERT //
@@ -188,8 +189,7 @@ public class NakadiKafkaConsumerTest {
     public void whenCloseThenKafkaConsumerIsClosed() {
         // ARRANGE //
         final KafkaConsumer<byte[], byte[]> kafkaConsumerMock = mock(KafkaConsumer.class);
-        final NakadiKafkaConsumer nakadiKafkaConsumer = new NakadiKafkaConsumer(kafkaConsumerMock,
-                ImmutableList.of(), createTpTimelineMap(), POLL_TIMEOUT);
+        final NakadiKafkaConsumer nakadiKafkaConsumer = new NakadiKafkaConsumer(kafkaConsumerMock, POLL_TIMEOUT);
         // ACT //
         nakadiKafkaConsumer.close();
         // ASSERT //

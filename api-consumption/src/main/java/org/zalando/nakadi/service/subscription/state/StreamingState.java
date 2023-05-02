@@ -51,7 +51,7 @@ class StreamingState extends State {
     // correctly, and p0 is not receiving any updates - reassignment won't complete.
     private final Map<EventTypePartition, Long> releasingPartitions = new HashMap<>();
     private ZkSubscription<ZkSubscriptionClient.Topology> topologyChangeSubscription;
-    private EventConsumer.ReassignableEventConsumer eventConsumer;
+    private EventConsumer.HighLevelConsumer eventConsumer;
     private boolean pollPaused;
     private long committedEvents;
     private long sentEvents;
