@@ -41,7 +41,7 @@ import org.zalando.nakadi.exceptions.runtime.TopicRepositoryException;
 import org.zalando.nakadi.exceptions.runtime.UnableProcessException;
 import org.zalando.nakadi.mapper.NakadiRecordMapper;
 import org.zalando.nakadi.plugin.api.authz.AuthorizationService;
-import org.zalando.nakadi.repository.EventConsumer;
+import org.zalando.nakadi.repository.HighLevelConsumer;
 import org.zalando.nakadi.repository.NakadiTopicConfig;
 import org.zalando.nakadi.repository.TopicRepository;
 import org.zalando.nakadi.repository.TopicRepositoryHolder;
@@ -148,7 +148,7 @@ public class TimelineService {
 
             return nextTimeline;
         } catch (final TopicCreationException | TopicConfigException | ServiceTemporarilyUnavailableException |
-                InternalNakadiException e) {
+                       InternalNakadiException e) {
             throw new TimelineException("Internal service error", e);
         } catch (final NoSuchEventTypeException e) {
             throw new NotFoundException("EventType \"" + eventTypeName + "\" does not exist");
@@ -253,8 +253,8 @@ public class TimelineService {
         try {
             final Optional<Timeline> timeline = getActiveTimeline(eventTypeCache.getTimelinesOrdered(eventTypeName));
             return timeline.orElseThrow(() -> {
-                        throw new TimelineException(String.format("No timelines for event type %s", eventTypeName));
-                    });
+                throw new TimelineException(String.format("No timelines for event type %s", eventTypeName));
+            });
         } catch (final InternalNakadiException e) {
             LOG.error("Failed to get timeline for event type {}", eventTypeName, e);
             throw new TimelineException("Failed to get timeline", e);
@@ -291,7 +291,8 @@ public class TimelineService {
         return topicRepositoryHolder.getTopicRepository(timeline.getStorage());
     }
 
-    public EventConsumer createEventConsumer(@Nullable final String clientId, final List<NakadiCursor> positions)
+    public HighLevelConsumer createEventConsumer(
+            @Nullable final String clientId, final List<NakadiCursor> positions)
             throws InvalidCursorException {
         final MultiTimelineEventConsumer result = new MultiTimelineEventConsumer(
                 clientId, this, timelineSync, new NakadiCursorComparator(eventTypeCache));
@@ -299,7 +300,7 @@ public class TimelineService {
         return result;
     }
 
-    public EventConsumer.HighLevelConsumer createEventConsumer(@Nullable final String clientId) {
+    public HighLevelConsumer createEventConsumer(@Nullable final String clientId) {
         return new MultiTimelineEventConsumer(
                 clientId, this, timelineSync, new NakadiCursorComparator(eventTypeCache));
     }

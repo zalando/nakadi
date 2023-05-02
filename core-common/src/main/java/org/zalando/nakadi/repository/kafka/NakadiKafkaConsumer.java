@@ -4,12 +4,11 @@ import org.apache.kafka.clients.consumer.Consumer;
 import org.apache.kafka.clients.consumer.ConsumerRecord;
 import org.apache.kafka.clients.consumer.ConsumerRecords;
 import org.apache.kafka.common.TopicPartition;
-import org.zalando.nakadi.domain.ConsumedEvent;
 import org.zalando.nakadi.domain.EventOwnerHeader;
 import org.zalando.nakadi.domain.NakadiCursor;
 import org.zalando.nakadi.domain.Timeline;
 import org.zalando.nakadi.exceptions.runtime.InvalidCursorException;
-import org.zalando.nakadi.repository.EventConsumer;
+import org.zalando.nakadi.repository.LowLevelConsumer;
 
 import java.util.ArrayList;
 import java.util.Collection;
@@ -22,7 +21,7 @@ import java.util.stream.Collectors;
 
 import static java.util.stream.Collectors.toList;
 
-public class NakadiKafkaConsumer implements EventConsumer.LowLevelConsumer {
+public class NakadiKafkaConsumer implements LowLevelConsumer {
 
     private final Consumer<byte[], byte[]> kafkaConsumer;
     private final long pollTimeout;
@@ -84,19 +83,18 @@ public class NakadiKafkaConsumer implements EventConsumer.LowLevelConsumer {
     }
 
     @Override
-    public List<ConsumedEvent> readEvents() {
+    public List<LowLevelConsumer.Event> readEvents() {
         final ConsumerRecords<byte[], byte[]> records = kafkaConsumer.poll(pollTimeout);
         if (records.isEmpty()) {
             return Collections.emptyList();
         }
-        final ArrayList<ConsumedEvent> result = new ArrayList<>(records.count());
+        final List<Event> result = new ArrayList<>(records.count());
         for (final ConsumerRecord<byte[], byte[]> record : records) {
-            final KafkaCursor cursor = new KafkaCursor(record.topic(), record.partition(), record.offset());
-            final Timeline timeline = timelineMap.get(new TopicPartition(record.topic(), record.partition()));
-
-            result.add(new ConsumedEvent(
+            result.add(new Event(
                     record.value(),
-                    cursor.toNakadiCursor(timeline),
+                    record.topic(),
+                    record.partition(),
+                    record.offset(),
                     record.timestamp(),
                     EventOwnerHeader.deserialize(record)));
         }

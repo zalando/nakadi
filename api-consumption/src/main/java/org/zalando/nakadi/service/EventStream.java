@@ -7,7 +7,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.zalando.nakadi.domain.ConsumedEvent;
 import org.zalando.nakadi.domain.NakadiCursor;
-import org.zalando.nakadi.repository.EventConsumer;
+import org.zalando.nakadi.repository.HighLevelConsumer;
 
 import java.io.IOException;
 import java.io.OutputStream;
@@ -28,7 +28,7 @@ public class EventStream {
     private static final Logger LOG = LoggerFactory.getLogger(EventStream.class);
 
     private final OutputStream outputStream;
-    private final EventConsumer eventConsumer;
+    private final HighLevelConsumer eventConsumer;
     private final EventStreamConfig config;
     private final CursorConverter cursorConverter;
     private final Meter bytesFlushedMeter;
@@ -36,7 +36,7 @@ public class EventStream {
     private final ConsumptionKpiCollector kpiCollector;
     private final EventStreamChecks eventStreamChecks;
 
-    public EventStream(final EventConsumer eventConsumer,
+    public EventStream(final HighLevelConsumer eventConsumer,
                        final OutputStream outputStream,
                        final EventStreamConfig config,
                        final EventStreamChecks eventStreamChecks,

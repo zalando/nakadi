@@ -86,7 +86,7 @@ public interface TopicRepository {
      */
     Map<TopicPartition, Long> getSizeStats();
 
-    EventConsumer.LowLevelConsumer createEventConsumer(
+    LowLevelConsumer createEventConsumer(
             String clientId,
             List<NakadiCursor> positions) throws InvalidCursorException;
 
@@ -95,5 +95,5 @@ public interface TopicRepository {
 
     void updateTopicConfig(String topic, Long retentionMs, CleanupPolicy cleanupPolicy) throws TopicConfigException;
 
-    void reassign(EventConsumer.LowLevelConsumer consumer, List<NakadiCursor> cursors);
+    void reassign(LowLevelConsumer consumer, List<NakadiCursor> cursors);
 }

@@ -15,9 +15,9 @@ import org.zalando.nakadi.domain.ConsumedEvent;
 import org.zalando.nakadi.domain.NakadiCursor;
 import org.zalando.nakadi.domain.Timeline;
 import org.zalando.nakadi.exceptions.runtime.AccessDeniedException;
+import org.zalando.nakadi.repository.HighLevelConsumer;
 import org.zalando.nakadi.repository.kafka.KafkaCursor;
 import org.zalando.nakadi.repository.kafka.KafkaRecordDeserializer;
-import org.zalando.nakadi.repository.kafka.NakadiKafkaConsumer;
 import org.zalando.nakadi.security.Client;
 import org.zalando.nakadi.service.converter.CursorConverterImpl;
 import org.zalando.nakadi.service.timeline.TimelineService;
@@ -347,22 +347,23 @@ public class EventStreamTest {
                 Optional.of(nCopies(2, new String(DUMMY))))));
     }
 
-    private static NakadiKafkaConsumer emptyConsumer() {
-        final NakadiKafkaConsumer nakadiKafkaConsumer = mock(NakadiKafkaConsumer.class);
+    private static HighLevelConsumer emptyConsumer() {
+        final HighLevelConsumer nakadiKafkaConsumer = mock(HighLevelConsumer.class);
         when(nakadiKafkaConsumer.readEvents()).thenReturn(Collections.emptyList());
         return nakadiKafkaConsumer;
     }
 
-    private static NakadiKafkaConsumer endlessDummyConsumerForPartition(final String partition) {
-        final NakadiKafkaConsumer nakadiKafkaConsumer = mock(NakadiKafkaConsumer.class);
+    private static HighLevelConsumer endlessDummyConsumerForPartition(final String partition) {
+        final HighLevelConsumer nakadiKafkaConsumer = mock(HighLevelConsumer.class);
         when(nakadiKafkaConsumer.readEvents())
                 .thenReturn(Collections.singletonList(
                         new ConsumedEvent(DUMMY, NakadiCursor.of(TIMELINE, partition, "0"), 0, null)));
         return nakadiKafkaConsumer;
     }
 
-    private static NakadiKafkaConsumer nCountDummyConsumerForPartition(final int eventNum, final String partition) {
-        final NakadiKafkaConsumer nakadiKafkaConsumer = mock(NakadiKafkaConsumer.class);
+    private static HighLevelConsumer nCountDummyConsumerForPartition(
+            final int eventNum, final String partition) {
+        final HighLevelConsumer nakadiKafkaConsumer = mock(HighLevelConsumer.class);
         final AtomicInteger eventsToCreate = new AtomicInteger(eventNum);
         when(nakadiKafkaConsumer.readEvents()).thenAnswer(invocation -> {
             if (eventsToCreate.get() > 0) {
@@ -376,8 +377,8 @@ public class EventStreamTest {
         return nakadiKafkaConsumer;
     }
 
-    private static NakadiKafkaConsumer predefinedConsumer(final List<ConsumedEvent> events) {
-        final NakadiKafkaConsumer nakadiKafkaConsumer = mock(NakadiKafkaConsumer.class);
+    private static HighLevelConsumer predefinedConsumer(final List<ConsumedEvent> events) {
+        final HighLevelConsumer nakadiKafkaConsumer = mock(HighLevelConsumer.class);
         final AtomicBoolean sent = new AtomicBoolean(false);
         when(nakadiKafkaConsumer.readEvents()).thenAnswer(invocation -> {
             if (sent.get()) {
@@ -390,7 +391,7 @@ public class EventStreamTest {
         return nakadiKafkaConsumer;
     }
 
-    private static NakadiKafkaConsumer endlessDummyConsumer() {
+    private static HighLevelConsumer endlessDummyConsumer() {
         return endlessDummyConsumerForPartition("0");
     }
 

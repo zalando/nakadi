@@ -10,7 +10,7 @@ import org.zalando.nakadi.domain.PartitionEndStatistics;
 import org.zalando.nakadi.domain.Timeline;
 import org.zalando.nakadi.domain.storage.Storage;
 import org.zalando.nakadi.exceptions.runtime.InvalidCursorException;
-import org.zalando.nakadi.repository.EventConsumer;
+import org.zalando.nakadi.repository.HighLevelConsumer;
 import org.zalando.nakadi.service.timeline.TimelineService;
 
 import java.time.Duration;
@@ -44,7 +44,7 @@ public class SubscriptionTimeLagServiceTest {
     @Test
     public void testTimeLagsForTailAndNotTailPositions() throws InvalidCursorException {
 
-        final EventConsumer eventConsumer = mock(EventConsumer.class);
+        final HighLevelConsumer eventConsumer = mock(HighLevelConsumer.class);
         final Timeline timeline = mock(Timeline.class);
         when(timeline.getStorage()).thenReturn(new Storage("", Storage.Type.KAFKA));
         when(eventConsumer.readEvents())
