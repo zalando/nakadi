@@ -1,4 +1,4 @@
-package org.zalando.nakadi.repository;
+package org.zalando.nakadi.service.timeline;
 
 import org.zalando.nakadi.domain.ConsumedEvent;
 import org.zalando.nakadi.domain.EventTypePartition;

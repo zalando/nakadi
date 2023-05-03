@@ -4,7 +4,7 @@ import com.codahale.metrics.Meter;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 import org.zalando.nakadi.exceptions.runtime.InvalidCursorException;
-import org.zalando.nakadi.repository.HighLevelConsumer;
+import org.zalando.nakadi.service.timeline.HighLevelConsumer;
 
 import java.io.OutputStream;
 

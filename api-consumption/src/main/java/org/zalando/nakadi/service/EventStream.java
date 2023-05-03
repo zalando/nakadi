@@ -7,7 +7,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.zalando.nakadi.domain.ConsumedEvent;
 import org.zalando.nakadi.domain.NakadiCursor;
-import org.zalando.nakadi.repository.HighLevelConsumer;
+import org.zalando.nakadi.service.timeline.HighLevelConsumer;
 
 import java.io.IOException;
 import java.io.OutputStream;

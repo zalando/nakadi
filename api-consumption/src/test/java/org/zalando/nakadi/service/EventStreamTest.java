@@ -15,7 +15,7 @@ import org.zalando.nakadi.domain.ConsumedEvent;
 import org.zalando.nakadi.domain.NakadiCursor;
 import org.zalando.nakadi.domain.Timeline;
 import org.zalando.nakadi.exceptions.runtime.AccessDeniedException;
-import org.zalando.nakadi.repository.HighLevelConsumer;
+import org.zalando.nakadi.service.timeline.HighLevelConsumer;
 import org.zalando.nakadi.repository.kafka.KafkaCursor;
 import org.zalando.nakadi.repository.kafka.KafkaRecordDeserializer;
 import org.zalando.nakadi.security.Client;
@@ -348,9 +348,9 @@ public class EventStreamTest {
     }
 
     private static HighLevelConsumer emptyConsumer() {
-        final HighLevelConsumer nakadiKafkaConsumer = mock(HighLevelConsumer.class);
-        when(nakadiKafkaConsumer.readEvents()).thenReturn(Collections.emptyList());
-        return nakadiKafkaConsumer;
+        final HighLevelConsumer consumer = mock(HighLevelConsumer.class);
+        when(consumer.readEvents()).thenReturn(Collections.emptyList());
+        return consumer;
     }
 
     private static HighLevelConsumer endlessDummyConsumerForPartition(final String partition) {
