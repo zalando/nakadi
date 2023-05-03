@@ -6,14 +6,12 @@ import org.apache.kafka.clients.consumer.ConsumerRecords;
 import org.apache.kafka.common.TopicPartition;
 import org.zalando.nakadi.domain.EventOwnerHeader;
 import org.zalando.nakadi.domain.NakadiCursor;
-import org.zalando.nakadi.domain.Timeline;
 import org.zalando.nakadi.exceptions.runtime.InvalidCursorException;
 import org.zalando.nakadi.repository.LowLevelConsumer;
 
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
-import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -25,14 +23,12 @@ public class NakadiKafkaConsumer implements LowLevelConsumer {
 
     private final Consumer<byte[], byte[]> kafkaConsumer;
     private final long pollTimeout;
-    private final Map<TopicPartition, Timeline> timelineMap;
 
     public NakadiKafkaConsumer(
             final Consumer<byte[], byte[]> kafkaConsumer,
             final long pollTimeout) {
         this.kafkaConsumer = kafkaConsumer;
         this.pollTimeout = pollTimeout;
-        this.timelineMap = new HashMap<>();
         // define topic/partitions to consume from
     }
 
@@ -60,26 +56,13 @@ public class NakadiKafkaConsumer implements LowLevelConsumer {
     @Override
     public void reassign(final Collection<NakadiCursor> cursors)
             throws InvalidCursorException {
-
-        final Map<NakadiCursor, KafkaCursor> cursorMapping = cursors.stream()
-                .collect(Collectors.toMap(nc -> nc, NakadiCursor::asKafkaCursor));
-
-        final Map<TopicPartition, Timeline> tpToTimelines = cursorMapping.entrySet().stream()
-                .collect(Collectors.toMap(
-                        entry -> new TopicPartition(entry.getValue().getTopic(), entry.getValue().getPartition()),
-                        entry -> entry.getKey().getTimeline(),
-                        (v1, v2) -> v2));
-
-        this.timelineMap.clear();
-        this.timelineMap.putAll(tpToTimelines);
         kafkaConsumer.assign(Collections.emptyList());
 
-        final List<KafkaCursor> kafkaCursors = cursorMapping.values().stream()
+        assign(cursors.stream()
+                .map(NakadiCursor::asKafkaCursor)
                 // because Nakadi `BEGIN` offset is -1
                 .map(kafkaCursor -> kafkaCursor.addOffset(1))
-                .collect(toList());
-
-        assign(kafkaCursors);
+                .collect(toList()));
     }
 
     @Override
