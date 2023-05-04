@@ -35,7 +35,7 @@ import org.zalando.nakadi.exceptions.runtime.NoSuchEventTypeException;
 import org.zalando.nakadi.exceptions.runtime.ServiceTemporarilyUnavailableException;
 import org.zalando.nakadi.exceptions.runtime.UnparseableCursorException;
 import org.zalando.nakadi.metrics.MetricUtils;
-import org.zalando.nakadi.repository.EventConsumer;
+import org.zalando.nakadi.service.timeline.HighLevelConsumer;
 import org.zalando.nakadi.repository.TopicRepository;
 import org.zalando.nakadi.security.Client;
 import org.zalando.nakadi.service.AuthorizationValidator;
@@ -237,7 +237,7 @@ public class EventStreamController {
                     response.setHeader("Warning", "299 - nakadi - the Low-level API is deprecated and will "
                             + "be removed from a future release. Please consider migrating to the Subscriptions API.");
                     response.setContentType("application/x-json-stream");
-                    final EventConsumer eventConsumer = timelineService.createEventConsumer(
+                    final HighLevelConsumer eventConsumer = timelineService.createEventConsumer(
                             kafkaQuotaClientId, streamConfig.getCursors());
 
                     final String bytesFlushedMetricName = MetricUtils.metricNameForLoLAStream(

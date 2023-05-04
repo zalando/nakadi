@@ -15,7 +15,7 @@ import org.zalando.nakadi.exceptions.runtime.InvalidCursorException;
 import org.zalando.nakadi.exceptions.runtime.NakadiRuntimeException;
 import org.zalando.nakadi.exceptions.runtime.ServiceTemporarilyUnavailableException;
 import org.zalando.nakadi.metrics.MetricUtils;
-import org.zalando.nakadi.repository.EventConsumer;
+import org.zalando.nakadi.service.timeline.HighLevelConsumer;
 import org.zalando.nakadi.service.subscription.IdleStreamWatcher;
 import org.zalando.nakadi.service.subscription.model.Partition;
 import org.zalando.nakadi.service.subscription.zk.ZkSubscription;
@@ -51,7 +51,7 @@ class StreamingState extends State {
     // correctly, and p0 is not receiving any updates - reassignment won't complete.
     private final Map<EventTypePartition, Long> releasingPartitions = new HashMap<>();
     private ZkSubscription<ZkSubscriptionClient.Topology> topologyChangeSubscription;
-    private EventConsumer.HighLevelConsumer eventConsumer;
+    private HighLevelConsumer eventConsumer;
     private boolean pollPaused;
     private long committedEvents;
     private long sentEvents;

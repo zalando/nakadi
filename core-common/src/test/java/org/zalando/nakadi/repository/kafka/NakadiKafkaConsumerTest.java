@@ -8,17 +8,20 @@ import org.apache.kafka.clients.consumer.KafkaConsumer;
 import org.apache.kafka.clients.consumer.NoOffsetForPartitionException;
 import org.apache.kafka.common.KafkaException;
 import org.apache.kafka.common.TopicPartition;
+import org.apache.kafka.common.header.internals.RecordHeaders;
+import org.apache.kafka.common.record.TimestampType;
 import org.hamcrest.Matchers;
 import org.junit.Test;
 import org.mockito.ArgumentCaptor;
-import org.zalando.nakadi.domain.ConsumedEvent;
 import org.zalando.nakadi.domain.NakadiCursor;
 import org.zalando.nakadi.domain.Timeline;
+import org.zalando.nakadi.repository.LowLevelConsumer;
 import org.zalando.nakadi.utils.TestUtils;
 
 import java.util.Date;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.stream.Collectors;
 
 import static junit.framework.TestCase.fail;
@@ -45,7 +48,6 @@ public class NakadiKafkaConsumerTest {
     private static final int PARTITION = randomUInt();
     private static final long POLL_TIMEOUT = randomULong();
     private static final Date CREATED_AT = new Date();
-    private final RecordDeserializer recordDeserializer = (e) -> e;
 
     private static KafkaCursor kafkaCursor(final String topic, final int partition, final long offset) {
         return new KafkaCursor(topic, partition, offset);
@@ -112,10 +114,12 @@ public class NakadiKafkaConsumerTest {
         final byte[] event2 = randomString().getBytes();
         final int event1Offset = randomUInt();
         final int event2Offset = randomUInt();
+        final long now = System.currentTimeMillis();
         final ConsumerRecords<byte[], byte[]> consumerRecords = new ConsumerRecords<>(ImmutableMap.of(
                 new TopicPartition(TOPIC, PARTITION),
-                ImmutableList.of(new ConsumerRecord<>(TOPIC, PARTITION, event1Offset, "k1".getBytes(), event1),
-                        new ConsumerRecord<>(TOPIC, PARTITION, event2Offset, "k2".getBytes(), event2))));
+                ImmutableList.of(
+                        createRecord(TOPIC, PARTITION, event1Offset, now, "k1".getBytes(), event1),
+                        createRecord(TOPIC, PARTITION, event2Offset, now, "k2".getBytes(), event2))));
         final Timeline timeline = buildTimeline(TOPIC, TOPIC, CREATED_AT);
         final ConsumerRecords<byte[], byte[]> emptyRecords = new ConsumerRecords<>(ImmutableMap.of());
 
@@ -133,21 +137,19 @@ public class NakadiKafkaConsumerTest {
         final NakadiKafkaConsumer consumer =
                 new NakadiKafkaConsumer(kafkaConsumerMock, POLL_TIMEOUT);
         consumer.reassign(nakadiCursors);
-        final List<ConsumedEvent> consumedEvents = consumer.readEvents();
+        final List<LowLevelConsumer.Event> consumedEvents = consumer.readEvents();
 
         // ASSERT //
         assertThat("The event we read first should not be empty", consumedEvents.size(), equalTo(2));
         assertThat("The event we read first should have the same data as first mocked ConsumerRecord",
                 consumedEvents.get(0),
-                equalTo(new ConsumedEvent(event1,
-                        new KafkaCursor(TOPIC, PARTITION, event1Offset).toNakadiCursor(timeline),
-                        0, null)));
+                equalTo(new LowLevelConsumer.Event(
+                        event1, TOPIC, PARTITION, event1Offset, now, null)));
 
         assertThat("The event we read second should have the same data as second mocked ConsumerRecord",
                 consumedEvents.get(1),
-                equalTo(new ConsumedEvent(event2,
-                        new KafkaCursor(TOPIC, PARTITION, event2Offset).toNakadiCursor(timeline),
-                        0, null)));
+                equalTo(new LowLevelConsumer.Event(
+                        event2, TOPIC, PARTITION, event2Offset, now, null)));
 
         assertThat("The kafka poll should be called with timeout we defined", pollTimeoutCaptor.getValue(),
                 equalTo(POLL_TIMEOUT));
@@ -194,6 +196,16 @@ public class NakadiKafkaConsumerTest {
         nakadiKafkaConsumer.close();
         // ASSERT //
         verify(kafkaConsumerMock, times(1)).close();
+    }
+
+    private ConsumerRecord createRecord(final String topic,
+                                        final int partition,
+                                        final long offset,
+                                        final long timestamp,
+                                        final byte[] key,
+                                        final byte[] value) {
+        return new ConsumerRecord(topic, partition, offset, timestamp,
+                TimestampType.CREATE_TIME, 0, 0, key, value, new RecordHeaders(), Optional.empty());
     }
 
 }

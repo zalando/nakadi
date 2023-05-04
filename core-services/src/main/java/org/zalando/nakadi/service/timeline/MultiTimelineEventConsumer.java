@@ -11,8 +11,9 @@ import org.zalando.nakadi.domain.TopicPartition;
 import org.zalando.nakadi.exceptions.runtime.InvalidCursorException;
 import org.zalando.nakadi.exceptions.runtime.NakadiRuntimeException;
 import org.zalando.nakadi.exceptions.runtime.ServiceTemporarilyUnavailableException;
-import org.zalando.nakadi.repository.EventConsumer;
+import org.zalando.nakadi.repository.LowLevelConsumer;
 import org.zalando.nakadi.repository.TopicRepository;
+import org.zalando.nakadi.repository.kafka.KafkaCursor;
 import org.zalando.nakadi.util.NakadiCollectionUtils;
 
 import java.io.IOException;
@@ -34,7 +35,7 @@ import java.util.function.Consumer;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 
-public class MultiTimelineEventConsumer implements EventConsumer.HighLevelConsumer {
+public class MultiTimelineEventConsumer implements HighLevelConsumer {
     private static final Logger LOG = LoggerFactory.getLogger(MultiTimelineEventConsumer.class);
     private final String clientId;
     /**
@@ -52,7 +53,7 @@ public class MultiTimelineEventConsumer implements EventConsumer.HighLevelConsum
     /**
      * Mapping from topic repository to event consumer that was created to consume events from this topic repository.
      */
-    private final Map<TopicRepository, EventConsumer.LowLevelConsumer> eventConsumers = new HashMap<>();
+    private final Map<TopicRepository, LowLevelConsumer> eventConsumers = new HashMap<>();
     /**
      * Offsets, that should trigger election of topic repository for next timeline. (Actually - map of latest offsets
      * for each event type partition within current timeline.
@@ -62,6 +63,7 @@ public class MultiTimelineEventConsumer implements EventConsumer.HighLevelConsum
     private final TimelineSync timelineSync;
     private final AtomicBoolean timelinesChanged = new AtomicBoolean(false);
     private final Comparator<NakadiCursor> comparator;
+    private final Map<String, Timeline> timelinesByTopic = new HashMap<>();
 
     public MultiTimelineEventConsumer(
             final String clientId,
@@ -130,8 +132,20 @@ public class MultiTimelineEventConsumer implements EventConsumer.HighLevelConsum
     private List<ConsumedEvent> poll() {
         List<ConsumedEvent> result = null;
         boolean newCollectionCreated = false;
-        for (final EventConsumer consumer : eventConsumers.values()) {
-            final List<ConsumedEvent> partialResult = consumer.readEvents();
+        for (final LowLevelConsumer consumer : eventConsumers.values()) {
+            final List<ConsumedEvent> partialResult = consumer.readEvents().stream()
+                    .map(event -> new ConsumedEvent(
+                            event.getData(),
+                            NakadiCursor.of(timelinesByTopic.get(
+                                    event.getTopic()),
+                                    KafkaCursor.toNakadiPartition(event.getPartition()),
+                                    KafkaCursor.toNakadiOffset(event.getOffset())),
+                            event.getTimestamp(),
+                            event.getEventOwnerHeader()
+                    ))
+                    .collect(Collectors.toList());
+
+
             if (null == result) {
                 result = partialResult;
             } else {
@@ -228,7 +242,7 @@ public class MultiTimelineEventConsumer implements EventConsumer.HighLevelConsum
         }
         // Stop and remove event consumers with changed configuration
         for (final Map.Entry<TopicRepository, List<NakadiCursor>> entry : newAssignment.entrySet()) {
-            final EventConsumer.LowLevelConsumer existingEventConsumer = eventConsumers.get(entry.getKey());
+            final LowLevelConsumer existingEventConsumer = eventConsumers.get(entry.getKey());
             if (null != existingEventConsumer) {
                 final Set<TopicPartition> newTopicPartitions = entry.getValue().stream()
                         .map(NakadiCursor::getTopicPartition)
@@ -247,14 +261,14 @@ public class MultiTimelineEventConsumer implements EventConsumer.HighLevelConsum
                 LOG.trace("client:{}, creating underlying consumer, cursors {}",
                         clientId, Arrays.deepToString(entry.getValue().toArray()));
 
-                final EventConsumer.LowLevelConsumer consumer = repo.createEventConsumer(clientId, entry.getValue());
+                final LowLevelConsumer consumer = repo.createEventConsumer(clientId, entry.getValue());
                 eventConsumers.put(repo, consumer);
             }
         }
     }
 
     private void stopAndRemoveConsumer(final TopicRepository toRemove) {
-        final EventConsumer realConsumer = eventConsumers.remove(toRemove);
+        final LowLevelConsumer realConsumer = eventConsumers.remove(toRemove);
         try {
             LOG.trace("client:{}, about to close underlying consumer", clientId);
             realConsumer.close();
@@ -281,6 +295,12 @@ public class MultiTimelineEventConsumer implements EventConsumer.HighLevelConsum
             final List<Timeline> newActiveTimelines = timelineService.getActiveTimelinesOrdered(eventType);
             eventTypeTimelines.put(eventType, newActiveTimelines);
         }
+
+        timelinesByTopic.clear();
+        eventTypeTimelines.values().stream()
+                .flatMap(Collection::stream)
+                .forEach((timeline) -> timelinesByTopic.put(timeline.getTopic(), timeline));
+
         // Second part - recreate TopicRepositories to fetch data from.
         electTopicRepositories();
     }

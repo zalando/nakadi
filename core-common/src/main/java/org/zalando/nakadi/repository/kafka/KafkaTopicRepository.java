@@ -48,7 +48,7 @@ import org.zalando.nakadi.exceptions.runtime.TopicCreationException;
 import org.zalando.nakadi.exceptions.runtime.TopicDeletionException;
 import org.zalando.nakadi.exceptions.runtime.TopicRepositoryException;
 import org.zalando.nakadi.mapper.NakadiRecordMapper;
-import org.zalando.nakadi.repository.EventConsumer;
+import org.zalando.nakadi.repository.LowLevelConsumer;
 import org.zalando.nakadi.repository.NakadiTopicConfig;
 import org.zalando.nakadi.repository.TopicRepository;
 import org.zalando.nakadi.service.TracingService;
@@ -711,7 +711,7 @@ public class KafkaTopicRepository implements TopicRepository {
     }
 
     @Override
-    public EventConsumer.LowLevelConsumer createEventConsumer(
+    public LowLevelConsumer createEventConsumer(
             @Nullable final String clientId,
             final List<NakadiCursor> cursors)
             throws ServiceTemporarilyUnavailableException, InvalidCursorException {
@@ -755,7 +755,7 @@ public class KafkaTopicRepository implements TopicRepository {
     }
 
     @Override
-    public void reassign(final EventConsumer.LowLevelConsumer consumer, final List<NakadiCursor> cursors) {
+    public void reassign(final LowLevelConsumer consumer, final List<NakadiCursor> cursors) {
         validateReadCursors(cursors);
         consumer.reassign(cursors);
     }

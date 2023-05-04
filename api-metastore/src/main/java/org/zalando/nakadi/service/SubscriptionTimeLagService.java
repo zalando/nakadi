@@ -13,7 +13,7 @@ import org.zalando.nakadi.domain.PartitionEndStatistics;
 import org.zalando.nakadi.exceptions.runtime.ErrorGettingCursorTimeLagException;
 import org.zalando.nakadi.exceptions.runtime.InconsistentStateException;
 import org.zalando.nakadi.exceptions.runtime.InvalidCursorException;
-import org.zalando.nakadi.repository.EventConsumer;
+import org.zalando.nakadi.service.timeline.HighLevelConsumer;
 import org.zalando.nakadi.service.timeline.TimelineService;
 
 import java.io.IOException;
@@ -143,7 +143,8 @@ public class SubscriptionTimeLagService {
 
             final String clientId = String.format("time-lag-checker-%s-%s",
                     cursor.getEventType(), cursor.getPartition());
-            try (EventConsumer consumer = timelineService.createEventConsumer(clientId, ImmutableList.of(cursor))) {
+            try (HighLevelConsumer consumer = timelineService.createEventConsumer(
+                    clientId, ImmutableList.of(cursor))) {
                 LOG.trace("client:{}, reading events for lag calculation", clientId);
                 final ConsumedEvent nextEvent = executeWithRetry(
                         () -> {

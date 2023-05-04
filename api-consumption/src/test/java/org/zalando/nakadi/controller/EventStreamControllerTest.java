@@ -27,7 +27,8 @@ import org.zalando.nakadi.exceptions.runtime.InvalidCursorException;
 import org.zalando.nakadi.exceptions.runtime.NoSuchEventTypeException;
 import org.zalando.nakadi.exceptions.runtime.ServiceTemporarilyUnavailableException;
 import org.zalando.nakadi.plugin.api.authz.AuthorizationService;
-import org.zalando.nakadi.repository.EventConsumer;
+import org.zalando.nakadi.service.timeline.HighLevelConsumer;
+import org.zalando.nakadi.repository.LowLevelConsumer;
 import org.zalando.nakadi.repository.TopicRepository;
 import org.zalando.nakadi.repository.kafka.KafkaPartitionStatistics;
 import org.zalando.nakadi.security.Client;
@@ -139,7 +140,7 @@ public class EventStreamControllerTest {
 
         metricRegistry = new MetricRegistry();
         streamMetrics = new MetricRegistry();
-        final EventConsumer.LowLevelConsumer eventConsumerMock = mock(EventConsumer.LowLevelConsumer.class);
+        final LowLevelConsumer eventConsumerMock = mock(LowLevelConsumer.class);
         when(topicRepositoryMock.createEventConsumer(eq(KAFKA_CLIENT_ID), any()))
                 .thenReturn(eventConsumerMock);
 
@@ -189,7 +190,7 @@ public class EventStreamControllerTest {
     public void whenNoParamsThenDefaultsAreUsed() throws Exception {
         final ArgumentCaptor<EventStreamConfig> configCaptor = ArgumentCaptor.forClass(EventStreamConfig.class);
 
-        final EventConsumer.LowLevelConsumer eventConsumerMock = mock(EventConsumer.LowLevelConsumer.class);
+        final LowLevelConsumer eventConsumerMock = mock(LowLevelConsumer.class);
         when(topicRepositoryMock.createEventConsumer(any(), any()))
                 .thenReturn(eventConsumerMock);
 
@@ -316,7 +317,7 @@ public class EventStreamControllerTest {
 
     @Test
     public void whenNormalCaseThenParametersArePassedToConfigAndStreamStarted() throws Exception {
-        final EventConsumer eventConsumerMock = mock(EventConsumer.class);
+        final HighLevelConsumer eventConsumerMock = mock(HighLevelConsumer.class);
         when(eventTypeCache.getEventType(TEST_EVENT_TYPE_NAME)).thenReturn(EVENT_TYPE);
         when(timelineService.createEventConsumer(
                 eq(KAFKA_CLIENT_ID), eq(ImmutableList.of(NakadiCursor.of(timeline, "0", "000000000000000000")))))
@@ -500,7 +501,7 @@ public class EventStreamControllerTest {
     }
 
     private void prepareScopeRead() throws InvalidCursorException {
-        final EventConsumer.LowLevelConsumer eventConsumerMock = mock(EventConsumer.LowLevelConsumer.class);
+        final LowLevelConsumer eventConsumerMock = mock(LowLevelConsumer.class);
         when(eventTypeCache.getEventType(TEST_EVENT_TYPE_NAME)).thenReturn(EVENT_TYPE);
         when(topicRepositoryMock.createEventConsumer(
                 eq(KAFKA_CLIENT_ID), eq(ImmutableList.of(NakadiCursor.of(timeline, "0", "0")))))
