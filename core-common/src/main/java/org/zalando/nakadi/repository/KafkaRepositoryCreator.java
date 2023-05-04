@@ -1,5 +1,6 @@
 package org.zalando.nakadi.repository;
 
+import com.codahale.metrics.MetricRegistry;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
@@ -33,6 +34,7 @@ public class KafkaRepositoryCreator implements TopicRepositoryCreator {
     private final KafkaTopicConfigFactory kafkaTopicConfigFactory;
     private final ObjectMapper objectMapper;
     private final NakadiRecordMapper nakadiRecordMapper;
+    private final MetricRegistry metricRegistry;
 
     @Autowired
     public KafkaRepositoryCreator(
@@ -41,13 +43,15 @@ public class KafkaRepositoryCreator implements TopicRepositoryCreator {
             final ZookeeperSettings zookeeperSettings,
             final KafkaTopicConfigFactory kafkaTopicConfigFactory,
             final ObjectMapper objectMapper,
-            final NakadiRecordMapper nakadiRecordMapper) {
+            final NakadiRecordMapper nakadiRecordMapper,
+            final MetricRegistry metricRegistry) {
         this.nakadiSettings = nakadiSettings;
         this.kafkaSettings = kafkaSettings;
         this.zookeeperSettings = zookeeperSettings;
         this.kafkaTopicConfigFactory = kafkaTopicConfigFactory;
         this.objectMapper = objectMapper;
         this.nakadiRecordMapper = nakadiRecordMapper;
+        this.metricRegistry = metricRegistry;
     }
 
     @Override
@@ -61,7 +65,7 @@ public class KafkaRepositoryCreator implements TopicRepositoryCreator {
                     nakadiSettings);
             final KafkaLocationManager kafkaLocationManager = new KafkaLocationManager(zooKeeperHolder, kafkaSettings);
             final KafkaFactory kafkaFactory = new KafkaFactory(kafkaLocationManager,
-                    nakadiSettings.getKafkaActiveProducersCount());
+                    metricRegistry, nakadiSettings.getKafkaActiveProducersCount());
             final KafkaZookeeper zk = new KafkaZookeeper(zooKeeperHolder, objectMapper);
             final KafkaTopicRepository kafkaTopicRepository =
                     new KafkaTopicRepository.Builder()

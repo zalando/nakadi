@@ -1,5 +1,7 @@
 package org.zalando.nakadi.repository.kafka;
 
+import com.codahale.metrics.Meter;
+import com.codahale.metrics.MetricRegistry;
 import org.apache.kafka.clients.consumer.Consumer;
 import org.apache.kafka.clients.consumer.KafkaConsumer;
 import org.apache.kafka.clients.producer.KafkaProducer;
@@ -27,7 +29,10 @@ public class KafkaFactory {
     private final ReadWriteLock rwLock;
     private final List<Producer<byte[], byte[]>> activeProducers;
 
+    private final Meter consumerCreateMeter;
+
     public KafkaFactory(final KafkaLocationManager kafkaLocationManager,
+                        final MetricRegistry metricsRegistry,
                         final int numActiveProducers) {
         this.kafkaLocationManager = kafkaLocationManager;
 
@@ -39,6 +44,8 @@ public class KafkaFactory {
         for (int i = 0; i < numActiveProducers; ++i) {
             this.activeProducers.add(null);
         }
+
+        this.consumerCreateMeter = metricsRegistry.meter("nakadi.kafka.consumer.created");
     }
 
     @Nullable
@@ -146,6 +153,9 @@ public class KafkaFactory {
     }
 
     private Consumer<byte[], byte[]> getConsumer(final Properties properties) {
+
+        consumerCreateMeter.mark();
+
         return new KafkaConsumer<>(properties);
     }
 

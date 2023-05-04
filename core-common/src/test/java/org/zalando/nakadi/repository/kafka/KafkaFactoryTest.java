@@ -1,5 +1,6 @@
 package org.zalando.nakadi.repository.kafka;
 
+import com.codahale.metrics.MetricRegistry;
 import org.apache.kafka.clients.producer.Producer;
 import org.junit.Assert;
 import org.junit.Test;
@@ -13,7 +14,7 @@ public class KafkaFactoryTest {
     private static class FakeKafkaFactory extends KafkaFactory {
 
         FakeKafkaFactory(final int numActiveProducers) {
-            super(null, numActiveProducers);
+            super(null, new MetricRegistry(), numActiveProducers);
         }
 
         @Override
