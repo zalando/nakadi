@@ -8,6 +8,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
+import org.zalando.nakadi.config.NakadiSettings;
 import org.zalando.nakadi.domain.ConsumedEvent;
 import org.zalando.nakadi.domain.EventTypePartition;
 import org.zalando.nakadi.domain.NakadiCursor;
@@ -55,18 +56,26 @@ public class SubscriptionTimeLagService {
     public SubscriptionTimeLagService(final TimelineService timelineService,
                                       final NakadiCursorComparator cursorComparator,
                                       final MetricRegistry metricRegistry,
-                                      final int consumerPoolSize) {
+                                      final NakadiSettings nakadiSettings) {
+        if (nakadiSettings.getKafkaTimeLagCheckerConsumerPoolSize() <= 0) {
+            this.threadPool = null;
+            this.consumerPool = null;
+        } else {
+            this.threadPool = new ThreadPoolExecutor(0, TIME_LAG_COMMON_POOL_SIZE, 60L, TimeUnit.SECONDS,
+                    new SynchronousQueue<>());
+            this.consumerPool = new ConsumerPool(
+                    nakadiSettings.getKafkaTimeLagCheckerConsumerPoolSize(),
+                    () -> timelineService.createEventConsumer("timelag-checker"),
+                    metricRegistry);
+        }
         this.cursorComparator = cursorComparator;
-        this.threadPool = new ThreadPoolExecutor(0, TIME_LAG_COMMON_POOL_SIZE, 60L, TimeUnit.SECONDS,
-                new SynchronousQueue<>());
-        this.consumerPool = new ConsumerPool(
-                consumerPoolSize,
-                () -> timelineService.createEventConsumer("timelag-checker"),
-                metricRegistry);
     }
 
     public Map<EventTypePartition, Duration> getTimeLags(final Collection<NakadiCursor> committedPositions,
                                                          final List<PartitionEndStatistics> endPositions) {
+        if (consumerPool == null) {
+            throw new IllegalStateException("Consumer pool was not initialized, check pool config");
+        }
 
         final TimeLagRequestHandler timeLagHandler = new TimeLagRequestHandler(threadPool, consumerPool);
         final Map<EventTypePartition, Duration> timeLags = new HashMap<>();
