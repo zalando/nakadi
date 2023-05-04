@@ -1,6 +1,5 @@
 package org.zalando.nakadi.repository;
 
-import com.codahale.metrics.MetricRegistry;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
@@ -32,7 +31,6 @@ public class KafkaRepositoryCreator implements TopicRepositoryCreator {
     private final KafkaSettings kafkaSettings;
     private final ZookeeperSettings zookeeperSettings;
     private final KafkaTopicConfigFactory kafkaTopicConfigFactory;
-    private final MetricRegistry metricRegistry;
     private final ObjectMapper objectMapper;
     private final NakadiRecordMapper nakadiRecordMapper;
 
@@ -42,14 +40,12 @@ public class KafkaRepositoryCreator implements TopicRepositoryCreator {
             final KafkaSettings kafkaSettings,
             final ZookeeperSettings zookeeperSettings,
             final KafkaTopicConfigFactory kafkaTopicConfigFactory,
-            final MetricRegistry metricRegistry,
             final ObjectMapper objectMapper,
             final NakadiRecordMapper nakadiRecordMapper) {
         this.nakadiSettings = nakadiSettings;
         this.kafkaSettings = kafkaSettings;
         this.zookeeperSettings = zookeeperSettings;
         this.kafkaTopicConfigFactory = kafkaTopicConfigFactory;
-        this.metricRegistry = metricRegistry;
         this.objectMapper = objectMapper;
         this.nakadiRecordMapper = nakadiRecordMapper;
     }
@@ -64,9 +60,8 @@ public class KafkaRepositoryCreator implements TopicRepositoryCreator {
                     zookeeperSettings.getZkConnectionTimeoutMs(),
                     nakadiSettings);
             final KafkaLocationManager kafkaLocationManager = new KafkaLocationManager(zooKeeperHolder, kafkaSettings);
-            final KafkaFactory kafkaFactory = new KafkaFactory(kafkaLocationManager, metricRegistry,
-                    nakadiSettings.getKafkaActiveProducersCount(),
-                    nakadiSettings.getKafkaTimeLagCheckerConsumerPoolSize());
+            final KafkaFactory kafkaFactory = new KafkaFactory(kafkaLocationManager,
+                    nakadiSettings.getKafkaActiveProducersCount());
             final KafkaZookeeper zk = new KafkaZookeeper(zooKeeperHolder, objectMapper);
             final KafkaTopicRepository kafkaTopicRepository =
                     new KafkaTopicRepository.Builder()
