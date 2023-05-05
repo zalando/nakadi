@@ -197,14 +197,14 @@ public class SubscriptionTimeLagService {
         ConsumerPool(final int consumerPoolSize,
                      final Supplier<HighLevelConsumer> consumerCreator,
                      final MetricRegistry metricsRegistry) {
-            LOG.info("Preparing timelag checker pool of {} Kafka consumers", consumerPoolSize);
+            LOG.info("Preparing timelag checker pool of {} multi-timeline consumers", consumerPoolSize);
             this.pool = new LinkedBlockingQueue(consumerPoolSize);
             for (int i = 0; i < consumerPoolSize; ++i) {
                 this.pool.add(consumerCreator.get());
             }
 
-            this.consumerPoolTakeMeter = metricsRegistry.meter("nakadi.kafka.consumer.taken");
-            this.consumerPoolReturnMeter = metricsRegistry.meter("nakadi.kafka.consumer.returned");
+            this.consumerPoolTakeMeter = metricsRegistry.meter("nakadi.timelag-consumer.taken");
+            this.consumerPoolReturnMeter = metricsRegistry.meter("nakadi.timelag-consumer.returned");
         }
 
         private HighLevelConsumer takeConsumer(final List<NakadiCursor> cursors) {
