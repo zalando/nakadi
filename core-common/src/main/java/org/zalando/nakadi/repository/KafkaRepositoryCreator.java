@@ -32,9 +32,9 @@ public class KafkaRepositoryCreator implements TopicRepositoryCreator {
     private final KafkaSettings kafkaSettings;
     private final ZookeeperSettings zookeeperSettings;
     private final KafkaTopicConfigFactory kafkaTopicConfigFactory;
+    private final MetricRegistry metricRegistry;
     private final ObjectMapper objectMapper;
     private final NakadiRecordMapper nakadiRecordMapper;
-    private final MetricRegistry metricRegistry;
 
     @Autowired
     public KafkaRepositoryCreator(
@@ -42,16 +42,16 @@ public class KafkaRepositoryCreator implements TopicRepositoryCreator {
             final KafkaSettings kafkaSettings,
             final ZookeeperSettings zookeeperSettings,
             final KafkaTopicConfigFactory kafkaTopicConfigFactory,
+            final MetricRegistry metricRegistry,
             final ObjectMapper objectMapper,
-            final NakadiRecordMapper nakadiRecordMapper,
-            final MetricRegistry metricRegistry) {
+            final NakadiRecordMapper nakadiRecordMapper) {
         this.nakadiSettings = nakadiSettings;
         this.kafkaSettings = kafkaSettings;
         this.zookeeperSettings = zookeeperSettings;
         this.kafkaTopicConfigFactory = kafkaTopicConfigFactory;
+        this.metricRegistry = metricRegistry;
         this.objectMapper = objectMapper;
         this.nakadiRecordMapper = nakadiRecordMapper;
-        this.metricRegistry = metricRegistry;
     }
 
     @Override
@@ -64,8 +64,9 @@ public class KafkaRepositoryCreator implements TopicRepositoryCreator {
                     zookeeperSettings.getZkConnectionTimeoutMs(),
                     nakadiSettings);
             final KafkaLocationManager kafkaLocationManager = new KafkaLocationManager(zooKeeperHolder, kafkaSettings);
-            final KafkaFactory kafkaFactory = new KafkaFactory(kafkaLocationManager,
-                    metricRegistry, nakadiSettings.getKafkaActiveProducersCount());
+            final KafkaFactory kafkaFactory = new KafkaFactory(kafkaLocationManager, metricRegistry,
+                    nakadiSettings.getKafkaActiveProducersCount(),
+                    nakadiSettings.getKafkaTimeLagCheckerConsumerPoolSize());
             final KafkaZookeeper zk = new KafkaZookeeper(zooKeeperHolder, objectMapper);
             final KafkaTopicRepository kafkaTopicRepository =
                     new KafkaTopicRepository.Builder()
