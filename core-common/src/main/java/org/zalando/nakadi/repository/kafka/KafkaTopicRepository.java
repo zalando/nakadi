@@ -26,6 +26,7 @@ import org.slf4j.LoggerFactory;
 import org.zalando.nakadi.config.NakadiSettings;
 import org.zalando.nakadi.domain.BatchItem;
 import org.zalando.nakadi.domain.CleanupPolicy;
+import org.zalando.nakadi.domain.KafkaSubscriptionSerializer;
 import org.zalando.nakadi.domain.EventPublishingStatus;
 import org.zalando.nakadi.domain.EventPublishingStep;
 import org.zalando.nakadi.domain.NakadiCursor;
@@ -156,6 +157,7 @@ public class KafkaTopicRepository implements TopicRepository {
             final String topicId,
             final String eventType,
             final BatchItem item,
+            final String subscriptionId,
             final boolean delete) throws EventPublishingException {
         try {
             final CompletableFuture<Exception> result = new CompletableFuture<>();
@@ -166,6 +168,10 @@ public class KafkaTopicRepository implements TopicRepository {
                     delete ? null : item.dumpEventToBytes());
             if (null != item.getOwner()) {
                 item.getOwner().serialize(kafkaRecord);
+            }
+
+            if (null != subscriptionId) {
+                KafkaSubscriptionSerializer.serialize(subscriptionId, kafkaRecord);
             }
 
             producer.send(kafkaRecord, ((metadata, exception) -> {
@@ -283,7 +289,8 @@ public class KafkaTopicRepository implements TopicRepository {
 
     @Override
     public void syncPostBatch(
-            final String topicId, final List<BatchItem> batch, final String eventType, final boolean delete)
+            final String topicId, final List<BatchItem> batch, final String eventType,
+            final String subscriptionId, final boolean delete)
             throws EventPublishingException {
         try {
             final Map<BatchItem, CompletableFuture<Exception>> sendFutures = new HashMap<>();
@@ -294,9 +301,8 @@ public class KafkaTopicRepository implements TopicRepository {
                     Preconditions.checkNotNull(
                             item.getPartition(), "BatchItem partition can't be null at the moment of publishing!");
                     item.setStep(EventPublishingStep.PUBLISHING);
-
                     final Producer producer = kafkaFactory.takeProducer(getProducerKey(topicId, item.getPartition()));
-                    sendFutures.put(item, sendItem(producer, topicId, eventType, item, delete));
+                    sendFutures.put(item, sendItem(producer, topicId, eventType, item, subscriptionId, delete));
                 }
             } catch (IOException io) {
                 throw new InternalNakadiException("Error closing active span scope", io);

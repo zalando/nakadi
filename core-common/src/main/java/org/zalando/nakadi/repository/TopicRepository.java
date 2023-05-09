@@ -49,7 +49,7 @@ public interface TopicRepository {
 
     boolean topicExists(String topic) throws TopicRepositoryException;
 
-    void syncPostBatch(String topicId, List<BatchItem> batch, String eventTypeName, boolean delete)
+    void syncPostBatch(String topicId, List<BatchItem> batch, String eventTypeName, String subscriptionId, boolean delete)
             throws EventPublishingException;
 
     List<NakadiRecordResult> sendEvents(String topic, List<NakadiRecord> nakadiRecords);
