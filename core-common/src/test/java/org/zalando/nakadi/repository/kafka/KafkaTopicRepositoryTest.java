@@ -45,6 +45,7 @@ import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.Future;
@@ -152,7 +153,7 @@ public class KafkaTopicRepositoryTest {
                 new PartitionInfo(myTopic, 1, NODE, null, null)));
 
         try {
-            kafkaTopicRepository.syncPostBatch(myTopic, batch, "random", false);
+            kafkaTopicRepository.syncPostBatch(myTopic, batch, "random", null, false);
             fail();
         } catch (final EventPublishingException e) {
             final ProducerRecord<byte[], byte[]> recordSent = captureProducerRecordSent();
@@ -295,7 +296,7 @@ public class KafkaTopicRepositoryTest {
                 .send(any(), any());
 
         try {
-            kafkaTopicRepository.syncPostBatch(EXPECTED_PRODUCER_RECORD.topic(), batch, "random", false);
+            kafkaTopicRepository.syncPostBatch(EXPECTED_PRODUCER_RECORD.topic(), batch, "random", null, false);
             fail();
         } catch (final EventPublishingException e) {
             assertThat(item.getResponse().getPublishingStatus(), equalTo(EventPublishingStatus.FAILED));
@@ -322,7 +323,7 @@ public class KafkaTopicRepositoryTest {
                 .send(any(), any());
 
         try {
-            kafkaTopicRepository.syncPostBatch(EXPECTED_PRODUCER_RECORD.topic(), batch, "random", false);
+            kafkaTopicRepository.syncPostBatch(EXPECTED_PRODUCER_RECORD.topic(), batch, "random", null, false);
             fail();
         } catch (final EventPublishingException e) {
             assertThat(item.getResponse().getPublishingStatus(), equalTo(EventPublishingStatus.FAILED));
@@ -359,7 +360,7 @@ public class KafkaTopicRepositoryTest {
         });
 
         try {
-            kafkaTopicRepository.syncPostBatch(EXPECTED_PRODUCER_RECORD.topic(), batch, "random", false);
+            kafkaTopicRepository.syncPostBatch(EXPECTED_PRODUCER_RECORD.topic(), batch, "random", null, false);
             fail();
         } catch (final EventPublishingException e) {
             assertThat(firstItem.getResponse().getPublishingStatus(), equalTo(EventPublishingStatus.SUBMITTED));
