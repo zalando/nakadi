@@ -9,6 +9,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 import org.zalando.nakadi.cache.EventTypeCache;
 import org.zalando.nakadi.domain.CleanupPolicy;
@@ -40,6 +41,8 @@ import javax.servlet.http.HttpServletRequest;
 import java.io.IOException;
 import java.io.InputStream;
 import java.util.List;
+import java.util.Optional;
+import java.util.UUID;
 import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
 
@@ -85,11 +88,13 @@ public class EventPublishingController {
     @RequestMapping(value = "/event-types/{eventTypeName}/events", method = POST)
     public ResponseEntity postJsonEvents(@PathVariable final String eventTypeName,
                                          @RequestBody final String eventsAsString,
+                                         @RequestParam( value = "subscription_id", required = false) final UUID subscriptionId,
                                          final HttpServletRequest request,
                                          final Client client)
             throws AccessDeniedException, BlockedException, ServiceTemporarilyUnavailableException,
             InternalNakadiException, EventTypeTimeoutException, NoSuchEventTypeException {
-        return postEventsWithMetrics(eventTypeName, eventsAsString, request, client, false);
+        return postEventsWithMetrics(eventTypeName, eventsAsString,
+                subscriptionId == null? null: subscriptionId.toString(), request, client, false);
     }
 
     @RequestMapping(
@@ -202,11 +207,12 @@ public class EventPublishingController {
                                        @RequestBody final String eventsAsString,
                                        final HttpServletRequest request,
                                        final Client client) {
-        return postEventsWithMetrics(eventTypeName, eventsAsString, request, client, true);
+        return postEventsWithMetrics(eventTypeName, eventsAsString, null, request, client, true);
     }
 
     private ResponseEntity postEventsWithMetrics(final String eventTypeName,
                                                  final String eventsAsString,
+                                                 final String subscriptionId,
                                                  final HttpServletRequest request,
                                                  final Client client,
                                                  final boolean delete) {
@@ -220,7 +226,7 @@ public class EventPublishingController {
         final EventTypeMetrics eventTypeMetrics = eventTypeMetricRegistry.metricsFor(eventTypeName);
         try {
             final ResponseEntity response = postEventInternal(
-                    eventTypeName, eventsAsString, eventTypeMetrics, client, request, delete);
+                    eventTypeName, eventsAsString, subscriptionId, eventTypeMetrics, client, request, delete);
             eventTypeMetrics.incrementResponseCount(response.getStatusCode().value());
             return response;
         } catch (final NoSuchEventTypeException exception) {
@@ -234,6 +240,7 @@ public class EventPublishingController {
 
     private ResponseEntity postEventInternal(final String eventTypeName,
                                              final String eventsAsString,
+                                             final String subscriptionId,
                                              final EventTypeMetrics eventTypeMetrics,
                                              final Client client,
                                              final HttpServletRequest request,
@@ -250,7 +257,7 @@ public class EventPublishingController {
             if (delete) {
                 result = publisher.delete(eventsAsString, eventTypeName);
             } else {
-                result = publisher.publish(eventsAsString, eventTypeName);
+                result = publisher.publish(eventsAsString, eventTypeName, subscriptionId);
             }
             final int eventCount = result.getResponses().size();
 

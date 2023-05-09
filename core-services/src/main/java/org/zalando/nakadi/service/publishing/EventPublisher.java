@@ -52,6 +52,7 @@ import java.io.IOException;
 import java.util.List;
 import java.util.Optional;
 import java.util.Set;
+import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.TimeoutException;
 import java.util.function.Function;
@@ -98,7 +99,9 @@ public class EventPublisher {
                 (Gauge<Integer>) () -> uniqueEventTypePartitions.size());
     }
 
-    public EventPublishResult publish(final String events, final String eventTypeName)
+    public EventPublishResult publish(final String events,
+                                      final String eventTypeName,
+                                      final String subscriptionId)
             throws NoSuchEventTypeException,
             InternalNakadiException,
             EnrichmentException,
@@ -107,7 +110,7 @@ public class EventPublisher {
             PublishEventOwnershipException,
             ServiceTemporarilyUnavailableException,
             PartitioningException {
-        return processInternal(events, eventTypeName, true, false);
+        return processInternal(events, eventTypeName, subscriptionId, true, false);
     }
 
     public EventPublishResult delete(final String events, final String eventTypeName)
@@ -119,11 +122,12 @@ public class EventPublisher {
             PublishEventOwnershipException,
             ServiceTemporarilyUnavailableException,
             PartitioningException {
-        return processInternal(events, eventTypeName, true, true);
+        return processInternal(events, eventTypeName, null, true, true);
     }
 
     EventPublishResult processInternal(final String events,
                                        final String eventTypeName,
+                                       final String subscriptionId,
                                        final boolean useAuthz,
                                        final boolean delete)
             throws NoSuchEventTypeException, InternalNakadiException, EventTypeTimeoutException,
@@ -146,7 +150,7 @@ public class EventPublisher {
             if (!delete) {
                 enrich(batch, eventType);
             }
-            submit(batch, eventType, delete);
+            submit(batch, eventType, subscriptionId, delete);
 
             return ok(batch);
         } catch (final EventValidationException e) {
@@ -290,7 +294,8 @@ public class EventPublisher {
     }
 
     private void submit(
-            final List<BatchItem> batch, final EventType eventType, final boolean delete)
+            final List<BatchItem> batch, final EventType eventType,
+            final String subscriptionId, final boolean delete)
         throws EventPublishingException, InternalNakadiException {
         final Timeline activeTimeline = timelineService.getActiveTimeline(eventType);
         final String topic = activeTimeline.getTopic();
@@ -308,7 +313,7 @@ public class EventPublisher {
                 .withTag(Tags.MESSAGE_BUS_DESTINATION.getKey(), topic)
                 .start();
         try (Closeable ignored = TracingService.activateSpan(publishingSpan)) {
-            topicRepository.syncPostBatch(topic, batch, eventType.getName(), delete);
+            topicRepository.syncPostBatch(topic, batch, eventType.getName(), subscriptionId, delete);
         } catch (final EventPublishingException epe) {
             publishingSpan.log(epe.getMessage());
             throw epe;
