@@ -27,19 +27,22 @@ public interface LowLevelConsumer extends Closeable {
         private final long offset;
         private final long timestamp;
         private final EventOwnerHeader eventOwnerHeader;
+        private final String subscriptionId;
 
         public Event(final byte[] data,
                      final String topic,
                      final int partition,
                      final long offset,
                      final long timestamp,
-                     final EventOwnerHeader eventOwnerHeader) {
+                     final EventOwnerHeader eventOwnerHeader,
+                     final String subscriptionId) {
             this.data = data;
             this.topic = topic;
             this.partition = partition;
             this.offset = offset;
             this.timestamp = timestamp;
             this.eventOwnerHeader = eventOwnerHeader;
+            this.subscriptionId = subscriptionId;
         }
 
         public byte[] getData() {
@@ -66,6 +69,10 @@ public interface LowLevelConsumer extends Closeable {
             return eventOwnerHeader;
         }
 
+        public String getSubscriptionId() {
+            return subscriptionId;
+        }
+
         @Override
         public boolean equals(final Object o) {
             if (this == o) {
@@ -82,12 +89,13 @@ public interface LowLevelConsumer extends Closeable {
                     Objects.equals(topic, event.topic) &&
                     Objects.equals(partition, event.partition) &&
                     Objects.equals(offset, event.offset) &&
-                    Objects.equals(eventOwnerHeader, event.eventOwnerHeader);
+                    Objects.equals(eventOwnerHeader, event.eventOwnerHeader) &&
+                    Objects.equals(subscriptionId, event.subscriptionId);
         }
 
         @Override
         public int hashCode() {
-            int result = Objects.hash(topic, partition, offset, timestamp, eventOwnerHeader);
+            int result = Objects.hash(topic, partition, offset, timestamp, eventOwnerHeader, subscriptionId);
             result = 31 * result + Arrays.hashCode(data);
             return result;
         }

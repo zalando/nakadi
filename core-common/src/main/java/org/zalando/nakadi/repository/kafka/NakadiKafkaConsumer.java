@@ -4,6 +4,7 @@ import org.apache.kafka.clients.consumer.Consumer;
 import org.apache.kafka.clients.consumer.ConsumerRecord;
 import org.apache.kafka.clients.consumer.ConsumerRecords;
 import org.apache.kafka.common.TopicPartition;
+import org.zalando.nakadi.domain.KafkaSubscriptionSerializer;
 import org.zalando.nakadi.domain.EventOwnerHeader;
 import org.zalando.nakadi.domain.NakadiCursor;
 import org.zalando.nakadi.exceptions.runtime.InvalidCursorException;
@@ -79,7 +80,8 @@ public class NakadiKafkaConsumer implements LowLevelConsumer {
                     record.partition(),
                     record.offset(),
                     record.timestamp(),
-                    EventOwnerHeader.deserialize(record)));
+                    EventOwnerHeader.deserialize(record),
+                    KafkaSubscriptionSerializer.deserialize(record)));
         }
         return result;
     }

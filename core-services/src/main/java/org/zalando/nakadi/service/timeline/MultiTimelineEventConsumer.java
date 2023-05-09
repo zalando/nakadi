@@ -141,7 +141,8 @@ public class MultiTimelineEventConsumer implements HighLevelConsumer {
                                     KafkaCursor.toNakadiPartition(event.getPartition()),
                                     KafkaCursor.toNakadiOffset(event.getOffset())),
                             event.getTimestamp(),
-                            event.getEventOwnerHeader()
+                            event.getEventOwnerHeader(),
+                            event.getSubscriptionId()
                     ))
                     .collect(Collectors.toList());
 

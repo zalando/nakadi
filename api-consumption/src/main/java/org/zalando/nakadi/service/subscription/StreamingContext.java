@@ -276,7 +276,12 @@ public class StreamingContext implements SubscriptionStreamer {
     }
 
     public boolean isConsumptionBlocked(final ConsumedEvent event) {
-        return eventStreamChecks.isConsumptionBlocked(event);
+        if (null == event.getSubscriptionId()) {
+            return eventStreamChecks.isConsumptionBlocked(event);
+        }
+
+        return !(event.getSubscriptionId().equals(subscription.getId())) ||
+                eventStreamChecks.isConsumptionBlocked(event);
     }
 
     public CursorTokenService getCursorTokenService() {
