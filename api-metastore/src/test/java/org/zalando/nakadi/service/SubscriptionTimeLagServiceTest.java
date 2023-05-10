@@ -1,8 +1,10 @@
 package org.zalando.nakadi.service;
 
+import com.codahale.metrics.MetricRegistry;
 import com.google.common.collect.ImmutableList;
 import org.junit.Before;
 import org.junit.Test;
+import org.zalando.nakadi.config.NakadiSettings;
 import org.zalando.nakadi.domain.ConsumedEvent;
 import org.zalando.nakadi.domain.EventTypePartition;
 import org.zalando.nakadi.domain.NakadiCursor;
@@ -21,7 +23,7 @@ import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.greaterThan;
 import static org.hamcrest.Matchers.hasSize;
 import static org.hamcrest.Matchers.is;
-import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
@@ -30,15 +32,15 @@ public class SubscriptionTimeLagServiceTest {
     private static final long FAKE_EVENT_TIMESTAMP = 478220400000L;
 
     private NakadiCursorComparator cursorComparator;
-    private SubscriptionTimeLagService timeLagService;
     private TimelineService timelineService;
+    private NakadiSettings nakadiSettings;
 
     @Before
     public void setUp() {
         timelineService = mock(TimelineService.class);
-
         cursorComparator = mock(NakadiCursorComparator.class);
-        timeLagService = new SubscriptionTimeLagService(timelineService, cursorComparator);
+        nakadiSettings = mock(NakadiSettings.class);
+        when(nakadiSettings.getKafkaTimeLagCheckerConsumerPoolSize()).thenReturn(2);
     }
 
     @Test
@@ -53,7 +55,7 @@ public class SubscriptionTimeLagServiceTest {
                                 new ConsumedEvent(
                                         null, NakadiCursor.of(timeline, "", ""), FAKE_EVENT_TIMESTAMP, null)));
 
-        when(timelineService.createEventConsumer(any(), any())).thenReturn(eventConsumer);
+        when(timelineService.createEventConsumer(anyString())).thenReturn(eventConsumer);
 
         final Timeline et1Timeline = new Timeline("et1", 0, new Storage("", Storage.Type.KAFKA), "t1", null);
 
@@ -69,6 +71,8 @@ public class SubscriptionTimeLagServiceTest {
         // mock second committed cursor to be lower than tail - the expected time lag should be > 0
         when(cursorComparator.compare(committedCursor2, endStats2.getLast())).thenReturn(-1);
 
+        final SubscriptionTimeLagService timeLagService = new SubscriptionTimeLagService(
+                timelineService, cursorComparator, new MetricRegistry(), nakadiSettings);
         final Map<EventTypePartition, Duration> timeLags = timeLagService.getTimeLags(
                 ImmutableList.of(committedCursor1, committedCursor2),
                 ImmutableList.of(endStats1, endStats2));
@@ -81,10 +85,12 @@ public class SubscriptionTimeLagServiceTest {
 
     @Test
     public void whenNoSubscriptionThenReturnSizeZeroMap() {
-        when(timelineService.createEventConsumer(any(), any())).thenReturn(null);
         final Timeline et1Timeline = new Timeline("et1", 0, new Storage("", Storage.Type.KAFKA), "t1", null);
         final NakadiCursor committedCursor1 = NakadiCursor.of(et1Timeline, "p1", "o1");
 
+        when(timelineService.createEventConsumer(anyString())).thenReturn(mock(HighLevelConsumer.class));
+        final SubscriptionTimeLagService timeLagService = new SubscriptionTimeLagService(
+                timelineService, cursorComparator, new MetricRegistry(), nakadiSettings);
         final Map<EventTypePartition, Duration> result = timeLagService.getTimeLags
                 (ImmutableList.of(committedCursor1), ImmutableList.of());
         assertThat(result.size(), is(0));
