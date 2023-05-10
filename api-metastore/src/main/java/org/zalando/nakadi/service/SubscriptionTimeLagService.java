@@ -16,12 +16,12 @@ import org.zalando.nakadi.domain.PartitionEndStatistics;
 import org.zalando.nakadi.exceptions.runtime.ErrorGettingCursorTimeLagException;
 import org.zalando.nakadi.exceptions.runtime.InconsistentStateException;
 import org.zalando.nakadi.exceptions.runtime.InvalidCursorException;
+import org.zalando.nakadi.exceptions.runtime.NakadiBaseException;
 import org.zalando.nakadi.service.timeline.HighLevelConsumer;
 import org.zalando.nakadi.service.timeline.TimelineService;
 
 import java.time.Duration;
 import java.util.Collection;
-import java.util.Collections;
 import java.util.Date;
 import java.util.HashMap;
 import java.util.List;
@@ -212,36 +212,44 @@ public class SubscriptionTimeLagService {
         }
 
         private HighLevelConsumer takeConsumer(final List<NakadiCursor> cursors) {
-            final HighLevelConsumer consumer;
-
             LOG.trace("Taking timelag consumer from the pool");
+
+            if (cursors == null) {
+                throw new IllegalArgumentException("Cursors can not be null");
+            }
+
+            final HighLevelConsumer consumer;
             try {
                 consumer = pool.poll(30, TimeUnit.SECONDS);
-            } catch (final InterruptedException e) {
+            } catch (final InterruptedException exception) {
                 Thread.currentThread().interrupt();
                 throw new RuntimeException("interrupted while waiting for a consumer from the pool");
             }
+
             if (consumer == null) {
                 throw new RuntimeException("timed out while waiting for a consumer from the pool");
             }
 
-            LOG.trace("Took timelag consumer from the pool {}", consumer);
+            try {
+                consumerPoolTakeMeter.mark();
+                LOG.trace("Took timelag consumer from the pool {}", consumer);
 
-            consumer.reassign(cursors);
-            LOG.trace("Reassigned consumer {} to cursors {}", consumer, cursors);
+                consumer.reassign(cursors);
+                LOG.trace("Reassigned consumer {} to cursors {}", consumer, cursors);
 
-            consumerPoolTakeMeter.mark();
-
-            return consumer;
+                return consumer;
+            } catch (final RuntimeException exception) {
+                returnConsumer(consumer);
+                throw exception;
+            }
         }
 
         private void returnConsumer(final HighLevelConsumer consumer) {
             LOG.trace("Returning timelag consumer to the pool {}", consumer);
 
-            consumer.reassign(Collections.emptyList());
-            LOG.trace("Reassigned consumer {} to empty cursors", consumer);
-
-            consumerPoolReturnMeter.mark();
+            if (consumer == null) {
+                throw new IllegalArgumentException("consumer can not be `null`");
+            }
 
             try {
                 pool.put(consumer);
@@ -250,6 +258,7 @@ public class SubscriptionTimeLagService {
                 throw new RuntimeException("interrupted while putting a consumer back to the pool");
             }
 
+            consumerPoolReturnMeter.mark();
             LOG.trace("Returned timelag consumer to the pool {}", consumer);
         }
 
