@@ -89,6 +89,8 @@ public class SubscriptionTimeLagService {
                     futureTimeLags.put(cursor.getEventTypePartition(), timeLagFuture);
                 }
             }
+
+            LOG.trace("Waiting for timelag futures to complete");
             CompletableFuture
                     .allOf(futureTimeLags.values().toArray(new CompletableFuture[futureTimeLags.size()]))
                     .get(timeLagHandler.getRemainingTimeoutMs(), TimeUnit.MILLISECONDS);
@@ -96,6 +98,7 @@ public class SubscriptionTimeLagService {
             for (final EventTypePartition partition : futureTimeLags.keySet()) {
                 timeLags.put(partition, futureTimeLags.get(partition).get());
             }
+            LOG.trace("Timelag futures completed");
         } catch (RejectedExecutionException | TimeoutException | ExecutionException e) {
             LOG.warn("caught exception the timelag stats are not complete: {}", e.toString());
         } catch (Throwable e) {
@@ -132,6 +135,7 @@ public class SubscriptionTimeLagService {
         CompletableFuture<Duration> getCursorTimeLagFuture(final NakadiCursor cursor)
                 throws InterruptedException, TimeoutException {
 
+            LOG.trace("try acquire semaphore");
             final CompletableFuture<Duration> future = new CompletableFuture<>();
             if (semaphore.tryAcquire(getRemainingTimeoutMs(), TimeUnit.MILLISECONDS)) {
                 threadPool.submit(() -> {
@@ -221,7 +225,10 @@ public class SubscriptionTimeLagService {
                 throw new RuntimeException("timed out while waiting for a consumer from the pool");
             }
 
+            LOG.trace("Took timelag consumer from the pool {}", consumer);
+
             consumer.reassign(cursors);
+            LOG.trace("Reassigned consumer {} to cursors {}", consumer, cursors);
 
             consumerPoolTakeMeter.mark();
 
@@ -229,9 +236,10 @@ public class SubscriptionTimeLagService {
         }
 
         private void returnConsumer(final HighLevelConsumer consumer) {
-            LOG.trace("Returning timelag consumer to the pool");
+            LOG.trace("Returning timelag consumer to the pool {}", consumer);
 
             consumer.reassign(Collections.emptyList());
+            LOG.trace("Reassigned consumer {} to empty cursors", consumer);
 
             consumerPoolReturnMeter.mark();
 
@@ -241,6 +249,8 @@ public class SubscriptionTimeLagService {
                 Thread.currentThread().interrupt();
                 throw new RuntimeException("interrupted while putting a consumer back to the pool");
             }
+
+            LOG.trace("Returned timelag consumer to the pool {}", consumer);
         }
 
     }
