@@ -232,14 +232,7 @@ public class MultiTimelineEventConsumer implements HighLevelConsumer {
         for (final Map.Entry<TopicRepository, List<NakadiCursor>> entry : newAssignment.entrySet()) {
             final LowLevelConsumer existingEventConsumer = eventConsumers.get(entry.getKey());
             if (null != existingEventConsumer) {
-                final Set<TopicPartition> newTopicPartitions = entry.getValue().stream()
-                        .map(NakadiCursor::getTopicPartition)
-                        .collect(Collectors.toSet());
-                final Set<TopicPartition> oldAssignment = existingEventConsumer.getAssignment();
-                if (!oldAssignment.equals(newTopicPartitions)
-                        || oldAssignment.stream().anyMatch(actualReadPositionChanged::contains)) {
-                    existingEventConsumer.reassign(entry.getValue());
-                }
+                existingEventConsumer.reassign(entry.getValue());
             }
         }
         // Start new consumers with changed configuration.
