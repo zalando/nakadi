@@ -94,6 +94,4 @@ public interface TopicRepository {
             ServiceTemporarilyUnavailableException;
 
     void updateTopicConfig(String topic, Long retentionMs, CleanupPolicy cleanupPolicy) throws TopicConfigException;
-
-    void reassign(LowLevelConsumer consumer, List<NakadiCursor> cursors);
 }

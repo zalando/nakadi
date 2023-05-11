@@ -715,13 +715,12 @@ public class KafkaTopicRepository implements TopicRepository {
             @Nullable final String clientId,
             final List<NakadiCursor> cursors)
             throws ServiceTemporarilyUnavailableException, InvalidCursorException {
-        validateReadCursors(cursors);
+
         final NakadiKafkaConsumer nakadiKafkaConsumer = new NakadiKafkaConsumer(
                 kafkaFactory.getConsumer(clientId),
                 nakadiSettings.getKafkaPollTimeoutMs());
         nakadiKafkaConsumer.reassign(cursors);
         return nakadiKafkaConsumer;
-
     }
 
     @Override
@@ -752,12 +751,6 @@ public class KafkaTopicRepository implements TopicRepository {
                 throw new InvalidCursorException(UNAVAILABLE, position);
             }
         }
-    }
-
-    @Override
-    public void reassign(final LowLevelConsumer consumer, final List<NakadiCursor> cursors) {
-        validateReadCursors(cursors);
-        consumer.reassign(cursors);
     }
 
     @Override

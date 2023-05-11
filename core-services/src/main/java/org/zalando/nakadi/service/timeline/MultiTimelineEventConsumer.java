@@ -90,22 +90,10 @@ public class MultiTimelineEventConsumer implements HighLevelConsumer {
                 throw new NakadiRuntimeException(ex);
             }
         }
-        final List<ConsumedEvent> result;
-        try {
-            result = poll();
-        } catch (final RuntimeException ex) {
-            LOG.warn("Kafka connections should be reinitialized because consumers should be recreated", ex);
-            final List<NakadiCursor> tmpOffsets = new ArrayList<>(latestOffsets.values());
-            // close all the clients
-            reassign(Collections.emptyList());
-            // create new clients
-            reassign(tmpOffsets);
-            return Collections.emptyList();
-        }
+        final List<ConsumedEvent> result = poll();
         if (result.isEmpty()) {
             return result;
         }
-
         final List<ConsumedEvent> filteredResult = new ArrayList<>(result.size());
         for (final ConsumedEvent event : result) {
             final EventTypePartition etp = event.getPosition().getEventTypePartition();
@@ -240,7 +228,7 @@ public class MultiTimelineEventConsumer implements HighLevelConsumer {
         for (final TopicRepository toRemove : removedTopicRepositories) {
             stopAndRemoveConsumer(toRemove);
         }
-        // Stop and remove event consumers with changed configuration
+        // Reassign event consumers with changed configuration
         for (final Map.Entry<TopicRepository, List<NakadiCursor>> entry : newAssignment.entrySet()) {
             final LowLevelConsumer existingEventConsumer = eventConsumers.get(entry.getKey());
             if (null != existingEventConsumer) {
@@ -250,7 +238,7 @@ public class MultiTimelineEventConsumer implements HighLevelConsumer {
                 final Set<TopicPartition> oldAssignment = existingEventConsumer.getAssignment();
                 if (!oldAssignment.equals(newTopicPartitions)
                         || oldAssignment.stream().anyMatch(actualReadPositionChanged::contains)) {
-                    entry.getKey().reassign(existingEventConsumer, entry.getValue());
+                    existingEventConsumer.reassign(entry.getValue());
                 }
             }
         }
