@@ -12,7 +12,6 @@ import org.zalando.nakadi.config.NakadiSettings;
 import org.zalando.nakadi.domain.ConsumedEvent;
 import org.zalando.nakadi.domain.EventTypePartition;
 import org.zalando.nakadi.domain.NakadiCursor;
-import org.zalando.nakadi.domain.PartitionEndStatistics;
 import org.zalando.nakadi.exceptions.runtime.ErrorGettingCursorTimeLagException;
 import org.zalando.nakadi.exceptions.runtime.InconsistentStateException;
 import org.zalando.nakadi.exceptions.runtime.InvalidCursorException;
@@ -47,13 +46,11 @@ public class SubscriptionTimeLagService {
     private static final int MAX_THREADS_PER_REQUEST = 20;
     private static final int TIME_LAG_COMMON_POOL_SIZE = 400;
 
-    private final NakadiCursorComparator cursorComparator;
     private final ThreadPoolExecutor threadPool;
     private final ConsumerPool consumerPool;
 
     @Autowired
     public SubscriptionTimeLagService(final TimelineService timelineService,
-                                      final NakadiCursorComparator cursorComparator,
                                       final MetricRegistry metricRegistry,
                                       final NakadiSettings nakadiSettings) {
         if (nakadiSettings.getKafkaTimeLagCheckerConsumerPoolSize() <= 0) {
@@ -67,11 +64,9 @@ public class SubscriptionTimeLagService {
                     () -> timelineService.createEventConsumer("timelag-checker"),
                     metricRegistry);
         }
-        this.cursorComparator = cursorComparator;
     }
 
-    public Map<EventTypePartition, Duration> getTimeLags(final Collection<NakadiCursor> committedPositions,
-                                                         final List<PartitionEndStatistics> endPositions) {
+    public Map<EventTypePartition, Duration> getTimeLags(final Collection<NakadiCursor> committedPositions) {
         if (consumerPool == null) {
             throw new IllegalStateException("Consumer pool was not initialized, check pool config");
         }
@@ -81,12 +76,7 @@ public class SubscriptionTimeLagService {
         final Map<EventTypePartition, CompletableFuture<Duration>> futureTimeLags = new HashMap<>();
         try {
             for (final NakadiCursor cursor : committedPositions) {
-                if (isCursorAtTail(cursor, endPositions)) {
-                    timeLags.put(cursor.getEventTypePartition(), Duration.ZERO);
-                } else {
-                    final CompletableFuture<Duration> timeLagFuture = timeLagHandler.getCursorTimeLagFuture(cursor);
-                    futureTimeLags.put(cursor.getEventTypePartition(), timeLagFuture);
-                }
+                futureTimeLags.put(cursor.getEventTypePartition(), timeLagHandler.getCursorTimeLagFuture(cursor));
             }
 
             LOG.trace("Waiting for timelag futures to complete");
@@ -104,16 +94,6 @@ public class SubscriptionTimeLagService {
             LOG.warn("caught throwable the timelag stats are not complete: {}", e.toString());
         }
         return timeLags;
-    }
-
-    private boolean isCursorAtTail(final NakadiCursor cursor, final List<PartitionEndStatistics> endPositions) {
-        return endPositions.stream()
-                .map(PartitionEndStatistics::getLast)
-                .filter(last -> last.getEventType().equals(cursor.getEventType())
-                        && last.getPartition().equals(cursor.getPartition()))
-                .findAny()
-                .map(last -> cursorComparator.compare(cursor, last) >= 0)
-                .orElse(false);
     }
 
     private static class TimeLagRequestHandler {
@@ -179,7 +159,7 @@ public class SubscriptionTimeLagService {
                                 .withResultsThatForceRetry((ConsumedEvent) null));
 
                 if (nextEvent == null) {
-                    throw new InconsistentStateException("Timeout waiting for events when getting consumer time lag");
+                    return Duration.ZERO;
                 } else {
                     return Duration.ofMillis(new Date().getTime() - nextEvent.getTimestamp());
                 }
