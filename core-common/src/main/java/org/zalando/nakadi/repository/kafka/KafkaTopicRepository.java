@@ -74,7 +74,6 @@ import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
 import java.util.stream.Collectors;
-import java.util.stream.IntStream;
 import java.util.stream.Stream;
 
 import static java.util.Collections.unmodifiableList;
@@ -540,43 +539,43 @@ public class KafkaTopicRepository implements TopicRepository {
         }
     }
 
-    public List<Optional<PartitionStatistics>> loadPartitionStatisticsInternal(
+    private List<Optional<PartitionStatistics>> loadPartitionStatisticsInternal(
             final Collection<TimelinePartition> partitions) {
         final Map<String, Set<String>> topicToPartitions = partitions.stream().collect(
                 Collectors.groupingBy(
                         tp -> tp.getTimeline().getTopic(),
                         Collectors.mapping(TimelinePartition::getPartition, Collectors.toSet())
                 ));
+
         try (Consumer<byte[], byte[]> consumer = kafkaFactory.getConsumer()) {
             final List<PartitionInfo> allKafkaPartitions = topicToPartitions.keySet().stream()
                     .map(consumer::partitionsFor)
                     .flatMap(Collection::stream)
                     .collect(Collectors.toList());
-            final List<TopicPartition> partitionsToQuery = allKafkaPartitions.stream()
+            final List<TopicPartition> topicPartitions = allKafkaPartitions.stream()
                     .filter(pi -> topicToPartitions.get(pi.topic())
                             .contains(KafkaCursor.toNakadiPartition(pi.partition())))
                     .map(pi -> new TopicPartition(pi.topic(), pi.partition()))
                     .collect(Collectors.toList());
 
-            consumer.assign(partitionsToQuery);
-            consumer.seekToBeginning(partitionsToQuery);
-            final List<Long> begins = partitionsToQuery.stream().map(consumer::position).collect(toList());
-            consumer.seekToEnd(partitionsToQuery);
-            final List<Long> ends = partitionsToQuery.stream().map(consumer::position).collect(toList());
+            final Map<TopicPartition, Long> beginningOffsetByPartition = consumer.beginningOffsets(topicPartitions);
+            final Map<TopicPartition, Long> endOffsetByPartition = consumer.endOffsets(topicPartitions);
 
             final List<Optional<PartitionStatistics>> result = new ArrayList<>(partitions.size());
-            for (final TimelinePartition tap : partitions) {
+            for (final TimelinePartition partition : partitions) {
                 // Now search for an index.
-                final Optional<PartitionStatistics> itemResult = IntStream.range(0, partitionsToQuery.size())
-                        .filter(i -> {
-                            final TopicPartition info = partitionsToQuery.get(i);
-                            return info.topic().equals(tap.getTimeline().getTopic()) &&
-                                    info.partition() == KafkaCursor.toKafkaPartition(tap.getPartition());
-                        }).mapToObj(indexFound -> (PartitionStatistics) new KafkaPartitionStatistics(
-                                tap.getTimeline(),
-                                partitionsToQuery.get(indexFound).partition(),
-                                begins.get(indexFound),
-                                ends.get(indexFound) - 1L))
+                final Optional<PartitionStatistics> itemResult = topicPartitions.stream()
+                        .filter(tp -> {
+                            return tp.topic().equals(partition.getTimeline().getTopic()) &&
+                                    tp.partition() == KafkaCursor.toKafkaPartition(partition.getPartition());
+                        })
+                        .map(tp -> {
+                            return (PartitionStatistics) new KafkaPartitionStatistics(
+                                partition.getTimeline(),
+                                tp.partition(),
+                                beginningOffsetByPartition.get(tp),
+                                endOffsetByPartition.get(tp) - 1);
+                        })
                         .findAny();
                 result.add(itemResult);
             }
@@ -589,7 +588,7 @@ public class KafkaTopicRepository implements TopicRepository {
             throws ServiceTemporarilyUnavailableException {
         try {
             return Retryer.executeWithRetry(() -> {
-                        return loadTopicStatisticsInternal(timelines);
+                        return loadTopicStatisticsInternal(timelines.stream().collect(Collectors.toSet()));
                     },
                     new RetryForSpecifiedCountStrategy(3)
                             .withWaitBetweenEachTry(5000)
@@ -599,29 +598,29 @@ public class KafkaTopicRepository implements TopicRepository {
         }
     }
 
-    public List<PartitionStatistics> loadTopicStatisticsInternal(final Collection<Timeline> timelines) {
+    private List<PartitionStatistics> loadTopicStatisticsInternal(final Set<Timeline> timelines) {
+        final Map<String, Timeline> timelineByTopic =
+                timelines.stream().collect(Collectors.toMap(Timeline::getTopic, t -> t));
+
         try (Consumer<byte[], byte[]> consumer = kafkaFactory.getConsumer()) {
-            final Map<TopicPartition, Timeline> backMap = new HashMap<>();
-            for (final Timeline timeline : timelines) {
-                consumer.partitionsFor(timeline.getTopic())
-                        .stream()
-                        .map(p -> new TopicPartition(p.topic(), p.partition()))
-                        .forEach(tp -> backMap.put(tp, timeline));
-            }
-            final List<TopicPartition> kafkaTPs = new ArrayList<>(backMap.keySet());
-            consumer.assign(kafkaTPs);
-            consumer.seekToBeginning(kafkaTPs);
-            final long[] begins = kafkaTPs.stream().mapToLong(consumer::position).toArray();
+            final List<TopicPartition> topicPartitions =
+                    timelines.stream()
+                    .map(Timeline::getTopic)
+                    .flatMap(topic -> consumer.partitionsFor(topic).stream())
+                    .map(p -> new TopicPartition(p.topic(), p.partition()))
+                    .collect(Collectors.toList());
 
-            consumer.seekToEnd(kafkaTPs);
-            final long[] ends = kafkaTPs.stream().mapToLong(consumer::position).toArray();
+            final Map<TopicPartition, Long> beginningOffsetByPartition = consumer.beginningOffsets(topicPartitions);
+            final Map<TopicPartition, Long> endOffsetByPartition = consumer.endOffsets(topicPartitions);
 
-            return IntStream.range(0, kafkaTPs.size())
-                    .mapToObj(i -> new KafkaPartitionStatistics(
-                            backMap.get(kafkaTPs.get(i)),
-                            kafkaTPs.get(i).partition(),
-                            begins[i],
-                            ends[i] - 1))
+            return topicPartitions.stream()
+                    .map(tp -> {
+                        return new KafkaPartitionStatistics(
+                                timelineByTopic.get(tp.topic()),
+                                tp.partition(),
+                                beginningOffsetByPartition.get(tp),
+                                endOffsetByPartition.get(tp) - 1);
+                    })
                     .collect(toList());
         }
     }
@@ -631,7 +630,7 @@ public class KafkaTopicRepository implements TopicRepository {
             throws ServiceTemporarilyUnavailableException {
         try {
             return Retryer.executeWithRetry(() -> {
-                        return loadTopicEndStatisticsInternal(timelines);
+                        return loadTopicEndStatisticsInternal(timelines.stream().collect(Collectors.toSet()));
                     },
                     new RetryForSpecifiedCountStrategy(3)
                             .withWaitBetweenEachTry(5000)
@@ -641,23 +640,26 @@ public class KafkaTopicRepository implements TopicRepository {
         }
     }
 
-    private List<PartitionEndStatistics> loadTopicEndStatisticsInternal(final Collection<Timeline> timelines) {
+    private List<PartitionEndStatistics> loadTopicEndStatisticsInternal(final Set<Timeline> timelines) {
+        final Map<String, Timeline> timelineByTopic =
+                timelines.stream().collect(Collectors.toMap(Timeline::getTopic, t -> t));
+
         try (Consumer<byte[], byte[]> consumer = kafkaFactory.getConsumer()) {
-            final Map<TopicPartition, Timeline> backMap = new HashMap<>();
-            for (final Timeline timeline : timelines) {
-                consumer.partitionsFor(timeline.getTopic())
-                        .stream()
-                        .map(p -> new TopicPartition(p.topic(), p.partition()))
-                        .forEach(tp -> backMap.put(tp, timeline));
-            }
-            final List<TopicPartition> kafkaTPs = Lists.newArrayList(backMap.keySet());
-            consumer.assign(kafkaTPs);
-            consumer.seekToEnd(kafkaTPs);
-            return backMap.entrySet().stream()
+            final Map<TopicPartition, Long> offsetByPartition =
+                    consumer.endOffsets(
+                            timelines.stream()
+                            .map(Timeline::getTopic)
+                            .flatMap(topic -> consumer.partitionsFor(topic).stream())
+                            .map(p -> new TopicPartition(p.topic(), p.partition()))
+                            .collect(Collectors.toList()));
+
+            return offsetByPartition.entrySet().stream()
                     .map(e -> {
                         final TopicPartition tp = e.getKey();
-                        final Timeline timeline = e.getValue();
-                        return new KafkaPartitionEndStatistics(timeline, tp.partition(), consumer.position(tp) - 1);
+                        return new KafkaPartitionEndStatistics(
+                                timelineByTopic.get(tp.topic()),
+                                tp.partition(),
+                                e.getValue() - 1);
                     })
                     .collect(toList());
         }
@@ -727,7 +729,8 @@ public class KafkaTopicRepository implements TopicRepository {
     @Override
     public void validateReadCursors(final List<NakadiCursor> cursors)
             throws InvalidCursorException, ServiceTemporarilyUnavailableException {
-        final List<Timeline> timelines = cursors.stream().map(NakadiCursor::getTimeline).distinct().collect(toList());
+
+        final List<Timeline> timelines = cursors.stream().map(NakadiCursor::getTimeline).collect(toList());
         final List<PartitionStatistics> statistics = loadTopicStatistics(timelines);
 
         for (final NakadiCursor position : cursors) {

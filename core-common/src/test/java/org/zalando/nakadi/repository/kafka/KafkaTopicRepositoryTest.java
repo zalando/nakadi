@@ -40,6 +40,7 @@ import java.io.IOException;
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collection;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -61,9 +62,7 @@ import static org.junit.Assert.fail;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Matchers.anyString;
-import static org.mockito.Matchers.anyVararg;
 import static org.mockito.Mockito.atLeastOnce;
-import static org.mockito.Mockito.doAnswer;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -98,13 +97,6 @@ public class KafkaTopicRepositoryTest {
         PARTITIONS.add(new PartitionState(ANOTHER_TOPIC, 1, 0, 100));
         PARTITIONS.add(new PartitionState(ANOTHER_TOPIC, 5, 12, 60));
         PARTITIONS.add(new PartitionState(ANOTHER_TOPIC, 9, 99, 222));
-    }
-
-    private ConsumerOffsetMode offsetMode = ConsumerOffsetMode.EARLIEST;
-
-    private enum ConsumerOffsetMode {
-        EARLIEST,
-        LATEST
     }
 
     public static final List<Cursor> MY_TOPIC_VALID_CURSORS = asList(
@@ -182,27 +174,18 @@ public class KafkaTopicRepositoryTest {
     @Test
     @SuppressWarnings("ArraysAsListWithZeroOrOneArgument")
     public void validateValidCursors() throws InvalidCursorException {
-        // validate each individual valid cursor
+
         for (final Cursor cursor : MY_TOPIC_VALID_CURSORS) {
             kafkaTopicRepository.createEventConsumer(
                     KAFKA_CLIENT_ID,
                     asTopicPosition(MY_TOPIC, asList(cursor)));
         }
-        // validate all valid cursors
-        kafkaTopicRepository.createEventConsumer(
-                KAFKA_CLIENT_ID,
-                asTopicPosition(MY_TOPIC, MY_TOPIC_VALID_CURSORS));
 
-        // validate each individual valid cursor
         for (final Cursor cursor : ANOTHER_TOPIC_VALID_CURSORS) {
             kafkaTopicRepository.createEventConsumer(
                     KAFKA_CLIENT_ID,
                     asTopicPosition(ANOTHER_TOPIC, asList(cursor)));
         }
-        // validate all valid cursors
-        kafkaTopicRepository.createEventConsumer(
-                KAFKA_CLIENT_ID,
-                asTopicPosition(ANOTHER_TOPIC, ANOTHER_TOPIC_VALID_CURSORS));
     }
 
     @Test
@@ -526,25 +509,24 @@ public class KafkaTopicRepositoryTest {
         allTopics().forEach(
                 topic -> when(consumer.partitionsFor(topic)).thenReturn(partitionsOfTopic(topic)));
 
-        doAnswer(invocation -> {
-            offsetMode = ConsumerOffsetMode.EARLIEST;
-            return null;
-        }).when(consumer).seekToBeginning(anyVararg());
+        when(consumer.beginningOffsets(any())).thenAnswer(invocation -> {
+            final Collection<org.apache.kafka.common.TopicPartition> tps =
+                    (Collection<org.apache.kafka.common.TopicPartition>) invocation.getArguments()[0];
+            return PARTITIONS.stream()
+                    .filter(ps -> tps.contains(new org.apache.kafka.common.TopicPartition(ps.topic, ps.partition)))
+                    .collect(Collectors.toMap(
+                                     ps -> new org.apache.kafka.common.TopicPartition(ps.topic, ps.partition),
+                                     ps -> ps.earliestOffset));
+        });
 
-        doAnswer(invocation -> {
-            offsetMode = ConsumerOffsetMode.LATEST;
-            return null;
-        }).when(consumer).seekToEnd(anyVararg());
-
-        when(consumer.position(any())).thenAnswer(invocation -> {
-            final org.apache.kafka.common.TopicPartition tp =
-                    (org.apache.kafka.common.TopicPartition) invocation.getArguments()[0];
-            return PARTITIONS
-                    .stream()
-                    .filter(ps -> ps.topic.equals(tp.topic()) && ps.partition == tp.partition())
-                    .findFirst()
-                    .map(ps -> offsetMode == ConsumerOffsetMode.LATEST ? ps.latestOffset : ps.earliestOffset)
-                    .orElseThrow(KafkaException::new);
+        when(consumer.endOffsets(any())).thenAnswer(invocation -> {
+            final Collection<org.apache.kafka.common.TopicPartition> tps =
+                    (Collection<org.apache.kafka.common.TopicPartition>) invocation.getArguments()[0];
+            return PARTITIONS.stream()
+                    .filter(ps -> tps.contains(new org.apache.kafka.common.TopicPartition(ps.topic, ps.partition)))
+                    .collect(Collectors.toMap(
+                                     ps -> new org.apache.kafka.common.TopicPartition(ps.topic, ps.partition),
+                                     ps -> ps.latestOffset));
         });
 
         // KafkaProducer
