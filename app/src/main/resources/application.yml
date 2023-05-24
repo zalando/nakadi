@@ -56,7 +56,7 @@ nakadi:
     maxStreamMemoryBytes: 50000000 # ~50 MB
   kafka:
     producers.count: 1
-    time-lag-checker.consumer-pool.size: 1
+    time-lag-checker.consumer-pool.size: 0
     retries: 0
     request.timeout.ms: 30000
     instanceType: t2.large
