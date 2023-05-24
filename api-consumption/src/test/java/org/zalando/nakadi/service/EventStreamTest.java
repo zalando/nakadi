@@ -369,7 +369,8 @@ public class EventStreamTest {
             if (eventsToCreate.get() > 0) {
                 eventsToCreate.set(eventsToCreate.get() - 1);
                 return Collections.singletonList(
-                        new ConsumedEvent(DUMMY, NakadiCursor.of(TIMELINE, partition, "000000000000000000"), 0, null, null));
+                        new ConsumedEvent(DUMMY,
+                                NakadiCursor.of(TIMELINE, partition, "000000000000000000"), 0, null, null));
             } else {
                 return Collections.emptyList();
             }
