@@ -41,7 +41,6 @@ import javax.servlet.http.HttpServletRequest;
 import java.io.IOException;
 import java.io.InputStream;
 import java.util.List;
-import java.util.Optional;
 import java.util.UUID;
 import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
@@ -88,7 +87,8 @@ public class EventPublishingController {
     @RequestMapping(value = "/event-types/{eventTypeName}/events", method = POST)
     public ResponseEntity postJsonEvents(@PathVariable final String eventTypeName,
                                          @RequestBody final String eventsAsString,
-                                         @RequestParam( value = "subscription_id", required = false) final UUID subscriptionId,
+                                         @RequestParam( value = "subscription_id", required = false)
+                                             final UUID subscriptionId,
                                          final HttpServletRequest request,
                                          final Client client)
             throws AccessDeniedException, BlockedException, ServiceTemporarilyUnavailableException,
