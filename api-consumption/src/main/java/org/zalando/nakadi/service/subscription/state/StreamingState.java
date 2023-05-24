@@ -3,6 +3,7 @@ package org.zalando.nakadi.service.subscription.state;
 import com.codahale.metrics.Meter;
 import com.google.common.annotations.VisibleForTesting;
 import com.google.common.base.Preconditions;
+import org.json.JSONObject;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.zalando.nakadi.domain.ConsumedEvent;
@@ -15,11 +16,11 @@ import org.zalando.nakadi.exceptions.runtime.InvalidCursorException;
 import org.zalando.nakadi.exceptions.runtime.NakadiRuntimeException;
 import org.zalando.nakadi.exceptions.runtime.ServiceTemporarilyUnavailableException;
 import org.zalando.nakadi.metrics.MetricUtils;
-import org.zalando.nakadi.service.timeline.HighLevelConsumer;
 import org.zalando.nakadi.service.subscription.IdleStreamWatcher;
 import org.zalando.nakadi.service.subscription.model.Partition;
 import org.zalando.nakadi.service.subscription.zk.ZkSubscription;
 import org.zalando.nakadi.service.subscription.zk.ZkSubscriptionClient;
+import org.zalando.nakadi.service.timeline.HighLevelConsumer;
 import org.zalando.nakadi.view.SubscriptionCursor;
 import org.zalando.nakadi.view.SubscriptionCursorWithoutToken;
 
@@ -268,7 +269,8 @@ class StreamingState extends State {
                     getParameters().batchTimeoutMillis,
                     streamTimeoutReached))) {
                 sentSomething |= !toSend.isEmpty();
-                flushData(e.getKey(), toSend, batchesSent == 0 ? Optional.of("Stream started") : Optional.empty());
+
+                flushData(e.getKey(), toSend, getDebugMessage(e));
                 if (toSend.isEmpty()) {
                     break;
                 }
@@ -313,6 +315,21 @@ class StreamingState extends State {
         }
     }
 
+    private Optional<String> getDebugMessage(final Map.Entry<EventTypePartition, PartitionData> entry) {
+        final PartitionData partitionData = entry.getValue();
+        final long skippedEventsCount = partitionData.getSkippedEventsCount();
+        if (skippedEventsCount > 0) {
+            partitionData.resetSkippedEventsCount();
+            return Optional.of(String.format(
+                    "Skipped events due to retention time passed, count: %d", skippedEventsCount));
+        }
+
+        if (batchesSent == 0) {
+            return Optional.of("Stream started");
+        }
+
+        return Optional.empty();
+    }
 
     private void flushData(final EventTypePartition pk, final List<ConsumedEvent> data,
                            final Optional<String> metadata) {
