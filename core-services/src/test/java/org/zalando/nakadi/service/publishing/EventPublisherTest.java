@@ -404,7 +404,8 @@ public class EventPublisherTest {
         mockSuccessfulValidation(eventType);
         mockFaultPartition();
 
-        final EventPublishResult result = publisher.publish(createStringFromBatchItems(batch), eventType.getName(), null);
+        final EventPublishResult result = publisher.publish(createStringFromBatchItems(batch),
+                eventType.getName(), null);
 
         assertThat(result.getStatus(), equalTo(EventPublishingStatus.ABORTED));
     }
@@ -420,7 +421,8 @@ public class EventPublisherTest {
         mockSuccessfulValidation(eventType);
         mockFaultPartition();
 
-        final EventPublishResult result = publisher.publish(createStringFromBatchItems(batch), eventType.getName(), null);
+        final EventPublishResult result = publisher.publish(createStringFromBatchItems(batch),
+                eventType.getName(), null);
 
         assertThat(result.getStatus(), equalTo(EventPublishingStatus.ABORTED));
 
