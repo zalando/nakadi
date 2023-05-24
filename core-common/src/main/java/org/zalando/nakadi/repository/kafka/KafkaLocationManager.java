@@ -175,7 +175,7 @@ public class KafkaLocationManager {
                 throws JSONException, UnsupportedEncodingException {
             final JSONObject json = new JSONObject(new String(data, "UTF-8"));
             final String host = json.getString("host");
-            final int port = json.getInt("port");
+            final Integer port = json.getInt("port");
             return new Broker(host, port);
         }
 
