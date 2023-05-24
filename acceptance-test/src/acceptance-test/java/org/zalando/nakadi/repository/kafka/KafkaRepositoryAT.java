@@ -77,6 +77,8 @@ public class KafkaRepositoryAT extends BaseAT {
     private static final long DEFAULT_CURATOR_MAX_LIFETIME_MS = 1000;
     private static final long DEFAULT_CURATOR_ROTATION_MS = 10000;
     private static final int TCP_SEND_BUFFER_SIZE = 128 * 1024;
+    private static final int PLAIN_TEXT_SERVER_PORT = 9092;
+    private static final int SASL_SERVER_PORT = 9093;
 
     private NakadiSettings nakadiSettings;
     private KafkaSettings kafkaSettings;
@@ -113,7 +115,9 @@ public class KafkaRepositoryAT extends BaseAT {
         kafkaSettings = new KafkaSettings(KAFKA_RETRIES, KAFKA_REQUEST_TIMEOUT, KAFKA_BATCH_SIZE, KAFKA_BUFFER_MEMORY,
                 KAFKA_LINGER_MS, KAFKA_MAX_IN_FLIGHT_REQUESTS_PER_CONNECTION, KAFKA_ENABLE_AUTO_COMMIT,
                 KAFKA_MAX_REQUEST_SIZE, KAFKA_DELIVERY_TIMEOUT, KAFKA_MAX_BLOCK_TIMEOUT, "",
-                KAFKA_COMPRESSION_TYPE, TCP_SEND_BUFFER_SIZE);
+                KAFKA_COMPRESSION_TYPE, TCP_SEND_BUFFER_SIZE, Optional.of(9093),
+                Optional.of("SASL_PLAINTEXT"), Optional.of("PLAIN"), Optional.of("nakadi"),
+                Optional.of("nakadi_password"));
         kafkaHelper = new KafkaTestHelper(KAFKA_URL);
         defaultTopicConfig = new NakadiTopicConfig(DEFAULT_PARTITION_COUNT, DEFAULT_CLEANUP_POLICY,
                 Optional.of(DEFAULT_RETENTION_TIME));

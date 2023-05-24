@@ -25,6 +25,11 @@ services:
     - SPRING_DATASOURCE_URL=jdbc:postgresql://postgres:5432/local_nakadi_db?preferQueryMode=simple
     - SPRING_DATASOURCE_USERNAME=nakadi
     - SPRING_DATASOURCE_PASSWORD=nakadi
+    - NAKADI_KAFKA_PREFERRED_LISTENER_PORT=9093
+    - NAKADI_KAFKA_SECURITY_PROTOCOL=SASL_PLAINTEXT
+    - NAKADI_KAFKA_SASL_MECHANISM=PLAIN
+    - NAKADI_KAFKA_USERNAME=nakadi
+    - NAKADI_KAFKA_PASSWORD=nakadi_password
 
   postgres:
     image: postgres:14
@@ -47,20 +52,25 @@ services:
     ports:
     - "29092:29092"
     - "9092:9092"
+    - "9093:9093"
     depends_on:
     - zookeeper
     environment:
       # to debug when the container doesn't start due to invalid config:
       BITNAMI_DEBUG: 'yes'
-
       ALLOW_PLAINTEXT_LISTENER: 'yes'
       KAFKA_ENABLE_KRAFT: 'no'
       KAFKA_BROKER_ID: 0
-      KAFKA_CFG_ADVERTISED_LISTENERS: INTERNAL://kafka:9092,EXTERNAL://localhost:29092
+      KAFKA_CFG_ADVERTISED_LISTENERS: INTERNAL://kafka:9092,EXTERNAL://localhost:29092,CLIENT://kafka:9093
+      KAFKA_CFG_LISTENERS: INTERNAL://kafka:9092,EXTERNAL://0.0.0.0:29092,CLIENT://:9093
+      KAFKA_CFG_LISTENER_SECURITY_PROTOCOL_MAP: INTERNAL:PLAINTEXT,EXTERNAL:PLAINTEXT,CLIENT:SASL_PLAINTEXT
       KAFKA_CFG_AUTO_CREATE_TOPICS_ENABLE: 'false'
-      KAFKA_CFG_LISTENERS: INTERNAL://kafka:9092,EXTERNAL://0.0.0.0:29092
-      KAFKA_CFG_LISTENER_SECURITY_PROTOCOL_MAP: INTERNAL:PLAINTEXT,EXTERNAL:PLAINTEXT
       KAFKA_CFG_ZOOKEEPER_CONNECT: zookeeper:2181
       KAFKA_INTER_BROKER_LISTENER_NAME: INTERNAL
+      KAFKA_CLIENT_USERS: nakadi, producer
+      KAFKA_CLIENT_PASSWORDS: nakadi_password, producer_password
+      KAFKA_CFG_SASL_ENABLED_MECHANISMS: PLAIN
+      KAFKA_CFG_INTER_BROKER_LISTENER_NAME: INTERNAL
     volumes:
     - /var/run/docker.sock:/var/run/docker.sock
+

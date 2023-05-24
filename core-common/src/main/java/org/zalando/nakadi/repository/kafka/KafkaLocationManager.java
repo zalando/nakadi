@@ -5,6 +5,7 @@ import org.apache.curator.framework.api.GetChildrenBuilder;
 import org.apache.kafka.clients.CommonClientConfigs;
 import org.apache.kafka.clients.consumer.ConsumerConfig;
 import org.apache.kafka.clients.producer.ProducerConfig;
+import org.apache.kafka.common.config.SaslConfigs;
 import org.apache.zookeeper.Watcher;
 import org.json.JSONException;
 import org.json.JSONObject;
@@ -35,9 +36,29 @@ public class KafkaLocationManager {
         this.zkFactory = zkFactory;
         this.kafkaProperties = new Properties();
         this.kafkaSettings = kafkaSettings;
+        applySecurityProperties();
         this.updateBootstrapServers(true);
         this.scheduledExecutor = Executors.newSingleThreadScheduledExecutor();
         this.scheduledExecutor.scheduleAtFixedRate(() -> updateBootstrapServersSafe(false), 1, 1, TimeUnit.MINUTES);
+    }
+
+    private void applySecurityProperties() {
+        if (this.kafkaSettings.getSecurityProtocol().isPresent()) {
+            this.kafkaProperties.put(CommonClientConfigs.SECURITY_PROTOCOL_CONFIG,
+                    this.kafkaSettings.getSecurityProtocol().get());
+        }
+        if (this.kafkaSettings.getSaslMechanism().isPresent()) {
+            this.kafkaProperties.put(SaslConfigs.SASL_MECHANISM,
+                    this.kafkaSettings.getSaslMechanism().get());
+        }
+        if (this.kafkaSettings.getKafkaUsername().isPresent() &&
+                this.kafkaSettings.getKafkaPassword().isPresent()) {
+            this.kafkaProperties.put(SaslConfigs.SASL_JAAS_CONFIG,
+                    "org.apache.kafka.common.security.plain.PlainLoginModule required " +
+                            "username=" + this.kafkaSettings.getKafkaUsername().get()
+                            + " password=\"" + this.kafkaSettings.getKafkaPassword().get() + "\";");
+        }
+        LOG.info("Kafka security settings" + this.kafkaProperties.toString());
     }
 
     private void updateBootstrapServersSafe(final boolean createWatcher) {
@@ -68,7 +89,12 @@ public class KafkaLocationManager {
             }
             for (final String brokerId : childrenBuilder.forPath(BROKERS_IDS_PATH)) {
                 final byte[] brokerData = curator.getData().forPath(BROKERS_IDS_PATH + "/" + brokerId);
-                brokers.add(Broker.fromByteJson(brokerData));
+                if (this.kafkaSettings.getPreferredListenerPort().isPresent()) {
+                    brokers.add(Broker.fromByteJson(brokerData,
+                            this.kafkaSettings.getPreferredListenerPort().get()));
+                } else {
+                    brokers.add(Broker.fromByteJson(brokerData));
+                }
             }
         } catch (final Exception e) {
             LOG.error("Failed to fetch list of brokers from ZooKeeper", e);
@@ -125,6 +151,7 @@ public class KafkaLocationManager {
         producerProps.put(ProducerConfig.DELIVERY_TIMEOUT_MS_CONFIG, kafkaSettings.getDeliveryTimeoutMs());
         producerProps.put(ProducerConfig.MAX_BLOCK_MS_CONFIG, kafkaSettings.getMaxBlockMs());
         producerProps.put(ProducerConfig.SEND_BUFFER_CONFIG, kafkaSettings.getSocketSendBufferBytes());
+
         return producerProps;
     }
 
@@ -137,10 +164,18 @@ public class KafkaLocationManager {
             this.port = port;
         }
 
-        static Broker fromByteJson(final byte[] data) throws JSONException, UnsupportedEncodingException {
+        static Broker fromByteJson(final byte[] data, final int port)
+                throws JSONException, UnsupportedEncodingException {
             final JSONObject json = new JSONObject(new String(data, "UTF-8"));
             final String host = json.getString("host");
-            final Integer port = json.getInt("port");
+            return new Broker(host, port);
+        }
+
+        static Broker fromByteJson(final byte[] data)
+                throws JSONException, UnsupportedEncodingException {
+            final JSONObject json = new JSONObject(new String(data, "UTF-8"));
+            final String host = json.getString("host");
+            final int port = json.getInt("port");
             return new Broker(host, port);
         }
 
