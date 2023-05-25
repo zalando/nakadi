@@ -30,6 +30,7 @@ class PartitionData {
     private int keepAliveInARow;
     private long bytesInMemory;
     final long batchTimespanMillis;
+    private long skippedEventsCount;
 
     PartitionData(
             final Comparator<NakadiCursor> comparator,
@@ -88,6 +89,14 @@ class PartitionData {
         } else {
             return 0;
         }
+    }
+
+    public long getSkippedEventsCount() {
+        return skippedEventsCount;
+    }
+
+    public void resetSkippedEventsCount() {
+        skippedEventsCount = 0;
     }
 
     private List<ConsumedEvent> extractTimespan(final long batchWindowEndTimestamp) {
@@ -164,9 +173,12 @@ class PartitionData {
      */
     void ensureDataAvailable(final NakadiCursor beforeFirst) {
         if (comparator.compare(beforeFirst, commitOffset) > 0) {
+            // allows to track lost events
+            skippedEventsCount = cursorOperationsService.calculateDistance(commitOffset, beforeFirst);
             LOG.warn("Oldest kafka position is {} and commit offset is {}, updating", beforeFirst, commitOffset);
             commitOffset = beforeFirst;
         }
+
         if (comparator.compare(beforeFirst, sentOffset) > 0) {
             LOG.warn("Oldest kafka position is {} and sent offset is {}, updating", beforeFirst, sentOffset);
             sentOffset = beforeFirst;

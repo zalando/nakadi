@@ -71,6 +71,3 @@ services:
       KAFKA_CLIENT_PASSWORDS: nakadi_password, producer_password
       KAFKA_CFG_SASL_ENABLED_MECHANISMS: PLAIN
       KAFKA_CFG_INTER_BROKER_LISTENER_NAME: INTERNAL
-    volumes:
-    - /var/run/docker.sock:/var/run/docker.sock
-
