@@ -54,8 +54,14 @@ public class KafkaLocationManager {
                     "org.apache.kafka.common.security.plain.PlainLoginModule required " +
                             "username=" + this.kafkaSettings.getKafkaUsername().get()
                             + " password=\"" + this.kafkaSettings.getKafkaPassword().get() + "\";");
-        } else {
-            LOG.warn(String.format("To configure Kafka Client security " +
+        } else if (
+                this.kafkaSettings.getSecurityProtocol().isPresent()
+                        || this.kafkaSettings.getSaslMechanism().isPresent()
+                        || this.kafkaSettings.getKafkaPassword().isPresent()
+                        || this.kafkaSettings.getKafkaUsername().isPresent()
+        ) {
+            LOG.warn(String.format("Looks like you're trying to configure " +
+                    "Kafka client security. To configure Kafka Client security " +
                     "nakadi.kafka.security.protocol, " +
                     "nakadi.kafka.sasl.mechanism, " +
                     "nakadi.kafka.username and " +
