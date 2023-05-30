@@ -16,6 +16,7 @@ import org.zalando.nakadi.repository.zookeeper.ZooKeeperHolder;
 import java.io.UnsupportedEncodingException;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Optional;
 import java.util.Properties;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
@@ -92,12 +93,8 @@ public class KafkaLocationManager {
             }
             for (final String brokerId : childrenBuilder.forPath(BROKERS_IDS_PATH)) {
                 final byte[] brokerData = curator.getData().forPath(BROKERS_IDS_PATH + "/" + brokerId);
-                if (this.kafkaSettings.getPreferredListenerPort().isPresent()) {
-                    brokers.add(Broker.fromByteJson(brokerData,
-                            this.kafkaSettings.getPreferredListenerPort().get()));
-                } else {
-                    brokers.add(Broker.fromByteJson(brokerData));
-                }
+                brokers.add(Broker.fromByteJson(brokerData,
+                        this.kafkaSettings.getPreferredListenerPort()));
             }
         } catch (final Exception e) {
             LOG.error("Failed to fetch list of brokers from ZooKeeper", e);
@@ -180,6 +177,13 @@ public class KafkaLocationManager {
             final String host = json.getString("host");
             final Integer port = json.getInt("port");
             return new Broker(host, port);
+        }
+
+        static Broker fromByteJson(final byte[] data, final Optional<Integer> portOpt)
+                throws JSONException, UnsupportedEncodingException {
+            final JSONObject json = new JSONObject(new String(data, "UTF-8"));
+            final String host = json.getString("host");
+            return new Broker(host, portOpt.orElse(json.getInt("port")));
         }
 
         public String toString() {

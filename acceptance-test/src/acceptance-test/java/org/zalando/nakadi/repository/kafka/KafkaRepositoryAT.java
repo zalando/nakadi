@@ -77,8 +77,6 @@ public class KafkaRepositoryAT extends BaseAT {
     private static final long DEFAULT_CURATOR_MAX_LIFETIME_MS = 1000;
     private static final long DEFAULT_CURATOR_ROTATION_MS = 10000;
     private static final int TCP_SEND_BUFFER_SIZE = 128 * 1024;
-    private static final int PLAIN_TEXT_SERVER_PORT = 9092;
-    private static final int SASL_SERVER_PORT = 9093;
 
     private NakadiSettings nakadiSettings;
     private KafkaSettings kafkaSettings;
