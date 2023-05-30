@@ -163,22 +163,7 @@ public class KafkaLocationManager {
             this.host = host;
             this.port = port;
         }
-
-        static Broker fromByteJson(final byte[] data, final int port)
-                throws JSONException, UnsupportedEncodingException {
-            final JSONObject json = new JSONObject(new String(data, "UTF-8"));
-            final String host = json.getString("host");
-            return new Broker(host, port);
-        }
-
-        static Broker fromByteJson(final byte[] data)
-                throws JSONException, UnsupportedEncodingException {
-            final JSONObject json = new JSONObject(new String(data, "UTF-8"));
-            final String host = json.getString("host");
-            final Integer port = json.getInt("port");
-            return new Broker(host, port);
-        }
-
+        
         static Broker fromByteJson(final byte[] data, final Optional<Integer> portOpt)
                 throws JSONException, UnsupportedEncodingException {
             final JSONObject json = new JSONObject(new String(data, "UTF-8"));
