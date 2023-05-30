@@ -37,13 +37,12 @@ public class KafkaLocationManager {
         this.zkFactory = zkFactory;
         this.kafkaProperties = new Properties();
         this.kafkaSettings = kafkaSettings;
-        applySecurityProperties();
-        this.updateBootstrapServers(true);
+        applyKafkaSettings();
         this.scheduledExecutor = Executors.newSingleThreadScheduledExecutor();
         this.scheduledExecutor.scheduleAtFixedRate(() -> updateBootstrapServersSafe(false), 1, 1, TimeUnit.MINUTES);
     }
 
-    private void applySecurityProperties() {
+    private void applyKafkaSettings() {
         if (this.kafkaSettings.getSecurityProtocol().isPresent()
                 && this.kafkaSettings.getSaslMechanism().isPresent()
                 && this.kafkaSettings.getKafkaPassword().isPresent()
@@ -63,6 +62,7 @@ public class KafkaLocationManager {
                     "nakadi.kafka.username and " +
                     "nakadi.kafka.password are all required"));
         }
+        this.updateBootstrapServers(true);
     }
 
     private void updateBootstrapServersSafe(final boolean createWatcher) {
@@ -163,7 +163,7 @@ public class KafkaLocationManager {
             this.host = host;
             this.port = port;
         }
-        
+
         static Broker fromByteJson(final byte[] data, final Optional<Integer> portOpt)
                 throws JSONException, UnsupportedEncodingException {
             final JSONObject json = new JSONObject(new String(data, "UTF-8"));
