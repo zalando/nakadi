@@ -37,9 +37,8 @@ public class KafkaLocationManager {
         this.zkFactory = zkFactory;
         this.kafkaProperties = new Properties();
         this.kafkaSettings = kafkaSettings;
-        applyKafkaSettings();
         this.scheduledExecutor = Executors.newSingleThreadScheduledExecutor();
-        this.scheduledExecutor.scheduleAtFixedRate(() -> updateBootstrapServersSafe(false), 1, 1, TimeUnit.MINUTES);
+        applyKafkaSettings();
     }
 
     private void applyKafkaSettings() {
@@ -63,6 +62,7 @@ public class KafkaLocationManager {
                     "nakadi.kafka.password are all required"));
         }
         this.updateBootstrapServers(true);
+        this.scheduledExecutor.scheduleAtFixedRate(() -> updateBootstrapServersSafe(false), 1, 1, TimeUnit.MINUTES);
     }
 
     private void updateBootstrapServersSafe(final boolean createWatcher) {
