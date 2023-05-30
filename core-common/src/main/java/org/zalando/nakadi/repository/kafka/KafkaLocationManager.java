@@ -43,22 +43,25 @@ public class KafkaLocationManager {
     }
 
     private void applySecurityProperties() {
-        if (this.kafkaSettings.getSecurityProtocol().isPresent()) {
+        if (this.kafkaSettings.getSecurityProtocol().isPresent()
+                && this.kafkaSettings.getSaslMechanism().isPresent()
+                && this.kafkaSettings.getKafkaPassword().isPresent()
+                && this.kafkaSettings.getKafkaUsername().isPresent()) {
             this.kafkaProperties.put(CommonClientConfigs.SECURITY_PROTOCOL_CONFIG,
                     this.kafkaSettings.getSecurityProtocol().get());
-        }
-        if (this.kafkaSettings.getSaslMechanism().isPresent()) {
             this.kafkaProperties.put(SaslConfigs.SASL_MECHANISM,
                     this.kafkaSettings.getSaslMechanism().get());
-        }
-        if (this.kafkaSettings.getKafkaUsername().isPresent() &&
-                this.kafkaSettings.getKafkaPassword().isPresent()) {
             this.kafkaProperties.put(SaslConfigs.SASL_JAAS_CONFIG,
                     "org.apache.kafka.common.security.plain.PlainLoginModule required " +
                             "username=" + this.kafkaSettings.getKafkaUsername().get()
                             + " password=\"" + this.kafkaSettings.getKafkaPassword().get() + "\";");
+        } else {
+            LOG.warn(String.format("To configure Kafka Client security " +
+                    "nakadi.kafka.security.protocol, " +
+                    "nakadi.kafka.sasl.mechanism, " +
+                    "nakadi.kafka.username and " +
+                    "nakadi.kafka.password are all required"));
         }
-        LOG.info("Kafka security settings" + this.kafkaProperties.toString());
     }
 
     private void updateBootstrapServersSafe(final boolean createWatcher) {
