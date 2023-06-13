@@ -12,7 +12,7 @@ public class DataLakeAnnotationValidator implements ConstraintValidator<DataLake
                     "(([1-9]|[1-9]\\d|[1][01]\\d|120)((\\smonths?)|(m)))|(([1-9]|(10))((\\syears?)|(y))))$");
     public static final String RETENTION_PERIOD_ANNOTATION = "datalake.zalando.org/retention-period";
     public static final String RETENTION_REASON_ANNOTATION = "datalake.zalando.org/retention-period-reason";
-//    public static final String MATERIALISE_EVENTS_ANNOTATION = "datalake.zalando.org/materialize-events";
+    public static final String MATERIALISE_EVENTS_ANNOTATION = "datalake.zalando.org/materialize-events";
 
     @Override
     public boolean isValid(final Map<String, String> annotations, final ConstraintValidatorContext context) {
