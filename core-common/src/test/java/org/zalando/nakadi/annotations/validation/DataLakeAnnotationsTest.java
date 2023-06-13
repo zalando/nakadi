@@ -9,6 +9,7 @@ import javax.validation.Validation;
 import javax.validation.Validator;
 import java.util.Map;
 import java.util.Set;
+
 import static org.junit.Assert.assertTrue;
 
 public class DataLakeAnnotationsTest {
@@ -32,13 +33,27 @@ public class DataLakeAnnotationsTest {
     }
 
     @Test
+    public void whenMaterializationEventFormatIsWrongThenFail() {
+        final var annotations = Map.of(
+                DataLakeAnnotationValidator.MATERIALISE_EVENTS_ANNOTATION, "1 day"
+        );
+        final Set<ConstraintViolation<TestClass>> result = validator.validate(new TestClass(annotations));
+        assertTrue(result.stream().anyMatch(r -> r.getMessage().equals("Field " +
+                DataLakeAnnotationValidator.MATERIALISE_EVENTS_ANNOTATION
+                + " is not valid. Provided value:"
+                + annotations.get(DataLakeAnnotationValidator.MATERIALISE_EVENTS_ANNOTATION)
+                + ". Possible values are: \"on\" or \"off\".")));
+    }
+
+    @Test
     public void whenRetentionPeriodThenRetentionReasonRequired() {
         final var annotations = Map.of(
                 DataLakeAnnotationValidator.RETENTION_PERIOD_ANNOTATION, "1 day"
         );
         final Set<ConstraintViolation<TestClass>> result = validator.validate(new TestClass(annotations));
-        assertTrue(result.stream().anyMatch(r -> r.getMessage().equals("Retention reason is required, when " +
-                DataLakeAnnotationValidator.RETENTION_PERIOD_ANNOTATION + " is specified")));
+        assertTrue(result.stream().anyMatch(r -> r.getMessage().equals("Field "
+                + DataLakeAnnotationValidator.RETENTION_REASON_ANNOTATION + " is required, when "
+                + DataLakeAnnotationValidator.RETENTION_PERIOD_ANNOTATION + " is specified.")));
     }
 
     @Test
@@ -49,20 +64,25 @@ public class DataLakeAnnotationsTest {
         );
         final Set<ConstraintViolation<TestClass>> result = validator.validate(new TestClass(annotations));
 
-        assertTrue(result.stream().anyMatch(r -> r.getMessage().contains(
-                DataLakeAnnotationValidator.RETENTION_PERIOD_ANNOTATION + " does not comply with pattern:")));
+        assertTrue(result.stream().anyMatch(r -> r.getMessage().contains("Field " +
+                DataLakeAnnotationValidator.RETENTION_PERIOD_ANNOTATION +
+                " does not comply with regex. See documentation " +
+                "(https://docs.google.com/document/d/1-SwwpwUqauc_pXu-743YA1gO8l5_R" +
+                "_Gf4nbYml1ySiI/edit#heading=h.m5wx19yzrg4s) for more details.")));
     }
 
     @Test
     public void whenRetentionPeriodAndReasonThenOk() {
         final String[] validRetentionPeriodValues = {
                 "unlimited",
-                "1 day",
-                "2 days",
+                "12 days",
                 "3650 days",
                 "120 months",
                 "1 month",
                 "10 years",
+                "25d",
+                "1m",
+                "2y",
                 "1 year"
         };
 
@@ -75,6 +95,18 @@ public class DataLakeAnnotationsTest {
             final Set<ConstraintViolation<TestClass>> result = validator.validate(new TestClass(annotations));
             assertTrue("Retention period and reason exist correctly", result.isEmpty());
         }
+    }
+
+    @Test
+    public void whenMaterializationEventThenOk() {
+        final String materialisationEventValue = "off";
+
+        final var annotations = Map.of(
+                DataLakeAnnotationValidator.MATERIALISE_EVENTS_ANNOTATION, materialisationEventValue
+        );
+
+        final Set<ConstraintViolation<TestClass>> result = validator.validate(new TestClass(annotations));
+        assertTrue("Materialization event is off.", result.isEmpty());
     }
 
     @Test
