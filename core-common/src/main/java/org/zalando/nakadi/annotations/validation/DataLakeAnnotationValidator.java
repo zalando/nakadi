@@ -24,9 +24,9 @@ public class DataLakeAnnotationValidator implements ConstraintValidator<DataLake
                     !annotations.get(MATERIALISE_EVENTS_ANNOTATION).equals("on")) {
                 context.disableDefaultConstraintViolation();
                 context.buildConstraintViolationWithTemplate("Field " + MATERIALISE_EVENTS_ANNOTATION
-                                + " is not valid. Provided value:"
+                                + " is not valid. Provided value: \""
                                 + annotations.get(MATERIALISE_EVENTS_ANNOTATION)
-                                + ". Possible values are: \"on\" or \"off\".")
+                                + "\". Possible values are: \"on\" or \"off\".")
                         .addConstraintViolation();
                 return false;
             }
@@ -46,8 +46,8 @@ public class DataLakeAnnotationValidator implements ConstraintValidator<DataLake
                 context.disableDefaultConstraintViolation();
                 context.buildConstraintViolationWithTemplate("Field " + RETENTION_PERIOD_ANNOTATION +
                                 " does not comply with regex. See documentation " +
-                                "(https://docs.google.com/document/d/1-SwwpwUqauc_pXu-743YA" +
-                                "1gO8l5_R_Gf4nbYml1ySiI/edit#heading=h.m5wx19yzrg4s) for more details.")
+                                "(https://docs.google.com/document/d/1-SwwpwUqauc_pXu-743YA1gO8l5_R_Gf4nb" +
+                                "Yml1ySiI/edit#heading=h.kmvigbxbn1dj) for more details.")
                         .addConstraintViolation();
                 return false;
             }

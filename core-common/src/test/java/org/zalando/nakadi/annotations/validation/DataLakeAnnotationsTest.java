@@ -40,9 +40,9 @@ public class DataLakeAnnotationsTest {
         final Set<ConstraintViolation<TestClass>> result = validator.validate(new TestClass(annotations));
         assertTrue(result.stream().anyMatch(r -> r.getMessage().equals("Field " +
                 DataLakeAnnotationValidator.MATERIALISE_EVENTS_ANNOTATION
-                + " is not valid. Provided value:"
+                + " is not valid. Provided value: \""
                 + annotations.get(DataLakeAnnotationValidator.MATERIALISE_EVENTS_ANNOTATION)
-                + ". Possible values are: \"on\" or \"off\".")));
+                + "\". Possible values are: \"on\" or \"off\".")));
     }
 
     @Test
@@ -67,8 +67,8 @@ public class DataLakeAnnotationsTest {
         assertTrue(result.stream().anyMatch(r -> r.getMessage().contains("Field " +
                 DataLakeAnnotationValidator.RETENTION_PERIOD_ANNOTATION +
                 " does not comply with regex. See documentation " +
-                "(https://docs.google.com/document/d/1-SwwpwUqauc_pXu-743YA1gO8l5_R" +
-                "_Gf4nbYml1ySiI/edit#heading=h.m5wx19yzrg4s) for more details.")));
+                "(https://docs.google.com/document/d/1-SwwpwUqauc_pXu-743YA1gO8l5_R_Gf4nbY" +
+                "ml1ySiI/edit#heading=h.kmvigbxbn1dj) for more details.")));
     }
 
     @Test
