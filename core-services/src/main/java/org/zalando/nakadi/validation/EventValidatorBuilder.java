@@ -33,8 +33,8 @@ public class EventValidatorBuilder {
         final Schema schema = SchemaLoader.builder()
                 .schemaJson(loader.effectiveSchema(eventType, jsonSchema.get().getSchema()))
                 .addFormatValidator(new RFC3339DateTimeValidator())
-                .addFormatValidator(new ISO4217CurrencyValidator(eventType.getName()))
-                .addFormatValidator(new ISO4217CurrencyValidator(eventType.getName(), "ISO-4217"))
+                .addFormatValidator(new ISO4217CurrencyCodeValidator(eventType.getName()))
+                .addFormatValidator(new ISO4217CurrencyCodeValidator(eventType.getName(), "ISO-4217"))
                 .build()
                 .load()
                 .build();

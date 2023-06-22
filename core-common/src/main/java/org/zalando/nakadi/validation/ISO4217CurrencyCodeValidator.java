@@ -7,16 +7,16 @@ import org.slf4j.LoggerFactory;
 import java.util.Currency;
 import java.util.Optional;
 
-public class ISO4217CurrencyValidator implements FormatValidator {
-    private static final Logger LOG = LoggerFactory.getLogger(ISO4217CurrencyValidator.class);
+public class ISO4217CurrencyCodeValidator implements FormatValidator {
+    private static final Logger LOG = LoggerFactory.getLogger(ISO4217CurrencyCodeValidator.class);
     private final String eventTypeName;
     private final String formatName;
 
-    ISO4217CurrencyValidator(final String eventTypeName) {
+    ISO4217CurrencyCodeValidator(final String eventTypeName) {
         this(eventTypeName, "iso-4217");
     }
 
-    ISO4217CurrencyValidator(final String eventTypeName, final String formatName) {
+    ISO4217CurrencyCodeValidator(final String eventTypeName, final String formatName) {
         this.eventTypeName = eventTypeName;
         this.formatName = formatName;
     }

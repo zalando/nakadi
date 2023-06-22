@@ -5,7 +5,7 @@ import org.zalando.nakadi.utils.IsOptional;
 
 import static org.hamcrest.MatcherAssert.assertThat;
 
-public class ISO4217CurrencyValidatorTest {
+public class ISO4217CurrencyCodeValidatorTest {
 
     @Test
     public void testValidator() {
@@ -31,7 +31,7 @@ public class ISO4217CurrencyValidatorTest {
                 "SEK",
         };
 
-        final var validator = new ISO4217CurrencyValidator("an-event-type");
+        final var validator = new ISO4217CurrencyCodeValidator("an-event-type");
         for (final String value : invalidValues) {
             // For invalid values, the validator should return empty result.
             assertThat("Test: " + value, validator.validate(value), IsOptional.isAbsent());
