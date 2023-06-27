@@ -199,9 +199,7 @@ public class KafkaTopicRepository implements TopicRepository {
         if (null == exception) {
             return false;
         }
-        return Stream.of(NotLeaderForPartitionException.class, UnknownTopicOrPartitionException.class,
-                        org.apache.kafka.common.errors.TimeoutException.class, NetworkException.class,
-                        UnknownServerException.class)
+        return Stream.of(UnknownTopicOrPartitionException.class, NetworkException.class, UnknownServerException.class)
                 .anyMatch(clazz -> clazz.isAssignableFrom(exception.getClass()));
     }
 
