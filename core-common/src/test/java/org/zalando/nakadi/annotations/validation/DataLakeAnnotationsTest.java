@@ -38,11 +38,10 @@ public class DataLakeAnnotationsTest {
                 DataLakeAnnotationValidator.MATERIALISE_EVENTS_ANNOTATION, "1 day"
         );
         final Set<ConstraintViolation<TestClass>> result = validator.validate(new TestClass(annotations));
-        assertTrue(result.stream().anyMatch(r -> r.getMessage().equals("Field " +
-                DataLakeAnnotationValidator.MATERIALISE_EVENTS_ANNOTATION
-                + " is not valid. Provided value: \""
-                + annotations.get(DataLakeAnnotationValidator.MATERIALISE_EVENTS_ANNOTATION)
-                + "\". Possible values are: \"on\" or \"off\".")));
+        assertTrue("When the format of the Materialize Event annotation is wrong, the name of the annotation " +
+                        "should be present",
+                result.stream().anyMatch(r -> r.getMessage().contains(
+                        DataLakeAnnotationValidator.MATERIALISE_EVENTS_ANNOTATION)));
     }
 
     @Test
@@ -51,9 +50,14 @@ public class DataLakeAnnotationsTest {
                 DataLakeAnnotationValidator.RETENTION_PERIOD_ANNOTATION, "1 day"
         );
         final Set<ConstraintViolation<TestClass>> result = validator.validate(new TestClass(annotations));
-        assertTrue(result.stream().anyMatch(r -> r.getMessage().equals("Field "
-                + DataLakeAnnotationValidator.RETENTION_REASON_ANNOTATION + " is required, when "
-                + DataLakeAnnotationValidator.RETENTION_PERIOD_ANNOTATION + " is specified.")));
+        assertTrue("When the retention period is specified but the retention reason is not," +
+                        " the error message should include the retention reason annotation name",
+                result.stream().anyMatch(r -> r.getMessage().contains(
+                        DataLakeAnnotationValidator.RETENTION_REASON_ANNOTATION)));
+        assertTrue("When the retention period is specified but the retention reason is not," +
+                        " the error message should include the retention period annotation name",
+                result.stream().anyMatch(r -> r.getMessage().contains(
+                        DataLakeAnnotationValidator.RETENTION_PERIOD_ANNOTATION)));
     }
 
     @Test
@@ -64,11 +68,13 @@ public class DataLakeAnnotationsTest {
         );
         final Set<ConstraintViolation<TestClass>> result = validator.validate(new TestClass(annotations));
 
-        assertTrue(result.stream().anyMatch(r -> r.getMessage().contains("Field " +
-                DataLakeAnnotationValidator.RETENTION_PERIOD_ANNOTATION +
-                " does not comply with regex. See documentation " +
-                "(https://docs.google.com/document/d/1-SwwpwUqauc_pXu-743YA1gO8l5_R_Gf4nbY" +
-                "ml1ySiI/edit#heading=h.kmvigbxbn1dj) for more details.")));
+        assertTrue("When retention period format is wrong, the message should contain a the annotation name",
+                result.stream().anyMatch(r -> r.getMessage().contains(
+                        DataLakeAnnotationValidator.RETENTION_PERIOD_ANNOTATION)));
+        assertTrue("When retention period format is wrong, the message should contain a link " +
+                        "to the documentation",
+                result.stream().anyMatch(r -> r.getMessage().contains(
+                        "https://docs.google.com/document/d/1-SwwpwUqauc_pXu-743YA1gO8l5_R_Gf4nbYml1ySiI")));
     }
 
     @Test

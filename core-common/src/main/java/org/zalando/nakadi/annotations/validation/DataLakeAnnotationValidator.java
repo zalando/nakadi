@@ -23,7 +23,7 @@ public class DataLakeAnnotationValidator implements ConstraintValidator<DataLake
             if (!annotations.get(MATERIALISE_EVENTS_ANNOTATION).equals("off") &&
                     !annotations.get(MATERIALISE_EVENTS_ANNOTATION).equals("on")) {
                 context.disableDefaultConstraintViolation();
-                context.buildConstraintViolationWithTemplate("Field " + MATERIALISE_EVENTS_ANNOTATION
+                context.buildConstraintViolationWithTemplate("Annotation " + MATERIALISE_EVENTS_ANNOTATION
                                 + " is not valid. Provided value: \""
                                 + annotations.get(MATERIALISE_EVENTS_ANNOTATION)
                                 + "\". Possible values are: \"on\" or \"off\".")
@@ -36,7 +36,7 @@ public class DataLakeAnnotationValidator implements ConstraintValidator<DataLake
             if (annotations.getOrDefault(RETENTION_REASON_ANNOTATION, "").equals("")) {
                 context.disableDefaultConstraintViolation();
                 context.buildConstraintViolationWithTemplate(
-                                "Field " + RETENTION_REASON_ANNOTATION + " is required, when "
+                                "Annotation " + RETENTION_REASON_ANNOTATION + " is required, when "
                                         + RETENTION_PERIOD_ANNOTATION + " is specified.")
                         .addConstraintViolation();
                 return false;
@@ -44,7 +44,7 @@ public class DataLakeAnnotationValidator implements ConstraintValidator<DataLake
 
             if (!ANNOTATIONS_PERIOD_PATTERN.matcher(annotations.get(RETENTION_PERIOD_ANNOTATION)).find()) {
                 context.disableDefaultConstraintViolation();
-                context.buildConstraintViolationWithTemplate("Field " + RETENTION_PERIOD_ANNOTATION +
+                context.buildConstraintViolationWithTemplate("Annotation " + RETENTION_PERIOD_ANNOTATION +
                                 " does not comply with regex. See documentation " +
                                 "(https://docs.google.com/document/d/1-SwwpwUqauc_pXu-743YA1gO8l5_R_Gf4nb" +
                                 "Yml1ySiI/edit#heading=h.kmvigbxbn1dj) for more details.")
