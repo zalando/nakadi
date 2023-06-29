@@ -94,7 +94,10 @@ dependencies {
     compile 'org.zalando:problem:0.22.0'
     compile 'org.zalando:problem-spring-web:0.23.0'
     compile 'com.google.guava:guava:30.1-jre'
-    compile 'org.slf4j:slf4j-log4j12'
+    compile 'org.slf4j:slf4j-api'
+    compile 'org.apache.logging.log4j:log4j-core'
+    compile 'org.apache.logging.log4j:log4j-slf4j-impl'
+
     compile "io.dropwizard.metrics:metrics-core:$dropwizardVersion"
     compile("com.ryantenney.metrics:metrics-spring:$dropwizardVersion") {
         exclude module: 'spring-core'

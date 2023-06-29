@@ -2,8 +2,7 @@ package org.zalando.nakadi.config;
 
 
 import com.google.common.collect.Lists;
-import org.apache.log4j.NDC;
-import org.slf4j.MDC;
+import org.apache.logging.log4j.ThreadContext;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -39,8 +38,7 @@ public class NakadiConfig {
                 return new Runnable() {
                     @Override
                     public void run() {
-                        NDC.clear();
-                        MDC.clear();
+                        ThreadContext.clearAll();
 
                         runnable.run();
                     }

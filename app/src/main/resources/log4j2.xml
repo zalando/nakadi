@@ -1,0 +1,49 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<Configuration monitorInterval="10">
+    <Appenders>
+        <Console name="Console" target="SYSTEM_OUT">
+            <PatternLayout>
+                <pattern>[%d{yyyy-MM-dd HH:mm:ss.SSSXXX}] [%p] [%X{flowId}] [%t] [%c] --- %m %throwable{compact} %n</pattern>
+            </PatternLayout>
+        </Console>
+        <Console name="ConsoleSubscription" target="SYSTEM_OUT">
+            <PatternLayout>
+                <pattern>[%d{yyyy-MM-dd HH:mm:ss.SSSXXX}] [%p] [%X{flowId},%X{subscriptionId},%X{streamId}] [%t] [%c] --- %m %throwable{compact} %n</pattern>
+            </PatternLayout>
+        </Console>
+    </Appenders>
+    <Loggers>
+        <Root level="info">
+            <AppenderRef ref="Console"/>
+        </Root>
+        <Logger name="org.apache.catalina.startup.DigesterFactory" level="error" additivity="false"/>
+        <Logger name="org.apache.catalina.util.LifecycleBase" level="error" additivity="false"/>
+        <Logger name="org.apache.coyote.http11.Http11NioProtocol" level="warn" additivity="false"/>
+        <Logger name="org.apache.tomcat.util.net.NioSelectorPool" level="warn" additivity="false"/>
+        <Logger name="org.crsh.plugin" level="warn" additivity="false"/>
+        <Logger name="org.crsh.ssh" level="warn" additivity="false"/>
+        <Logger name="org.eclipse.jetty.util.component.AbstractLifeCycle" level="error" additivity="false"/>
+        <Logger name="org.hibernate.validator.internal.util.Version" level="warn" additivity="false"/>
+        <Logger name="org.springframework.boot.actuate.autoconfigure.CrshAutoConfiguration" level="warn" additivity="false"/>
+        <Logger name="org.springframework.boot.actuate.endpoint.jmx" level="warn" additivity="false"/>
+        <Logger name="org.thymeleaf" level="warn" additivity="false"/>
+        <Logger name="org.zalando.nakadi" level="info" additivity="false"/>
+        <Logger name="org.zalando.nakadi.config" level="info" additivity="false"/>
+        <Logger name="org.apache.kafka" level="warn" additivity="false"/>
+        <Logger name="org.zalando.nakadi.service.ClosedConnectionsCrutch" level="warn" additivity="false"/>
+        <Logger name="org.zalando.nakadi.repository.kafka.KafkaFactory$KafkaCrutchConsumer" level="warn" additivity="false"/>
+
+        <!-- Subscription logging part -->
+        <Logger name="org.zalando.nakadi.service.subscription" level="debug" additivity="false">
+            <filters>
+                <!-- Log all above INFO level -->
+                <ThresholdFilter level="info" onMatch="ACCEPT" onMismatch="NEUTRAL"/>
+                <!-- Otherwise, log more only if `subscriptionId` MDC is one of listed here -->
+                <ThreadContextMapFilter operator="or" onMatch="NEUTRAL" onMismatch="DENY">
+                    <KeyValuePair key="subscriptionId" value="00000000-0000-0000-0000-000000000000"/>
+                </ThreadContextMapFilter>
+            </filters>
+            <AppenderRef ref="ConsoleSubscription"/>
+        </Logger>
+    </Loggers>
+</Configuration>
