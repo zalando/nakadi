@@ -9,6 +9,7 @@ import javax.validation.Validation;
 import javax.validation.Validator;
 import java.util.Map;
 import java.util.Set;
+
 import static org.junit.Assert.assertTrue;
 
 public class DataLakeAnnotationsTest {
@@ -32,13 +33,31 @@ public class DataLakeAnnotationsTest {
     }
 
     @Test
+    public void whenMaterializationEventFormatIsWrongThenFail() {
+        final var annotations = Map.of(
+                DataLakeAnnotationValidator.MATERIALISE_EVENTS_ANNOTATION, "1 day"
+        );
+        final Set<ConstraintViolation<TestClass>> result = validator.validate(new TestClass(annotations));
+        assertTrue("When the format of the Materialize Event annotation is wrong, the name of the annotation " +
+                        "should be present",
+                result.stream().anyMatch(r -> r.getMessage().contains(
+                        DataLakeAnnotationValidator.MATERIALISE_EVENTS_ANNOTATION)));
+    }
+
+    @Test
     public void whenRetentionPeriodThenRetentionReasonRequired() {
         final var annotations = Map.of(
                 DataLakeAnnotationValidator.RETENTION_PERIOD_ANNOTATION, "1 day"
         );
         final Set<ConstraintViolation<TestClass>> result = validator.validate(new TestClass(annotations));
-        assertTrue(result.stream().anyMatch(r -> r.getMessage().equals("Retention reason is required, when " +
-                DataLakeAnnotationValidator.RETENTION_PERIOD_ANNOTATION + " is specified")));
+        assertTrue("When the retention period is specified but the retention reason is not," +
+                        " the error message should include the retention reason annotation name",
+                result.stream().anyMatch(r -> r.getMessage().contains(
+                        DataLakeAnnotationValidator.RETENTION_REASON_ANNOTATION)));
+        assertTrue("When the retention period is specified but the retention reason is not," +
+                        " the error message should include the retention period annotation name",
+                result.stream().anyMatch(r -> r.getMessage().contains(
+                        DataLakeAnnotationValidator.RETENTION_PERIOD_ANNOTATION)));
     }
 
     @Test
@@ -49,20 +68,27 @@ public class DataLakeAnnotationsTest {
         );
         final Set<ConstraintViolation<TestClass>> result = validator.validate(new TestClass(annotations));
 
-        assertTrue(result.stream().anyMatch(r -> r.getMessage().contains(
-                DataLakeAnnotationValidator.RETENTION_PERIOD_ANNOTATION + " does not comply with pattern:")));
+        assertTrue("When retention period format is wrong, the message should contain a the annotation name",
+                result.stream().anyMatch(r -> r.getMessage().contains(
+                        DataLakeAnnotationValidator.RETENTION_PERIOD_ANNOTATION)));
+        assertTrue("When retention period format is wrong, the message should contain a link " +
+                        "to the documentation",
+                result.stream().anyMatch(r -> r.getMessage().contains(
+                        "https://docs.google.com/document/d/1-SwwpwUqauc_pXu-743YA1gO8l5_R_Gf4nbYml1ySiI")));
     }
 
     @Test
     public void whenRetentionPeriodAndReasonThenOk() {
         final String[] validRetentionPeriodValues = {
                 "unlimited",
-                "1 day",
-                "2 days",
+                "12 days",
                 "3650 days",
                 "120 months",
                 "1 month",
                 "10 years",
+                "25d",
+                "1m",
+                "2y",
                 "1 year"
         };
 
@@ -75,6 +101,18 @@ public class DataLakeAnnotationsTest {
             final Set<ConstraintViolation<TestClass>> result = validator.validate(new TestClass(annotations));
             assertTrue("Retention period and reason exist correctly", result.isEmpty());
         }
+    }
+
+    @Test
+    public void whenMaterializationEventThenOk() {
+        final String materialisationEventValue = "off";
+
+        final var annotations = Map.of(
+                DataLakeAnnotationValidator.MATERIALISE_EVENTS_ANNOTATION, materialisationEventValue
+        );
+
+        final Set<ConstraintViolation<TestClass>> result = validator.validate(new TestClass(annotations));
+        assertTrue("Materialization event is off.", result.isEmpty());
     }
 
     @Test
