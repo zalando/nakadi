@@ -35,6 +35,8 @@ public class Partition {
     private String nextSession;
     @JsonProperty("state")
     private State state;
+    @JsonProperty("failed_commits_count")
+    private Integer failedCommitsCount;
 
     public Partition() {
     }
