@@ -306,7 +306,7 @@ public class EventTypeCache {
             if (ex.getCause() instanceof NoSuchEventTypeException) {
                 throw (NoSuchEventTypeException) ex.getCause();
             } else {
-                throw new InternalNakadiException("Failed to get event type", ex);
+                throw new InternalNakadiException(String.format("Failed to get event type `%s`", name), ex);
             }
         }
     }
