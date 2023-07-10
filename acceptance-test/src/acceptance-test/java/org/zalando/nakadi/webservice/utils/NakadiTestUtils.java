@@ -111,7 +111,9 @@ public class NakadiTestUtils {
         given()
                 .body("[" + events + "]")
                 .contentType(JSON)
-                .post(path);
+                .post(path)
+                .then()
+                .statusCode(HttpStatus.SC_OK);
     }
 
     public static void repartitionEventType(final EventType eventType, final int partitionsNumber)
