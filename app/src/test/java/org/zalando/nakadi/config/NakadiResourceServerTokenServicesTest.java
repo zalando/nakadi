@@ -137,8 +137,10 @@ public class NakadiResourceServerTokenServicesTest {
     @Test
     public void whenLocalThrowsInvalidTokenRemoteIsNotUsed() {
         when(featureToggleService.isFeatureEnabled(eq(Feature.REMOTE_TOKENINFO))).thenReturn(false);
-        when(localService.loadAuthentication(any())).thenThrow(new InvalidTokenException("tokeninfo returned error:"));
-        Assert.assertThrows(InvalidTokenException.class,  () -> objectToTest.loadAuthentication("bbb")) ;
+        when(localService.loadAuthentication(any())).
+                thenThrow(new InvalidTokenException("tokeninfo returned error:"));
+        Assert.assertThrows(InvalidTokenException.class,
+                () -> objectToTest.loadAuthentication("bbb")) ;
     }
 
     @Test

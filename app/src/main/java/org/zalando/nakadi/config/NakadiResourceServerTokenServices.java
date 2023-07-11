@@ -45,7 +45,8 @@ public class NakadiResourceServerTokenServices implements ResourceServerTokenSer
                     return localService.loadAuthentication(accessToken);
                 }
                 catch (final InvalidTokenException ex) {
-                    //IO exceptions are wrapped in InvalidTokenException so if message contains IO error then allow to use fallback
+                    //IO exceptions are wrapped in InvalidTokenException
+                    //so if message contains IO error then allow to use fallback
                     //look at RestTemplate#doExecute for the IO error message
                     if(!ex.getMessage().contains("I/O error")) {
                         throw ex;
