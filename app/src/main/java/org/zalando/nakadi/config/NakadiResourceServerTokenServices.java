@@ -7,7 +7,6 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.security.core.AuthenticationException;
 import org.springframework.security.oauth2.common.OAuth2AccessToken;
-import org.springframework.security.oauth2.common.exceptions.InvalidTokenException;
 import org.springframework.security.oauth2.common.exceptions.OAuth2Exception;
 import org.springframework.security.oauth2.provider.OAuth2Authentication;
 import org.springframework.security.oauth2.provider.token.ResourceServerTokenServices;
@@ -43,14 +42,6 @@ public class NakadiResourceServerTokenServices implements ResourceServerTokenSer
             if (!featureToggleService.isFeatureEnabled(Feature.REMOTE_TOKENINFO)) {
                 try {
                     return localService.loadAuthentication(accessToken);
-                }
-                catch (final InvalidTokenException ex) {
-                    //IO exceptions are wrapped in InvalidTokenException
-                    //so if message contains IO error then allow to use fallback
-                    //look at RestTemplate#doExecute for the IO error message
-                    if(!ex.getMessage().contains("I/O error")) {
-                        throw ex;
-                    }
                 }
                 catch (final OAuth2Exception ex) {
                     throw ex;

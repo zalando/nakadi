@@ -2,17 +2,16 @@ package org.zalando.nakadi.config;
 
 import com.codahale.metrics.MetricRegistry;
 import com.codahale.metrics.Timer;
-import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.mockito.Mock;
 import org.mockito.runners.MockitoJUnitRunner;
 import org.springframework.http.HttpStatus;
-import org.springframework.security.oauth2.common.exceptions.InvalidTokenException;
 import org.springframework.security.oauth2.common.exceptions.OAuth2Exception;
 import org.springframework.security.oauth2.provider.OAuth2Authentication;
 import org.zalando.nakadi.domain.Feature;
+import org.zalando.nakadi.exceptions.runtime.ServiceTemporarilyUnavailableException;
 import org.zalando.nakadi.service.FeatureToggleService;
 import org.zalando.stups.oauth2.spring.server.TokenInfoResourceServerTokenServices;
 
@@ -119,28 +118,12 @@ public class NakadiResourceServerTokenServicesTest {
     }
 
     @Test
-    public void whenLocalTimesOutRemoteIsUsed() {
+    public void whenLocalIsUnavailableRemoteIsUsed() {
         when(featureToggleService.isFeatureEnabled(eq(Feature.REMOTE_TOKENINFO))).thenReturn(false);
-
-        when(localService.loadAuthentication(any())).thenThrow(
-                new InvalidTokenException("tokeninfo returned error: I/O error on " +
-                "GET request for \"http://127.0.0.1:9021/oauth2/tokeninfo\": " +
-                "Timeout waiting for connection from pool; " +
-                "nested exception is org.apache.http.conn.ConnectionPoolTimeoutException: " +
-                "Timeout waiting for connection from pool"));
-
+        when(localService.loadAuthentication(any())).thenThrow(new ServiceTemporarilyUnavailableException(""));
         objectToTest.loadAuthentication("bbb");
         verify(localService, times(1)).loadAuthentication(eq("bbb"));
         verify(remoteService, times(1)).loadAuthentication(eq("bbb"));
-    }
-
-    @Test
-    public void whenLocalThrowsInvalidTokenRemoteIsNotUsed() {
-        when(featureToggleService.isFeatureEnabled(eq(Feature.REMOTE_TOKENINFO))).thenReturn(false);
-        when(localService.loadAuthentication(any())).
-                thenThrow(new InvalidTokenException("tokeninfo returned error:"));
-        Assert.assertThrows(InvalidTokenException.class,
-                () -> objectToTest.loadAuthentication("bbb")) ;
     }
 
     @Test
