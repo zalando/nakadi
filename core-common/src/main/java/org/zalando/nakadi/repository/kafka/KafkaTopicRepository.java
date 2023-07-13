@@ -615,23 +615,24 @@ public class KafkaTopicRepository implements TopicRepository {
 
     @Override
     public List<String> listPartitionNames(final String topicId) {
-        return Retryer.executeWithRetry(() -> {
-                    return listPartitionNamesInternal(topicId);
-                },
-                new RetryForSpecifiedCountStrategy(3)
-                        .withExceptionsThatForceRetry(TimeoutException.class));
+        try (AdminClient adminClient = AdminClient.create(kafkaLocationManager.getProperties())) {
+            return Retryer.executeWithRetry(() -> {
+                        return listPartitionNamesInternal(adminClient, topicId);
+                    },
+                    new RetryForSpecifiedCountStrategy(3)
+                            .withWaitBetweenEachTry(5000)
+                            .withExceptionsThatForceRetry(ExecutionException.class, TimeoutException.class));
+        }
     }
 
-    private List<String> listPartitionNamesInternal(final String topicId)
+    private List<String> listPartitionNamesInternal(final AdminClient adminClient, final String topicId)
             throws Exception {
-        try (AdminClient adminClient = AdminClient.create(kafkaLocationManager.getProperties())) {
-            return unmodifiableList(
-                    adminClient.describeTopics(Set.of(topicId)).allTopicNames().get(5000, TimeUnit.MILLISECONDS)
-                    .get(topicId).partitions()
-                    .stream()
-                    .map(partitionInfo -> KafkaCursor.toNakadiPartition(partitionInfo.partition()))
-                    .collect(toList()));
-        }
+        return unmodifiableList(
+                adminClient.describeTopics(Set.of(topicId)).allTopicNames().get(5000, TimeUnit.MILLISECONDS)
+                .get(topicId).partitions()
+                .stream()
+                .map(partitionInfo -> KafkaCursor.toNakadiPartition(partitionInfo.partition()))
+                .collect(toList()));
     }
 
     @Override
