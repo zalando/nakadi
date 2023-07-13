@@ -42,11 +42,9 @@ public class NakadiResourceServerTokenServices implements ResourceServerTokenSer
             if (!featureToggleService.isFeatureEnabled(Feature.REMOTE_TOKENINFO)) {
                 try {
                     return localService.loadAuthentication(accessToken);
-                }
-                catch (final OAuth2Exception ex) {
+                } catch (final OAuth2Exception ex) {
                     throw ex;
-                }
-                catch (RuntimeException ex) {
+                } catch (RuntimeException ex) {
                     // This event should be pretty rare, so it is fine to log this exception.
                     LOG.error("Failed to load local tokeninfo information", ex);
                 }
