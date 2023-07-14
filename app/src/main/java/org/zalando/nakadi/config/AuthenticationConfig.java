@@ -22,6 +22,7 @@ import org.springframework.http.client.HttpComponentsClientHttpRequestFactory;
 import org.springframework.security.oauth2.provider.token.ResourceServerTokenServices;
 import org.springframework.util.Assert;
 import org.springframework.web.client.HttpStatusCodeException;
+import org.springframework.web.client.ResourceAccessException;
 import org.springframework.web.client.RestTemplate;
 import org.zalando.nakadi.exceptions.runtime.ServiceTemporarilyUnavailableException;
 import org.zalando.nakadi.service.FeatureToggleService;
@@ -154,7 +155,7 @@ public class AuthenticationConfig {
                     .header(HttpHeaders.AUTHORIZATION, String.format(BEARER_TOKEN_TEMPLATE, accessToken)).build();
             try {
                 return restTemplate.exchange(entity, TOKENINFO_MAP).getBody();
-            } catch (HttpStatusCodeException e) {
+            } catch (HttpStatusCodeException | ResourceAccessException e ) {
                 throw new ServiceTemporarilyUnavailableException("Unable to validate token", e);
             } catch (Exception e) {
                 LOGGER.warn("Unable to get authorisation from tokeninfo", e);

@@ -6,12 +6,15 @@ import org.junit.Before;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.mockito.Mock;
+import org.mockito.Mockito;
 import org.mockito.runners.MockitoJUnitRunner;
 import org.springframework.http.HttpStatus;
 import org.springframework.security.oauth2.common.exceptions.OAuth2Exception;
 import org.springframework.security.oauth2.provider.OAuth2Authentication;
+import org.springframework.web.client.ResourceAccessException;
 import org.zalando.nakadi.domain.Feature;
 import org.zalando.nakadi.service.FeatureToggleService;
+import org.zalando.stups.oauth2.spring.server.TokenInfoRequestExecutor;
 import org.zalando.stups.oauth2.spring.server.TokenInfoResourceServerTokenServices;
 
 import static org.junit.Assert.assertEquals;
@@ -19,6 +22,8 @@ import static org.junit.Assert.assertSame;
 import static org.junit.Assert.fail;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.doReturn;
+import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
@@ -30,6 +35,7 @@ public class NakadiResourceServerTokenServicesTest {
     @Mock
     private MetricRegistry metricRegistry;
     @Mock
+    private TokenInfoRequestExecutor tokenInfoRequestExecutor;
     private TokenInfoResourceServerTokenServices localService;
     @Mock
     private TokenInfoResourceServerTokenServices remoteService;
@@ -43,7 +49,8 @@ public class NakadiResourceServerTokenServicesTest {
         final Timer.Context context = mock(Timer.Context.class);
         when(timer.time()).thenReturn(context);
         when(metricRegistry.timer(any())).thenReturn(timer);
-
+        localService = Mockito.
+                spy(new TokenInfoResourceServerTokenServices(tokenInfoRequestExecutor));
         objectToTest = new NakadiResourceServerTokenServices(
                 metricRegistry, localService, remoteService, featureToggleService);
     }
@@ -64,7 +71,7 @@ public class NakadiResourceServerTokenServicesTest {
         when(featureToggleService.isFeatureEnabled(eq(Feature.REMOTE_TOKENINFO))).thenReturn(false);
 
         final OAuth2Authentication expectedResponse = mock(OAuth2Authentication.class);
-        when(localService.loadAuthentication(any())).thenReturn(expectedResponse);
+        doReturn(expectedResponse).when(localService).loadAuthentication(any());
 
         final OAuth2Authentication response = objectToTest.loadAuthentication("bbb");
 
@@ -77,7 +84,7 @@ public class NakadiResourceServerTokenServicesTest {
         when(featureToggleService.isFeatureEnabled(eq(Feature.REMOTE_TOKENINFO))).thenReturn(false);
 
         final OAuth2Exception expectedException = mock(OAuth2Exception.class);
-        when(localService.loadAuthentication(any())).thenThrow(expectedException);
+        doThrow(expectedException).when(localService).loadAuthentication(any());
 
         try {
             objectToTest.loadAuthentication("bbb");
@@ -92,7 +99,7 @@ public class NakadiResourceServerTokenServicesTest {
     public void whenLocalBrokenRemoteValidUsed() {
         when(featureToggleService.isFeatureEnabled(eq(Feature.REMOTE_TOKENINFO))).thenReturn(false);
 
-        when(localService.loadAuthentication(any())).thenThrow(mock(RuntimeException.class));
+        doThrow(new RuntimeException("")).when(localService).loadAuthentication(any());
         final OAuth2Authentication expectedResponse = mock(OAuth2Authentication.class);
         when(remoteService.loadAuthentication(any())).thenReturn(expectedResponse);
 
@@ -104,7 +111,7 @@ public class NakadiResourceServerTokenServicesTest {
     public void whenLocalBrokenRemoteBadUsed() {
         when(featureToggleService.isFeatureEnabled(eq(Feature.REMOTE_TOKENINFO))).thenReturn(false);
 
-        when(localService.loadAuthentication(any())).thenThrow(mock(RuntimeException.class));
+        doThrow(new RuntimeException("")).when(localService).loadAuthentication(any());
         final OAuth2Exception expectedException = mock(OAuth2Exception.class);
         when(remoteService.loadAuthentication(any())).thenThrow(expectedException);
 
@@ -117,10 +124,19 @@ public class NakadiResourceServerTokenServicesTest {
     }
 
     @Test
+    public void whenLocalIsUnavailableRemoteIsUsed() {
+        when(featureToggleService.isFeatureEnabled(eq(Feature.REMOTE_TOKENINFO))).thenReturn(false);
+        when(tokenInfoRequestExecutor.getMap(any())).thenThrow(new ResourceAccessException(""));
+        objectToTest.loadAuthentication("bbb");
+        verify(localService, times(1)).loadAuthentication(eq("bbb"));
+        verify(remoteService, times(1)).loadAuthentication(eq("bbb"));
+    }
+
+    @Test
     public void whenLocalBrokenRemote500Replaced() {
         when(featureToggleService.isFeatureEnabled(eq(Feature.REMOTE_TOKENINFO))).thenReturn(false);
 
-        when(localService.loadAuthentication(any())).thenThrow(mock(RuntimeException.class));
+        doThrow(new RuntimeException("")).when(localService).loadAuthentication(any());
         when(remoteService.loadAuthentication(any())).thenThrow(new RuntimeException("msg"));
 
         try{
