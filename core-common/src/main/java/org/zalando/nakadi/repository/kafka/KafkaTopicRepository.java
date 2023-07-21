@@ -17,6 +17,7 @@ import org.apache.kafka.common.PartitionInfo;
 import org.apache.kafka.common.TopicPartition;
 import org.apache.kafka.common.config.ConfigResource;
 import org.apache.kafka.common.errors.InterruptException;
+import org.apache.kafka.common.errors.OutOfOrderSequenceException;
 import org.apache.kafka.common.errors.TopicExistsException;
 import org.echocat.jomon.runtime.concurrent.RetryForSpecifiedCountStrategy;
 import org.echocat.jomon.runtime.concurrent.RetryForSpecifiedTimeStrategy;
@@ -171,6 +172,11 @@ public class KafkaTopicRepository implements TopicRepository {
             producer.send(kafkaRecord, ((metadata, exception) -> {
                 if (null != exception) {
                     LOG.warn("Failed to publish to kafka topic {}", topicId, exception);
+
+                    if (exception instanceof OutOfOrderSequenceException) {
+                        kafkaFactory.disposeProducer(producer);
+                    }
+
                     item.updateStatusAndDetail(EventPublishingStatus.FAILED, "internal error");
                     result.complete(exception);
                 } else {
@@ -295,7 +301,8 @@ public class KafkaTopicRepository implements TopicRepository {
                             item.getPartition(), "BatchItem partition can't be null at the moment of publishing!");
                     item.setStep(EventPublishingStep.PUBLISHING);
 
-                    final Producer producer = kafkaFactory.takeProducer(getProducerKey(topicId, item.getPartition()));
+                    final String producerKey = getProducerKey(topicId, item.getPartition());
+                    final Producer producer = kafkaFactory.takeProducer(producerKey);
                     sendFutures.put(item, sendItem(producer, topicId, eventType, item, delete));
                 }
             } catch (IOException io) {
@@ -409,9 +416,10 @@ public class KafkaTopicRepository implements TopicRepository {
                     nakadiRecord.getOwner().serialize(producerRecord);
                 }
 
-                final Producer producer =
-                        kafkaFactory.takeProducer(getProducerKey(topic, nakadiRecord.getMetadata().getPartition()));
-                producer.send(producerRecord, ((metadata, exception) -> {
+                final String producerKey = getProducerKey(topic, nakadiRecord.getMetadata().getPartition());
+                final Producer producer = kafkaFactory.takeProducer(producerKey);
+
+                sendRecord(producer, producerRecord, exception -> {
                     try {
                         final NakadiRecordResult result;
                         if (exception != null) {
@@ -430,7 +438,7 @@ public class KafkaTopicRepository implements TopicRepository {
                     } finally {
                         latch.countDown();
                     }
-                }));
+                });
             }
             final boolean recordsPublished = latch.await(createSendTimeout(), TimeUnit.MILLISECONDS);
             return prepareResponse(nakadiRecords, responses,
@@ -445,6 +453,20 @@ public class KafkaTopicRepository implements TopicRepository {
             LOG.debug("IOException:{}", ioe.getMessage(), ioe);
             return prepareResponse(nakadiRecords, responses, ioe);
         }
+    }
+
+    private void sendRecord(final Producer<byte[], byte[]> producer,
+                            final ProducerRecord<byte[], byte[]> producerRecord,
+                            final java.util.function.Consumer<Exception> resultConsumer) {
+
+        producer.send(producerRecord, ((metadata, exception) -> {
+
+            if (exception instanceof OutOfOrderSequenceException) {
+                kafkaFactory.disposeProducer(producer);
+            }
+
+            resultConsumer.accept(exception);
+        }));
     }
 
     private List<NakadiRecordResult> prepareResponse(

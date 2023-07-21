@@ -13,6 +13,7 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 import java.util.Properties;
+import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.TimeUnit;
@@ -22,7 +23,7 @@ public class KafkaFactory {
     private static final Logger LOG = LoggerFactory.getLogger(KafkaFactory.class);
     private final KafkaLocationManager kafkaLocationManager;
 
-    private final List<Producer<byte[], byte[]>> producers;
+    private final List<Producer<byte[], byte[]>> producerPool;
 
     private final BlockingQueue<Consumer<byte[], byte[]>> consumerPool;
     private final Meter consumerCreateMeter;
@@ -36,10 +37,11 @@ public class KafkaFactory {
         this.kafkaLocationManager = kafkaLocationManager;
 
         LOG.info("Allocating {} Kafka producers", numActiveProducers);
-        this.producers = new ArrayList<>(numActiveProducers);
+        final List<Producer<byte[], byte[]>> producers = new ArrayList(numActiveProducers);
         for (int i = 0; i < numActiveProducers; ++i) {
-            this.producers.add(createProducerInstance());
+            producers.add(createProducerInstance());
         }
+        this.producerPool = new CopyOnWriteArrayList<>(producers);
 
         if (consumerPoolSize > 0) {
             LOG.info("Preparing timelag checker pool of {} Kafka consumers", consumerPoolSize);
@@ -57,8 +59,23 @@ public class KafkaFactory {
     }
 
     public Producer<byte[], byte[]> takeProducer(final String topic) {
-        final int index = Math.abs(topic.hashCode() % producers.size());
-        return producers.get(index);
+        return producerPool.get(Math.abs(topic.hashCode() % producerPool.size()));
+    }
+
+    public void disposeProducer(final Producer<byte[], byte[]> producer) {
+        for (int i = 0; i < producerPool.size(); ++i) {
+            if (producer == producerPool.get(i)) {
+                synchronized (producerPool) {
+                    // re-check that no other thread did the same before us
+                    if (producer == producerPool.get(i)) {
+                        final Producer<byte[], byte[]> newProducer = createProducerInstance();
+                        final Producer<byte[], byte[]> oldProducer = producerPool.set(i, newProducer);
+                        oldProducer.close();
+                    }
+                }
+                break;
+            }
+        }
     }
 
     public Consumer<byte[], byte[]> getConsumer(final String clientId /* ignored */) {
