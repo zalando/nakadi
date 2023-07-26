@@ -4,6 +4,7 @@ import org.junit.Test;
 import org.zalando.nakadi.utils.IsOptional;
 
 import static org.hamcrest.MatcherAssert.assertThat;
+import static org.hamcrest.Matchers.containsString;
 
 public class ISO4217CurrencyCodeValidatorTest {
 
@@ -31,10 +32,13 @@ public class ISO4217CurrencyCodeValidatorTest {
                 "SEK",
         };
 
-        final var validator = new ISO4217CurrencyCodeValidator("an-event-type");
+        final var validator = new ISO4217CurrencyCodeValidator();
         for (final String value : invalidValues) {
-            // For invalid values, the validator should return empty result.
-            assertThat("Test: " + value, validator.validate(value), IsOptional.isAbsent());
+            assertThat(
+                    "Test: " + value,
+                    validator.validate(value),
+                    IsOptional.matches(containsString(" is not a valid alphabetic ISO 4217 currency code"))
+            );
         }
 
         for (final String value : validValues) {
