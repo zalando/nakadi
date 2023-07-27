@@ -45,6 +45,18 @@ public class DataLakeAnnotationsTest {
     }
 
     @Test
+    public void whenMaterializationEventIsOnNoRetentionPeriodFail() {
+        final var annotations = Map.of(
+                DataLakeAnnotationValidator.MATERIALISE_EVENTS_ANNOTATION, "on"
+        );
+        final Set<ConstraintViolation<TestClass>> result = validator.validate(new TestClass(annotations));
+        assertTrue("Annotation " + DataLakeAnnotationValidator.RETENTION_REASON_ANNOTATION + " is required," +
+                        " when " + DataLakeAnnotationValidator.RETENTION_PERIOD_ANNOTATION + " is specified.",
+                result.stream().anyMatch(r -> r.getMessage().contains(
+                        DataLakeAnnotationValidator.MATERIALISE_EVENTS_ANNOTATION)));
+    }
+
+    @Test
     public void whenRetentionPeriodThenRetentionReasonRequired() {
         final var annotations = Map.of(
                 DataLakeAnnotationValidator.RETENTION_PERIOD_ANNOTATION, "1 day"

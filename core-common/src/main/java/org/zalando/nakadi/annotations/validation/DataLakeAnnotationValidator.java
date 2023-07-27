@@ -30,6 +30,17 @@ public class DataLakeAnnotationValidator implements ConstraintValidator<DataLake
                         .addConstraintViolation();
                 return false;
             }
+            if (annotations.get(MATERIALISE_EVENTS_ANNOTATION).equals("on") &&
+                    !annotations.containsKey(RETENTION_PERIOD_ANNOTATION)) {
+                context.disableDefaultConstraintViolation();
+                context.buildConstraintViolationWithTemplate("Annotation " + RETENTION_PERIOD_ANNOTATION
+                                + " is required, when "
+                                + MATERIALISE_EVENTS_ANNOTATION + " with value: \""
+                                + annotations.get(MATERIALISE_EVENTS_ANNOTATION)
+                                + "\" is specified.")
+                        .addConstraintViolation();
+                return false;
+            }
         }
 
         if (annotations.containsKey(RETENTION_PERIOD_ANNOTATION)) {
