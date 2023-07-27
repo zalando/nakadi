@@ -26,6 +26,7 @@ import org.zalando.nakadi.repository.db.SchemaRepository;
 import org.zalando.nakadi.service.timeline.TimelineSync;
 import org.zalando.nakadi.utils.TestUtils;
 import org.zalando.nakadi.validation.JsonSchemaEnrichment;
+import org.zalando.nakadi.view.EventOwnerSelector;
 
 import java.io.IOException;
 import java.util.Arrays;
@@ -286,4 +287,25 @@ public class SchemaServiceTest {
         assertDoesNotThrow(() -> schemaService.validateSchema(eventType));
     }
 
+    @Test
+    public void whenEventOwnerSelectorFieldMissingInSchemaThenThrows() {
+        eventType.getSchema().setSchema("{}");
+        eventType.setEventOwnerSelector(
+                new EventOwnerSelector(EventOwnerSelector.Type.PATH, "selector_name", "retailer_id"));
+
+        assertThrows(SchemaValidationException.class, () -> schemaService.validateSchema(eventType));
+    }
+
+    @Test
+    public void whenEventOwnerSelectorFieldPresentInSchemaThenOK() throws IOException {
+        final String jsonSchemaString = Resources.toString(
+                Resources.getResource("schema-with-retailer-id.json"),
+                Charsets.UTF_8);
+
+        eventType.getSchema().setSchema(jsonSchemaString);
+        eventType.setEventOwnerSelector(
+                new EventOwnerSelector(EventOwnerSelector.Type.PATH, "selector_name", "info.retailer_id"));
+
+        assertDoesNotThrow(() -> schemaService.validateSchema(eventType));
+    }
 }

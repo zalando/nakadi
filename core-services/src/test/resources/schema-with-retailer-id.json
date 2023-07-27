@@ -1,0 +1,14 @@
+{
+    "type": "object",
+    "properties": {
+        "info": {"$ref": "#/definitions/Info"}
+    },
+    "definitions": {
+        "Info": {
+            "type": "object",
+            "properties": {
+                "retailer_id": {"type": "string"}
+            }
+        }
+    }
+}
