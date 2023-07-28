@@ -28,6 +28,7 @@ import org.zalando.nakadi.domain.Timeline;
 import org.zalando.nakadi.enrichment.Enrichment;
 import org.zalando.nakadi.exceptions.runtime.AccessDeniedException;
 import org.zalando.nakadi.exceptions.runtime.EnrichmentException;
+import org.zalando.nakadi.exceptions.runtime.EventOwnerExtractionException;
 import org.zalando.nakadi.exceptions.runtime.EventPublishingException;
 import org.zalando.nakadi.exceptions.runtime.EventTypeTimeoutException;
 import org.zalando.nakadi.exceptions.runtime.EventValidationException;
@@ -243,12 +244,18 @@ public class EventPublisher {
         for (final BatchItem item : batchItems) {
             item.setStep(EventPublishingStep.VALIDATING);
 
-            final EventOwnerHeader owner = extractor.extractEventOwner(item.getEvent());
-            item.setOwner(owner);
+            try {
+                item.setOwner(extractor.extractEventOwner(item.getEvent()));
+            } catch (final EventOwnerExtractionException e) {
+                LOG.warn("Failed to extract event owner for {}: {}", eventType.getName(), e.getMessage());
+
+                //item.updateStatusAndDetail(EventPublishingStatus.FAILED, e.getMessage());
+                //throw new EventValidationException("Failed to extract event owner", e);
+            }
 
             try {
                 authValidator.authorizeEventWrite(item);
-            } catch (AccessDeniedException e) {
+            } catch (final AccessDeniedException e) {
                 item.updateStatusAndDetail(EventPublishingStatus.FAILED, e.explain());
                 throw new PublishEventOwnershipException(e.explain(), e);
             }

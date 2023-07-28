@@ -6,6 +6,7 @@ import org.junit.Test;
 import org.zalando.nakadi.domain.EventOwnerHeader;
 import org.zalando.nakadi.domain.NakadiMetadata;
 import org.zalando.nakadi.domain.StrictJsonParser;
+import org.zalando.nakadi.exceptions.runtime.EventOwnerExtractionException;
 
 import java.io.IOException;
 
@@ -26,21 +27,19 @@ public class EventOwnerExtractorTest {
     }
 
     @Test
-    public void testAbsenceOfPathValue() {
+    public void testAbsenceOfPathValueIsAnError() {
         final EventOwnerExtractor extractor = EventOwnerExtractorFactory.createPathExtractor(
                 "retailer_id", "example.nothing.here");
 
-        final EventOwnerHeader result = extractor.extractEventOwner(MOCK_EVENT);
-        Assert.assertNull(result);
+        Assert.assertThrows(EventOwnerExtractionException.class, () -> extractor.extractEventOwner(MOCK_EVENT));
     }
 
     @Test
-    public void testNullWithPathValue() {
+    public void testNullWithPathValueIsAnError() {
         final EventOwnerExtractor extractor = EventOwnerExtractorFactory.createPathExtractor(
                 "retailer_id", "other");
 
-        final EventOwnerHeader result = extractor.extractEventOwner(MOCK_EVENT);
-        Assert.assertNull(result);
+        Assert.assertThrows(EventOwnerExtractionException.class, () -> extractor.extractEventOwner(MOCK_EVENT));
     }
 
     @Test

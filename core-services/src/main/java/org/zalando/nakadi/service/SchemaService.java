@@ -239,7 +239,6 @@ public class SchemaService implements SchemaProviderService {
         final EventOwnerSelector eventOwnerSelector = eventType.getEventOwnerSelector();
         if (eventOwnerSelector != null) {
             if (eventOwnerSelector.getType() == EventOwnerSelector.Type.PATH) {
-                // TODO: validate that it's a required property!
                 validateFieldsInSchema("event_owner_selector.value", List.of(eventOwnerSelector.getValue()),
                         effectiveSchema);
             }
