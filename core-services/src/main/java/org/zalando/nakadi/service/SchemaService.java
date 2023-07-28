@@ -41,6 +41,7 @@ import org.zalando.nakadi.service.timeline.TimelineSync;
 import org.zalando.nakadi.util.AvroUtils;
 import org.zalando.nakadi.validation.JsonSchemaEnrichment;
 import org.zalando.nakadi.validation.SchemaIncompatibility;
+import org.zalando.nakadi.view.EventOwnerSelector;
 
 import java.io.Closeable;
 import java.io.IOException;
@@ -232,14 +233,23 @@ public class SchemaService implements SchemaProviderService {
             throw new SchemaValidationException("\"metadata\" property is reserved");
         }
 
+        final JSONObject effectiveSchemaAsJson = jsonSchemaEnrichment.effectiveSchema(eventType, eventTypeSchema);
+        final Schema effectiveSchema = SchemaLoader.load(effectiveSchemaAsJson);
+
+        final EventOwnerSelector eventOwnerSelector = eventType.getEventOwnerSelector();
+        if (eventOwnerSelector != null) {
+            if (eventOwnerSelector.getType() == EventOwnerSelector.Type.PATH) {
+                validateFieldsInSchema("event_owner_selector.value", List.of(eventOwnerSelector.getValue()),
+                        effectiveSchema);
+            }
+        }
+
         final List<String> orderingInstanceIds = eventType.getOrderingInstanceIds();
         final List<String> orderingKeyFields = eventType.getOrderingKeyFields();
         if (!orderingInstanceIds.isEmpty() && orderingKeyFields.isEmpty()) {
             throw new SchemaValidationException(
                     "`ordering_instance_ids` field can not be defined without defining `ordering_key_fields`");
         }
-        final JSONObject effectiveSchemaAsJson = jsonSchemaEnrichment.effectiveSchema(eventType, eventTypeSchema);
-        final Schema effectiveSchema = SchemaLoader.load(effectiveSchemaAsJson);
         validateFieldsInSchema("ordering_key_fields", orderingKeyFields, effectiveSchema);
         validateFieldsInSchema("ordering_instance_ids", orderingInstanceIds, effectiveSchema);
 

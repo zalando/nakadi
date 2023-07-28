@@ -8,6 +8,7 @@ import org.zalando.nakadi.domain.EventOwnerHeader;
 import org.zalando.nakadi.domain.EventType;
 import org.zalando.nakadi.domain.Feature;
 import org.zalando.nakadi.domain.NakadiMetadata;
+import org.zalando.nakadi.exceptions.runtime.EventOwnerExtractionException;
 import org.zalando.nakadi.exceptions.runtime.JsonPathAccessException;
 import org.zalando.nakadi.exceptions.runtime.NakadiBaseException;
 import org.zalando.nakadi.service.FeatureToggleService;
@@ -50,9 +51,12 @@ public class EventOwnerExtractorFactory {
                 try {
                     final JsonPathAccess jsonPath = new JsonPathAccess(event);
                     final Object value = jsonPath.get(path);
-                    return JSONObject.NULL == value ? null : new EventOwnerHeader(name, value.toString());
+                    if (JSONObject.NULL == value) {
+                        throw new EventOwnerExtractionException("Event owner value is null at path: " + path);
+                    }
+                    return new EventOwnerHeader(name, value.toString());
                 } catch (final JsonPathAccessException e) {
-                    return null;
+                    throw new EventOwnerExtractionException("Event owner field is not found at path: " + path, e);
                 }
             }
 
