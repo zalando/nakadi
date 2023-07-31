@@ -151,6 +151,15 @@ public class SchemaServiceTest {
     }
 
     @Test
+    public void whenPostWithUnsupportedMetaSchemaThenThrows() throws Exception {
+        eventType.getSchema().setSchema(
+                "{\"$schema\":\"https://json-schema.org/draft/2020-12/schema\", \"type\":\"object\"}");
+        eventType.setCategory(BUSINESS);
+
+        assertThrows(SchemaValidationException.class, () -> schemaService.validateSchema(eventType));
+    }
+
+    @Test
     public void whenPostWithRootElementOfTypeArrayThenThrows() throws Exception {
         eventType.getSchema().setSchema(
                 "{\\\"type\\\":\\\"array\\\" }");

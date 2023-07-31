@@ -221,12 +221,17 @@ public class SchemaService implements SchemaProviderService {
             throw new SchemaValidationException("\"type\" of root element in schema can only be \"object\"");
         }
 
-        final Schema schema = SchemaLoader
-                .builder()
-                .httpClient(new BlockedHttpClient())
-                .schemaJson(schemaAsJson)
-                .build()
-                .load()
+        final SchemaLoader schemaLoader;
+        try {
+            schemaLoader = SchemaLoader.builder()
+                    .httpClient(new BlockedHttpClient())
+                    .schemaJson(schemaAsJson)
+                    .build();
+        } catch (IllegalArgumentException ex) {
+            throw new SchemaValidationException(ex.getMessage());
+        }
+
+        final Schema schema = schemaLoader.load()
                 .build();
 
         if (eventType.getCategory() == EventCategory.BUSINESS && schema.definesProperty("#/metadata")) {
