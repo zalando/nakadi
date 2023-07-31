@@ -1,5 +1,6 @@
 package org.zalando.nakadi.service;
 
+import com.google.common.annotations.VisibleForTesting;
 import com.google.common.cache.CacheBuilder;
 import com.google.common.cache.CacheLoader;
 import com.google.common.cache.LoadingCache;
@@ -188,7 +189,6 @@ public class SchemaService implements SchemaProviderService {
             final EventTypeSchemaBase.Type schemaType = eventType.getSchema().getType();
 
             if (schemaType.equals(EventTypeSchemaBase.Type.JSON_SCHEMA)) {
-                isStrictlyValidJson(eventTypeSchema);
                 validateJsonTypeSchema(eventType, eventTypeSchema);
             } else if (schemaType.equals(EventTypeSchemaBase.Type.AVRO_SCHEMA)) {
                 validateAvroTypeSchema(eventTypeSchema);
@@ -215,7 +215,7 @@ public class SchemaService implements SchemaProviderService {
     }
 
     private void validateJsonTypeSchema(final EventTypeBase eventType, final String eventTypeSchema) {
-        final JSONObject schemaAsJson = new JSONObject(eventTypeSchema);
+        final JSONObject schemaAsJson = parseJsonSchema(eventTypeSchema);
 
         if (schemaAsJson.has("type") && !Objects.equals("object", schemaAsJson.getString("type"))) {
             throw new SchemaValidationException("\"type\" of root element in schema can only be \"object\"");
@@ -293,9 +293,10 @@ public class SchemaService implements SchemaProviderService {
         }
     }
 
-    public static void isStrictlyValidJson(final String jsonInString) throws InvalidEventTypeException {
+    @VisibleForTesting
+    public static JSONObject parseJsonSchema(final String jsonInString) throws InvalidEventTypeException {
         try {
-            StrictJsonParser.parse(jsonInString, false);
+            return StrictJsonParser.parse(jsonInString, false);
         } catch (final RuntimeException jpe) {
             throw new SchemaValidationException("schema must be a valid json: " + jpe.getMessage());
         }
