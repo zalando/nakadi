@@ -197,42 +197,42 @@ public class SchemaServiceTest {
 
     @Test(expected = SchemaValidationException.class)
     public void testValidateSchemaEndingBracket() {
-        SchemaService.isStrictlyValidJson("{\"additionalProperties\": true}}");
+        SchemaService.parseJsonSchema("{\"additionalProperties\": true}}");
     }
 
     @Test(expected = SchemaValidationException.class)
     public void testValidateSchemaMultipleRoots() {
-        SchemaService.isStrictlyValidJson("{\"additionalProperties\": true}{\"additionalProperties\": true}");
+        SchemaService.parseJsonSchema("{\"additionalProperties\": true}{\"additionalProperties\": true}");
     }
 
     @Test(expected = SchemaValidationException.class)
     public void testValidateSchemaArbitraryEnding() {
-        SchemaService.isStrictlyValidJson("{\"additionalProperties\": true}NakadiRocks");
+        SchemaService.parseJsonSchema("{\"additionalProperties\": true}NakadiRocks");
     }
 
     @Test(expected = SchemaValidationException.class)
     public void testValidateSchemaArrayEnding() {
-        SchemaService.isStrictlyValidJson("[{\"additionalProperties\": true}]]");
+        SchemaService.parseJsonSchema("[{\"additionalProperties\": true}]]");
     }
 
     @Test(expected = SchemaValidationException.class)
     public void testValidateSchemaEndingCommaArray() {
-        SchemaService.isStrictlyValidJson("[{\"test\": true},]");
+        SchemaService.parseJsonSchema("[{\"test\": true},]");
     }
 
     @Test(expected = SchemaValidationException.class)
     public void testValidateSchemaEndingCommaArray2() {
-        SchemaService.isStrictlyValidJson("[\"test\",]");
+        SchemaService.parseJsonSchema("[\"test\",]");
     }
 
     @Test(expected = SchemaValidationException.class)
     public void testValidateSchemaEndingCommaObject() {
-        SchemaService.isStrictlyValidJson("{\"test\": true,}");
+        SchemaService.parseJsonSchema("{\"test\": true,}");
     }
 
     @Test
     public void testValidateSchemaFormattedJson() {
-        SchemaService.isStrictlyValidJson("{\"properties\":{\"event_class\":{\"type\":\"string\"}," +
+        SchemaService.parseJsonSchema("{\"properties\":{\"event_class\":{\"type\":\"string\"}," +
                 "\"app_domain_id\":{\"type\":\"integer\"},\"event_type\":{\"type\":\"string\"},\"time\"" +
                 ":{\"type\":\"number\"},\"partitioning_key\":{\"type\":\"string\"},\"body\":{\"type\"" +
                 ":\"object\"}},\"additionalProperties\":true}");
