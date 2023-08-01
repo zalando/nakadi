@@ -1,6 +1,5 @@
 package org.zalando.nakadi.domain;
 
-import org.checkerframework.checker.units.qual.C;
 
 import java.util.Arrays;
 import java.util.Optional;

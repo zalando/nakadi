@@ -18,6 +18,7 @@ import org.zalando.nakadi.domain.BatchFactory;
 import org.zalando.nakadi.domain.BatchItem;
 import org.zalando.nakadi.domain.BatchItemResponse;
 import org.zalando.nakadi.domain.CleanupPolicy;
+import org.zalando.nakadi.domain.ConsumerTag;
 import org.zalando.nakadi.domain.EventCategory;
 import org.zalando.nakadi.domain.EventOwnerHeader;
 import org.zalando.nakadi.domain.EventPublishResult;
@@ -50,6 +51,7 @@ import org.zalando.nakadi.validation.ValidationError;
 import java.io.Closeable;
 import java.io.IOException;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
@@ -100,7 +102,7 @@ public class EventPublisher {
 
     public EventPublishResult publish(final String events,
                                       final String eventTypeName,
-                                      final String subscriptionId)
+                                      final Map<ConsumerTag, String> consumerTags)
             throws NoSuchEventTypeException,
             InternalNakadiException,
             EnrichmentException,
@@ -109,7 +111,7 @@ public class EventPublisher {
             PublishEventOwnershipException,
             ServiceTemporarilyUnavailableException,
             PartitioningException {
-        return processInternal(events, eventTypeName, subscriptionId, true, false);
+        return processInternal(events, eventTypeName, consumerTags, true, false);
     }
 
     public EventPublishResult delete(final String events, final String eventTypeName)
@@ -126,7 +128,7 @@ public class EventPublisher {
 
     EventPublishResult processInternal(final String events,
                                        final String eventTypeName,
-                                       final String subscriptionId,
+                                       final Map<ConsumerTag, String> consumerTags,
                                        final boolean useAuthz,
                                        final boolean delete)
             throws NoSuchEventTypeException, InternalNakadiException, EventTypeTimeoutException,
@@ -149,7 +151,7 @@ public class EventPublisher {
             if (!delete) {
                 enrich(batch, eventType);
             }
-            submit(batch, eventType, subscriptionId, delete);
+            submit(batch, eventType, consumerTags, delete);
 
             return ok(batch);
         } catch (final EventValidationException e) {
@@ -294,7 +296,7 @@ public class EventPublisher {
 
     private void submit(
             final List<BatchItem> batch, final EventType eventType,
-            final String subscriptionId, final boolean delete)
+            final Map<ConsumerTag, String> consumerTags, final boolean delete)
         throws EventPublishingException, InternalNakadiException {
         final Timeline activeTimeline = timelineService.getActiveTimeline(eventType);
         final String topic = activeTimeline.getTopic();
@@ -312,7 +314,7 @@ public class EventPublisher {
                 .withTag(Tags.MESSAGE_BUS_DESTINATION.getKey(), topic)
                 .start();
         try (Closeable ignored = TracingService.activateSpan(publishingSpan)) {
-            topicRepository.syncPostBatch(topic, batch, eventType.getName(), subscriptionId, delete);
+            topicRepository.syncPostBatch(topic, batch, eventType.getName(), consumerTags, delete);
         } catch (final EventPublishingException epe) {
             publishingSpan.log(epe.getMessage());
             throw epe;

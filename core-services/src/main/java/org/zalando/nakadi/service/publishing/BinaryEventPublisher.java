@@ -8,6 +8,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.stereotype.Service;
 import org.zalando.nakadi.config.NakadiSettings;
+import org.zalando.nakadi.domain.ConsumerTag;
 import org.zalando.nakadi.domain.EventType;
 import org.zalando.nakadi.domain.NakadiRecord;
 import org.zalando.nakadi.domain.NakadiRecordResult;
@@ -28,6 +29,7 @@ import org.zalando.nakadi.service.timeline.TimelineSync;
 import java.io.Closeable;
 import java.io.IOException;
 import java.util.List;
+import java.util.Map;
 import java.util.concurrent.TimeoutException;
 
 @Service
@@ -71,13 +73,14 @@ public class BinaryEventPublisher {
         }
     }
 
-    public List<NakadiRecordResult> publish(final EventType eventType, final List<NakadiRecord> records) {
-        return processInternal(eventType, records, prePublishingChecks);
+    public List<NakadiRecordResult> publish(final EventType eventType, final List<NakadiRecord> records, final Map<ConsumerTag, String> consumerTags) {
+        return processInternal(eventType, records, prePublishingChecks, consumerTags);
     }
 
     private List<NakadiRecordResult> processInternal(final EventType eventType,
                                                      final List<NakadiRecord> records,
-                                                     final List<Check> checks) {
+                                                     final List<Check> checks,
+                                                     final Map<ConsumerTag, String> consumerTags) {
         for (final Check check : checks) {
             final List<NakadiRecordResult> res = check.execute(eventType, records);
             if (res != null && !res.isEmpty()) {
@@ -104,7 +107,7 @@ public class BinaryEventPublisher {
                     .withTag("type", "binary")
                     .start();
             try (Closeable ignored = TracingService.activateSpan(publishingSpan)) {
-                return timelineService.getTopicRepository(eventType).sendEvents(topic, records);
+                return timelineService.getTopicRepository(eventType).sendEvents(topic, records, consumerTags);
             } catch (final IOException ioe) {
                 throw new InternalNakadiException("Error closing active span scope", ioe);
             } finally {
@@ -137,10 +140,10 @@ public class BinaryEventPublisher {
             PartitioningException {
         LOG.debug("Deleting {} binary events from {}, with {} checks",
                 events.size(), eventType.getName(), preDeletingChecks.size());
-        return processInternal(eventType, events, preDeletingChecks);
+        return processInternal(eventType, events, preDeletingChecks, null);
     }
 
     public List<NakadiRecordResult> publishInternal(final EventType eventType, final List<NakadiRecord> events) {
-        return processInternal(eventType, events, internalPublishingChecks);
+        return processInternal(eventType, events, internalPublishingChecks, null);
     }
 }

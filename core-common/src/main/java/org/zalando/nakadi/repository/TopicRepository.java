@@ -2,6 +2,7 @@ package org.zalando.nakadi.repository;
 
 import org.zalando.nakadi.domain.BatchItem;
 import org.zalando.nakadi.domain.CleanupPolicy;
+import org.zalando.nakadi.domain.ConsumerTag;
 import org.zalando.nakadi.domain.NakadiCursor;
 import org.zalando.nakadi.domain.NakadiRecord;
 import org.zalando.nakadi.domain.NakadiRecordResult;
@@ -50,10 +51,11 @@ public interface TopicRepository {
     boolean topicExists(String topic) throws TopicRepositoryException;
 
     void syncPostBatch(String topicId, List<BatchItem> batch, String eventTypeName,
-                       String subscriptionId, boolean delete)
+                       Map<ConsumerTag, String> consumerTags, boolean delete)
             throws EventPublishingException;
 
-    List<NakadiRecordResult> sendEvents(String topic, List<NakadiRecord> nakadiRecords);
+    List<NakadiRecordResult> sendEvents(String topic, List<NakadiRecord> nakadiRecords,
+                                        Map<ConsumerTag, String> consumerTags);
 
     void repartition(String topic, int partitionsNumber) throws CannotAddPartitionToTopicException,
             TopicConfigException;
