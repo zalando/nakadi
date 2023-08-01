@@ -1,5 +1,6 @@
 package org.zalando.nakadi.repository;
 
+import org.zalando.nakadi.domain.ConsumerTag;
 import org.zalando.nakadi.domain.EventOwnerHeader;
 import org.zalando.nakadi.domain.NakadiCursor;
 import org.zalando.nakadi.domain.TopicPartition;
@@ -9,6 +10,7 @@ import java.io.Closeable;
 import java.util.Arrays;
 import java.util.Collection;
 import java.util.List;
+import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
 
@@ -27,7 +29,7 @@ public interface LowLevelConsumer extends Closeable {
         private final long offset;
         private final long timestamp;
         private final EventOwnerHeader eventOwnerHeader;
-        private final String subscriptionId;
+        private final Map<ConsumerTag, String> consumerTags;
 
         public Event(final byte[] data,
                      final String topic,
@@ -35,14 +37,14 @@ public interface LowLevelConsumer extends Closeable {
                      final long offset,
                      final long timestamp,
                      final EventOwnerHeader eventOwnerHeader,
-                     final String subscriptionId) {
+                     final Map<ConsumerTag, String> consumerTags) {
             this.data = data;
             this.topic = topic;
             this.partition = partition;
             this.offset = offset;
             this.timestamp = timestamp;
             this.eventOwnerHeader = eventOwnerHeader;
-            this.subscriptionId = subscriptionId;
+            this.consumerTags = consumerTags;
         }
 
         public byte[] getData() {
@@ -69,8 +71,8 @@ public interface LowLevelConsumer extends Closeable {
             return eventOwnerHeader;
         }
 
-        public String getSubscriptionId() {
-            return subscriptionId;
+        public Map<ConsumerTag, String> getConsumerTags() {
+            return consumerTags;
         }
 
         @Override
@@ -90,12 +92,12 @@ public interface LowLevelConsumer extends Closeable {
                     Objects.equals(partition, event.partition) &&
                     Objects.equals(offset, event.offset) &&
                     Objects.equals(eventOwnerHeader, event.eventOwnerHeader) &&
-                    Objects.equals(subscriptionId, event.subscriptionId);
+                    Objects.equals(consumerTags, event.consumerTags);
         }
 
         @Override
         public int hashCode() {
-            int result = Objects.hash(topic, partition, offset, timestamp, eventOwnerHeader, subscriptionId);
+            int result = Objects.hash(topic, partition, offset, timestamp, eventOwnerHeader, consumerTags);
             result = 31 * result + Arrays.hashCode(data);
             return result;
         }

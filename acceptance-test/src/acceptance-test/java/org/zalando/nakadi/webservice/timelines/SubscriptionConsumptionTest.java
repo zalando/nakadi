@@ -16,6 +16,7 @@ import java.io.IOException;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
+import java.util.Optional;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.Consumer;
@@ -26,6 +27,7 @@ import static org.zalando.nakadi.webservice.utils.NakadiTestUtils.createEventTyp
 import static org.zalando.nakadi.webservice.utils.NakadiTestUtils.createSubscription;
 import static org.zalando.nakadi.webservice.utils.NakadiTestUtils.createTimeline;
 import static org.zalando.nakadi.webservice.utils.NakadiTestUtils.publishEvents;
+import static org.zalando.nakadi.webservice.utils.NakadiTestUtils.publishEventsWithHeader;
 
 public class SubscriptionConsumptionTest {
 
@@ -190,6 +192,70 @@ public class SubscriptionConsumptionTest {
         }
     }
 
+    @Test
+    public void testBlockEventsNotConsumed() throws IOException, InterruptedException {
+        final EventType eventType = createEventType();
+        final var randomSubId = "16120729-4a57-4607-ad3a-d526a4590e75";
+
+        final String[] blockedExpectedOffset = new String[]{
+                "001-0001-000000000000000000",
+        };
+
+        final String[] nonBlockedExpectedOffset = new String[]{
+                "001-0001-000000000000000002",
+                "001-0001-000000000000000003"
+        };
+
+        final AtomicReference<String[]> receivedOffset = new AtomicReference<>();
+
+        publishAndConsumeOffsets(eventType, receivedOffset,
+                List.of(KeyValue.of("{\"foo\":\"normal\"}", null),                                  //offset 0
+                        KeyValue.of( "{\"foo\":\"blocked\"}", "subscription_id=" + randomSubId)),   //offset 1
+                Optional.empty()
+        );
+
+        //should only get offset 0 due non matching random sub id
+        Assert.assertArrayEquals(blockedExpectedOffset, receivedOffset.get());
+
+        final AtomicReference<String[]> receivedOffset2 = new AtomicReference<>();
+        final Subscription nonBlockedSubscription = createSubscription(
+                RandomSubscriptionBuilder.builder().withEventType(eventType.getName())
+                        .withStartFrom(SubscriptionBase.InitialPosition.CURSORS)
+                        .withInitialCursors(Collections.singletonList(
+                                new SubscriptionCursorWithoutToken(
+                                        eventType.getName(),
+                                        "0",
+                                        "001-0001-000000000000000001"))).build()); //consume from 1
+
+        publishAndConsumeOffsets(eventType, receivedOffset2,
+                List.of(KeyValue.of("{\"foo\":\"normal\"}", null),
+                        KeyValue.of( "{\"foo\":\"visible\"}",
+                                "subscription_id=" + nonBlockedSubscription.getId())),
+                Optional.of(nonBlockedSubscription));
+
+        //should get 2 AND 3 but not 1 as it had different sub id
+        Assert.assertArrayEquals(nonBlockedExpectedOffset, receivedOffset2.get());
+    }
+
+    private static void publishAndConsumeOffsets(final EventType eventType,
+                                                 final AtomicReference<String[]> receivedOffset,
+                                                 final List<KeyValue> eventToTagList,
+                                                 final Optional<Subscription> useIfPresentSub)
+            throws InterruptedException {
+        final CountDownLatch finished = new CountDownLatch(1);
+        final Subscription subscription = useIfPresentSub.orElseGet(() -> {
+            try {
+                return createSubscription(
+                        RandomSubscriptionBuilder.builder().withEventType(eventType.getName())
+                                .withStartFrom(SubscriptionBase.InitialPosition.BEGIN).build());
+            } catch (IOException e) {
+                throw new RuntimeException(e);
+            }
+        });
+        createParallelConsumer(subscription, 2, finished, receivedOffset::set);
+        eventToTagList.forEach(entry -> publishEventsWithHeader(eventType.getName(), 1, i -> entry.key, entry.value));
+        finished.await();
+    }
 
     private static void createParallelConsumer(
             final Subscription subscription,
@@ -216,5 +282,19 @@ public class SubscriptionConsumptionTest {
                 .toArray(String[]::new);
     }
 
+
+    public static class KeyValue {
+       public final String key;
+       public final String value;
+
+        public KeyValue(final String key, final String value) {
+            this.key = key;
+            this.value = value;
+        }
+
+        public static KeyValue of(final String key, final String value){
+            return new KeyValue(key, value);
+        }
+    }
 
 }

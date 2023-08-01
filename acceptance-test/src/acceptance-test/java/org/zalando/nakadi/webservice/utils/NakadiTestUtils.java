@@ -5,6 +5,7 @@ import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.google.common.collect.ImmutableList;
 import com.jayway.restassured.RestAssured;
+import com.jayway.restassured.response.Header;
 import com.jayway.restassured.response.Response;
 import com.jayway.restassured.specification.RequestSpecification;
 import org.apache.http.HttpStatus;
@@ -95,23 +96,33 @@ public class NakadiTestUtils {
     }
 
     public static void publishEvents(final String eventType, final int count, final IntFunction<String> generator) {
-        processEvents(format("/event-types/{0}/events", eventType), count, generator);
+        processEvents(format("/event-types/{0}/events", eventType), count, generator, null);
     }
+
+    public static void publishEventsWithHeader(final String eventType, final int count, final IntFunction<String> generator, final String consumerTagHeader) {
+        processEvents(format("/event-types/{0}/events", eventType), count, generator, consumerTagHeader);
+    }
+
 
     public static void deleteEvent(final String eventType, final String event) {
         deleteEvents(eventType, 1, (i) -> event);
     }
 
     public static void deleteEvents(final String eventType, final int count, final IntFunction<String> generator) {
-        processEvents(format("/event-types/{0}/deleted-events", eventType), count, generator);
+        processEvents(format("/event-types/{0}/deleted-events", eventType), count, generator, null);
     }
 
-    public static void processEvents(final String path, final int count, final IntFunction<String> generator) {
+    public static void processEvents(final String path, final int count, final IntFunction<String> generator, final String consumerTagHeader) {
         final String events = IntStream.range(0, count).mapToObj(generator).collect(Collectors.joining(","));
-        given()
+        final var req = given()
                 .body("[" + events + "]")
-                .contentType(JSON)
-                .post(path)
+                .contentType(JSON);
+
+        if (consumerTagHeader != null) {
+            req.header(new Header("X-CONSUMER-TAG", consumerTagHeader));
+        }
+
+        req.post(path)
                 .then()
                 .statusCode(HttpStatus.SC_OK);
     }

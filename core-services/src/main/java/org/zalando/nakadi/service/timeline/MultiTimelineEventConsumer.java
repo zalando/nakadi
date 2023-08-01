@@ -142,7 +142,7 @@ public class MultiTimelineEventConsumer implements HighLevelConsumer {
                                     KafkaCursor.toNakadiOffset(event.getOffset())),
                             event.getTimestamp(),
                             event.getEventOwnerHeader(),
-                            event.getSubscriptionId()
+                            event.getConsumerTags()
                     ))
                     .collect(Collectors.toList());
 

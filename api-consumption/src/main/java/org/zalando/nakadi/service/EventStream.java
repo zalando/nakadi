@@ -84,7 +84,7 @@ public class EventStream {
                 if (consumedEvents.isEmpty()) {
                     final List<ConsumedEvent> eventsFromKafka = eventConsumer.readEvents();
                     for (final ConsumedEvent evt : eventsFromKafka) {
-                        if (eventStreamChecks.isConsumptionBlocked(evt) || evt.getSubscriptionId() != null) {
+                        if (eventStreamChecks.isConsumptionBlocked(evt) || !evt.getConsumerTags().isEmpty()) {
                             continue;
                         }
                         consumedEvents.add(evt);

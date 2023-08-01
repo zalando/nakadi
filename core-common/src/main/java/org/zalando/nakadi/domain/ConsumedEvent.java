@@ -20,15 +20,15 @@ public class ConsumedEvent implements Resource<ConsumedEvent> {
     private final long timestamp;
     private final EventOwnerHeader owner;
 
-    private final String subscriptionId;
+    private final Map<ConsumerTag, String> consumerTags;
 
     public ConsumedEvent(final byte[] event, final NakadiCursor position, final long timestamp,
-                         @Nullable final EventOwnerHeader owner, @Nullable final String subscriptionId) {
+                         @Nullable final EventOwnerHeader owner, final Map<ConsumerTag, String> consumerTags) {
         this.event = event;
         this.position = position;
         this.timestamp = timestamp;
         this.owner = owner;
-        this.subscriptionId = subscriptionId;
+        this.consumerTags = consumerTags;
     }
 
     public byte[] getEvent() {
@@ -102,7 +102,7 @@ public class ConsumedEvent implements Resource<ConsumedEvent> {
         return new AuthorizationAttributeProxy(auth);
     }
 
-    public String getSubscriptionId() {
-        return subscriptionId;
+    public Map<ConsumerTag, String> getConsumerTags() {
+        return consumerTags;
     }
 }
