@@ -73,7 +73,8 @@ public class BinaryEventPublisher {
         }
     }
 
-    public List<NakadiRecordResult> publish(final EventType eventType, final List<NakadiRecord> records, final Map<ConsumerTag, String> consumerTags) {
+    public List<NakadiRecordResult> publish(final EventType eventType, final List<NakadiRecord> records,
+                                            final Map<ConsumerTag, String> consumerTags) {
         return processInternal(eventType, records, prePublishingChecks, consumerTags);
     }
 

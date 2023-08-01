@@ -99,7 +99,9 @@ public class NakadiTestUtils {
         processEvents(format("/event-types/{0}/events", eventType), count, generator, null);
     }
 
-    public static void publishEventsWithHeader(final String eventType, final int count, final IntFunction<String> generator, final String consumerTagHeader) {
+    public static void publishEventsWithHeader(final String eventType, final int count,
+                                               final IntFunction<String> generator,
+                                               final String consumerTagHeader) {
         processEvents(format("/event-types/{0}/events", eventType), count, generator, consumerTagHeader);
     }
 
@@ -112,7 +114,8 @@ public class NakadiTestUtils {
         processEvents(format("/event-types/{0}/deleted-events", eventType), count, generator, null);
     }
 
-    public static void processEvents(final String path, final int count, final IntFunction<String> generator, final String consumerTagHeader) {
+    public static void processEvents(final String path, final int count, final IntFunction<String> generator,
+                                     final String consumerTagHeader) {
         final String events = IntStream.range(0, count).mapToObj(generator).collect(Collectors.joining(","));
         final var req = given()
                 .body("[" + events + "]")
