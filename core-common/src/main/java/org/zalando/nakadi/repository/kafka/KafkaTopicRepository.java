@@ -171,7 +171,7 @@ public class KafkaTopicRepository implements TopicRepository {
                 item.getOwner().serialize(kafkaRecord);
             }
 
-            if (!consumerTags.isEmpty()) {
+            if (consumerTags!= null && !consumerTags.isEmpty()) {
                 KafkaConsumerTagSerializer.serialize(consumerTags, kafkaRecord);
             }
 
