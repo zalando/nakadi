@@ -9,10 +9,10 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 import org.zalando.nakadi.cache.EventTypeCache;
 import org.zalando.nakadi.domain.CleanupPolicy;
+import org.zalando.nakadi.domain.ConsumerTag;
 import org.zalando.nakadi.domain.EventPublishResult;
 import org.zalando.nakadi.domain.EventPublishingStatus;
 import org.zalando.nakadi.domain.EventType;
@@ -22,6 +22,7 @@ import org.zalando.nakadi.exceptions.runtime.AccessDeniedException;
 import org.zalando.nakadi.exceptions.runtime.BlockedException;
 import org.zalando.nakadi.exceptions.runtime.EventTypeTimeoutException;
 import org.zalando.nakadi.exceptions.runtime.InternalNakadiException;
+import org.zalando.nakadi.exceptions.runtime.InvalidConsumerTagException;
 import org.zalando.nakadi.exceptions.runtime.InvalidEventTypeException;
 import org.zalando.nakadi.exceptions.runtime.NoSuchEventTypeException;
 import org.zalando.nakadi.exceptions.runtime.ServiceTemporarilyUnavailableException;
@@ -40,7 +41,10 @@ import org.zalando.nakadi.service.publishing.NakadiKpiPublisher;
 import javax.servlet.http.HttpServletRequest;
 import java.io.IOException;
 import java.io.InputStream;
+import java.util.Collections;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
 import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
@@ -62,6 +66,8 @@ public class EventPublishingController {
     private final PublishingResultConverter publishingResultConverter;
     private final EventTypeCache eventTypeCache;
     private final AuthorizationValidator authValidator;
+
+    private static final String X_CONSUMER_TAG = "X-CONSUMER-TAG";
 
     @Autowired
     public EventPublishingController(final EventPublisher publisher,
@@ -87,14 +93,12 @@ public class EventPublishingController {
     @RequestMapping(value = "/event-types/{eventTypeName}/events", method = POST)
     public ResponseEntity postJsonEvents(@PathVariable final String eventTypeName,
                                          @RequestBody final String eventsAsString,
-                                         @RequestParam( value = "subscription_id", required = false)
-                                             final UUID subscriptionId,
                                          final HttpServletRequest request,
                                          final Client client)
             throws AccessDeniedException, BlockedException, ServiceTemporarilyUnavailableException,
             InternalNakadiException, EventTypeTimeoutException, NoSuchEventTypeException {
         return postEventsWithMetrics(eventTypeName, eventsAsString,
-                subscriptionId == null? null: subscriptionId.toString(), request, client, false);
+                toConsumerTagMap(request.getHeader(X_CONSUMER_TAG)), request, client, false);
     }
 
     @RequestMapping(
@@ -112,7 +116,8 @@ public class EventPublishingController {
         // TODO: check that event type schema type is AVRO!
 
         try {
-            return postBinaryEvents(eventTypeName, request.getInputStream(), client, false);
+            return postBinaryEvents(eventTypeName, request.getInputStream(),
+                    toConsumerTagMap(request.getHeader(X_CONSUMER_TAG)), client, false);
         } catch (IOException e) {
             throw new InternalNakadiException("failed to parse batch", e);
         }
@@ -130,7 +135,7 @@ public class EventPublishingController {
             throws AccessDeniedException, BlockedException, ServiceTemporarilyUnavailableException,
             InternalNakadiException, EventTypeTimeoutException, NoSuchEventTypeException {
         try {
-            return postBinaryEvents(eventTypeName, request.getInputStream(), client, true);
+            return postBinaryEvents(eventTypeName, request.getInputStream(), null, client, true);
         } catch (IOException e) {
             throw new InternalNakadiException("failed to parse batch", e);
         }
@@ -139,6 +144,7 @@ public class EventPublishingController {
 
     private ResponseEntity postBinaryEvents(final String eventTypeName,
                                             final InputStream batch,
+                                            final Map<ConsumerTag, String> consumerTags,
                                             final Client client,
                                             final boolean delete) {
         TracingService.setOperationName("publish_events")
@@ -168,7 +174,7 @@ public class EventPublishingController {
                 if (delete) {
                     recordResults = binaryPublisher.delete(nakadiRecords, eventType);
                 } else {
-                    recordResults = binaryPublisher.publish(eventType, nakadiRecords);
+                    recordResults = binaryPublisher.publish(eventType, nakadiRecords, consumerTags);
                 }
                 if (recordResults.isEmpty()) {
                     throw new InternalNakadiException("unexpected empty record result list, " +
@@ -212,7 +218,7 @@ public class EventPublishingController {
 
     private ResponseEntity postEventsWithMetrics(final String eventTypeName,
                                                  final String eventsAsString,
-                                                 final String subscriptionId,
+                                                 final Map<ConsumerTag, String> consumerTags,
                                                  final HttpServletRequest request,
                                                  final Client client,
                                                  final boolean delete) {
@@ -226,7 +232,7 @@ public class EventPublishingController {
         final EventTypeMetrics eventTypeMetrics = eventTypeMetricRegistry.metricsFor(eventTypeName);
         try {
             final ResponseEntity response = postEventInternal(
-                    eventTypeName, eventsAsString, subscriptionId, eventTypeMetrics, client, request, delete);
+                    eventTypeName, eventsAsString, consumerTags, eventTypeMetrics, client, request, delete);
             eventTypeMetrics.incrementResponseCount(response.getStatusCode().value());
             return response;
         } catch (final NoSuchEventTypeException exception) {
@@ -240,7 +246,7 @@ public class EventPublishingController {
 
     private ResponseEntity postEventInternal(final String eventTypeName,
                                              final String eventsAsString,
-                                             final String subscriptionId,
+                                             final Map<ConsumerTag, String> consumerTags,
                                              final EventTypeMetrics eventTypeMetrics,
                                              final Client client,
                                              final HttpServletRequest request,
@@ -257,7 +263,7 @@ public class EventPublishingController {
             if (delete) {
                 result = publisher.delete(eventsAsString, eventTypeName);
             } else {
-                result = publisher.publish(eventsAsString, eventTypeName, subscriptionId);
+                result = publisher.publish(eventsAsString, eventTypeName, consumerTags);
             }
             final int eventCount = result.getResponses().size();
 
@@ -317,5 +323,43 @@ public class EventPublishingController {
             default:
                 return status(HttpStatus.MULTI_STATUS).body(result.getResponses());
         }
+    }
+
+    public static Map<ConsumerTag, String> toConsumerTagMap(final String consumerString){
+       if(consumerString == null){
+           return Collections.emptyMap();
+       }
+
+        if(consumerString.isBlank()){
+            throw new InvalidConsumerTagException(X_CONSUMER_TAG + ": is empty!");
+        }
+
+        final var arr = consumerString.split(",");
+        final Map<ConsumerTag, String> result = new HashMap<>();
+        for (final String entry : arr) {
+            final var tagAndValue = entry.replaceAll("\\s", "").split("=");
+            if (tagAndValue.length != 2) {
+                throw new InvalidConsumerTagException("consumer tag parameter is imbalanced, " +
+                        "expected: 2 but provided " + arr.length);
+            }
+
+            final var optConsumerTag = ConsumerTag.fromString(tagAndValue[0]);
+            if (optConsumerTag.isEmpty()) {
+                throw new InvalidConsumerTagException("invalid consumer tag: " + tagAndValue[0]);
+            }
+            if (result.containsKey(optConsumerTag.get())) {
+                throw new InvalidConsumerTagException("duplicate consumer tag: "
+                        + optConsumerTag.get());
+            }
+            if (optConsumerTag.get() == ConsumerTag.SUBSCRIPTION_ID) {
+                try {
+                    UUID.fromString(tagAndValue[1]);
+                } catch (IllegalArgumentException e) {
+                    throw new InvalidConsumerTagException("consumer tag value: " + tagAndValue[1] + " is not an UUID");
+                }
+            }
+            result.put(optConsumerTag.get(), tagAndValue[1]);
+        }
+        return result;
     }
 }

@@ -8,6 +8,7 @@ import org.springframework.web.context.request.NativeWebRequest;
 import org.zalando.nakadi.exceptions.runtime.AvroDecodingException;
 import org.zalando.nakadi.exceptions.runtime.EnrichmentException;
 import org.zalando.nakadi.exceptions.runtime.EventTypeTimeoutException;
+import org.zalando.nakadi.exceptions.runtime.InvalidConsumerTagException;
 import org.zalando.nakadi.exceptions.runtime.InvalidEventTypeException;
 import org.zalando.nakadi.exceptions.runtime.InvalidPartitionKeyFieldsException;
 import org.zalando.nakadi.exceptions.runtime.NakadiBaseException;
@@ -57,7 +58,8 @@ public class EventPublishingExceptionHandler implements AdviceTrait {
     @ExceptionHandler({EnrichmentException.class,
             PartitioningException.class,
             InvalidEventTypeException.class,
-            InvalidPartitionKeyFieldsException.class})
+            InvalidPartitionKeyFieldsException.class,
+            InvalidConsumerTagException.class})
     public ResponseEntity<Problem> handleUnprocessableEntityResponses(final NakadiBaseException exception,
                                                                       final NativeWebRequest request) {
         AdviceTrait.LOG.debug(exception.getMessage());
