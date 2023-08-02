@@ -8,6 +8,10 @@ import java.util.Optional;
 
 @Component
 public class KafkaSettings {
+
+    private final int retries;
+    private final boolean idempotence;
+
     // kafka client requires this property to be int
     // https://github.com/apache/kafka/blob/d9206500bf2f99ce93f6ad64c7a89483100b3b5f/clients/src/main/java/org/apache
     // /kafka/clients/producer/ProducerConfig.java#L261
@@ -32,7 +36,9 @@ public class KafkaSettings {
     private final Optional<String> kafkaUsername;
     private final Optional<String> kafkaPassword;
     @Autowired
-    public KafkaSettings(@Value("${nakadi.kafka.request.timeout.ms}") final int requestTimeoutMs,
+    public KafkaSettings(@Value("${nakadi.kafka.retries}") final int retries,
+                         @Value("${nakadi.kafka.idempotence}") final boolean idempotence,
+                         @Value("${nakadi.kafka.request.timeout.ms}") final int requestTimeoutMs,
                          @Value("${nakadi.kafka.batch.size}") final int batchSize,
                          @Value("${nakadi.kafka.buffer.memory}") final long bufferMemory,
                          @Value("${nakadi.kafka.linger.ms}") final int lingerMs,
@@ -50,6 +56,8 @@ public class KafkaSettings {
                          @Value("${nakadi.kafka.sasl.mechanism:#{null}}") final Optional<String> saslMechanism,
                          @Value("${nakadi.kafka.username:#{null}}") final Optional<String> kafkaUsername,
                          @Value("${nakadi.kafka.password:#{null}}") final Optional<String> kafkaPassword) {
+        this.retries = retries;
+        this.idempotence = idempotence;
         this.requestTimeoutMs = requestTimeoutMs;
         this.batchSize = batchSize;
         this.bufferMemory = bufferMemory;
@@ -67,6 +75,14 @@ public class KafkaSettings {
         this.saslMechanism = saslMechanism;
         this.kafkaUsername = kafkaUsername;
         this.kafkaPassword = kafkaPassword;
+    }
+
+    public int getRetries() {
+        return retries;
+    }
+
+    public boolean getIdempotence() {
+        return idempotence;
     }
 
     public int getRequestTimeoutMs() {

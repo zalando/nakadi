@@ -57,6 +57,8 @@ nakadi:
   kafka:
     producers.count: 1
     time-lag-checker.consumer-pool.size: 0
+    retries: 0
+    idempotence: false
     request.timeout.ms: 30000
     instanceType: t2.large
     poll.timeoutMs: 100
