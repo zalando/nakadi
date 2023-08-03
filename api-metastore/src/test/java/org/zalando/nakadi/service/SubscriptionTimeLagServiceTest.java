@@ -51,7 +51,7 @@ public class SubscriptionTimeLagServiceTest {
                 .thenAnswer(invocation ->
                         ImmutableList.of(
                                 new ConsumedEvent(
-                                        null, NakadiCursor.of(timeline, "", ""), FAKE_EVENT_TIMESTAMP, null)));
+                                        null, NakadiCursor.of(timeline, "", ""), FAKE_EVENT_TIMESTAMP, null, null)));
 
         when(timelineService.createEventConsumer(any(), any())).thenReturn(eventConsumer);
 

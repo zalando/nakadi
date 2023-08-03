@@ -33,7 +33,7 @@ public class JsonEventProcessor extends EventsProcessor<JSONObject> {
     public void sendEvents(final String etName, final List<JSONObject> events) {
         try {
             // sending events batch with disabled authz check
-            eventPublisher.processInternal(new JSONArray(events).toString(), etName, false, false);
+            eventPublisher.processInternal(new JSONArray(events).toString(), etName, null, false, false);
         } catch (final RuntimeException ex) {
             LOG.error("Failed to send single batch for unknown reason", ex);
         }

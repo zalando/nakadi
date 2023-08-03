@@ -6,6 +6,7 @@ import com.google.common.base.Preconditions;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.zalando.nakadi.domain.ConsumedEvent;
+import org.zalando.nakadi.domain.HeaderTag;
 import org.zalando.nakadi.domain.NakadiCursor;
 import org.zalando.nakadi.domain.Subscription;
 import org.zalando.nakadi.exceptions.runtime.AccessDeniedException;
@@ -276,7 +277,19 @@ public class StreamingContext implements SubscriptionStreamer {
     }
 
     public boolean isConsumptionBlocked(final ConsumedEvent event) {
-        return eventStreamChecks.isConsumptionBlocked(event);
+        if (event.getConsumerTags().isEmpty()) {
+            return eventStreamChecks.isConsumptionBlocked(event);
+        }
+
+        return !checkConsumptionAllowedFromConsumerTags(event)
+                || eventStreamChecks.isConsumptionBlocked(event);
+    }
+
+    private boolean checkConsumptionAllowedFromConsumerTags(final ConsumedEvent event) {
+        return event.getConsumerTags().
+                getOrDefault(HeaderTag.CONSUMER_SUBSCRIPTION_ID,
+                        subscription.getId()).
+                equals(subscription.getId());
     }
 
     public CursorTokenService getCursorTokenService() {

@@ -26,6 +26,8 @@ import org.slf4j.LoggerFactory;
 import org.zalando.nakadi.config.NakadiSettings;
 import org.zalando.nakadi.domain.BatchItem;
 import org.zalando.nakadi.domain.CleanupPolicy;
+import org.zalando.nakadi.domain.HeaderTag;
+import org.zalando.nakadi.domain.KafkaHeaderTagSerde;
 import org.zalando.nakadi.domain.EventPublishingStatus;
 import org.zalando.nakadi.domain.EventPublishingStep;
 import org.zalando.nakadi.domain.NakadiCursor;
@@ -156,6 +158,7 @@ public class KafkaTopicRepository implements TopicRepository {
             final String topicId,
             final String eventType,
             final BatchItem item,
+            final Map<HeaderTag, String> consumerTags,
             final boolean delete) throws EventPublishingException {
         try {
             final CompletableFuture<Exception> result = new CompletableFuture<>();
@@ -166,6 +169,10 @@ public class KafkaTopicRepository implements TopicRepository {
                     delete ? null : item.dumpEventToBytes());
             if (null != item.getOwner()) {
                 item.getOwner().serialize(kafkaRecord);
+            }
+
+            if (consumerTags!= null && !consumerTags.isEmpty()) {
+                KafkaHeaderTagSerde.serialize(consumerTags, kafkaRecord);
             }
 
             producer.send(kafkaRecord, ((metadata, exception) -> {
@@ -283,7 +290,8 @@ public class KafkaTopicRepository implements TopicRepository {
 
     @Override
     public void syncPostBatch(
-            final String topicId, final List<BatchItem> batch, final String eventType, final boolean delete)
+            final String topicId, final List<BatchItem> batch, final String eventType,
+            final Map<HeaderTag, String> consumerTags, final boolean delete)
             throws EventPublishingException {
         try {
             final Map<BatchItem, CompletableFuture<Exception>> sendFutures = new HashMap<>();
@@ -294,9 +302,8 @@ public class KafkaTopicRepository implements TopicRepository {
                     Preconditions.checkNotNull(
                             item.getPartition(), "BatchItem partition can't be null at the moment of publishing!");
                     item.setStep(EventPublishingStep.PUBLISHING);
-
                     final Producer producer = kafkaFactory.takeProducer(getProducerKey(topicId, item.getPartition()));
-                    sendFutures.put(item, sendItem(producer, topicId, eventType, item, delete));
+                    sendFutures.put(item, sendItem(producer, topicId, eventType, item, consumerTags, delete));
                 }
             } catch (IOException io) {
                 throw new InternalNakadiException("Error closing active span scope", io);
@@ -397,7 +404,8 @@ public class KafkaTopicRepository implements TopicRepository {
      * @return empty list if no errors otherwise list with the errored events
      */
     public List<NakadiRecordResult> sendEvents(final String topic,
-                                               final List<NakadiRecord> nakadiRecords) {
+                                               final List<NakadiRecord> nakadiRecords,
+                                               final Map<HeaderTag, String> consumerTags) {
         final CountDownLatch latch = new CountDownLatch(nakadiRecords.size());
         final Map<NakadiRecord, NakadiRecordResult> responses = new ConcurrentHashMap<>();
         try {
@@ -407,6 +415,10 @@ public class KafkaTopicRepository implements TopicRepository {
 
                 if (null != nakadiRecord.getOwner()) {
                     nakadiRecord.getOwner().serialize(producerRecord);
+                }
+
+                if( null != consumerTags) {
+                    KafkaHeaderTagSerde.serialize(consumerTags, producerRecord);
                 }
 
                 final Producer producer =
