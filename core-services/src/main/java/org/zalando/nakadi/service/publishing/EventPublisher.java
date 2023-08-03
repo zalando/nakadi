@@ -18,7 +18,7 @@ import org.zalando.nakadi.domain.BatchFactory;
 import org.zalando.nakadi.domain.BatchItem;
 import org.zalando.nakadi.domain.BatchItemResponse;
 import org.zalando.nakadi.domain.CleanupPolicy;
-import org.zalando.nakadi.domain.ConsumerTag;
+import org.zalando.nakadi.domain.HeaderTag;
 import org.zalando.nakadi.domain.EventCategory;
 import org.zalando.nakadi.domain.EventOwnerHeader;
 import org.zalando.nakadi.domain.EventPublishResult;
@@ -102,7 +102,7 @@ public class EventPublisher {
 
     public EventPublishResult publish(final String events,
                                       final String eventTypeName,
-                                      final Map<ConsumerTag, String> consumerTags)
+                                      final Map<HeaderTag, String> consumerTags)
             throws NoSuchEventTypeException,
             InternalNakadiException,
             EnrichmentException,
@@ -128,7 +128,7 @@ public class EventPublisher {
 
     EventPublishResult processInternal(final String events,
                                        final String eventTypeName,
-                                       final Map<ConsumerTag, String> consumerTags,
+                                       final Map<HeaderTag, String> consumerTags,
                                        final boolean useAuthz,
                                        final boolean delete)
             throws NoSuchEventTypeException, InternalNakadiException, EventTypeTimeoutException,
@@ -296,7 +296,7 @@ public class EventPublisher {
 
     private void submit(
             final List<BatchItem> batch, final EventType eventType,
-            final Map<ConsumerTag, String> consumerTags, final boolean delete)
+            final Map<HeaderTag, String> consumerTags, final boolean delete)
         throws EventPublishingException, InternalNakadiException {
         final Timeline activeTimeline = timelineService.getActiveTimeline(eventType);
         final String topic = activeTimeline.getTopic();

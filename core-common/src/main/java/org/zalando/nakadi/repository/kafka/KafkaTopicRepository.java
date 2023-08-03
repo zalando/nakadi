@@ -26,8 +26,8 @@ import org.slf4j.LoggerFactory;
 import org.zalando.nakadi.config.NakadiSettings;
 import org.zalando.nakadi.domain.BatchItem;
 import org.zalando.nakadi.domain.CleanupPolicy;
-import org.zalando.nakadi.domain.ConsumerTag;
-import org.zalando.nakadi.domain.KafkaConsumerTagSerializer;
+import org.zalando.nakadi.domain.HeaderTag;
+import org.zalando.nakadi.domain.KafkaHeaderTagSerde;
 import org.zalando.nakadi.domain.EventPublishingStatus;
 import org.zalando.nakadi.domain.EventPublishingStep;
 import org.zalando.nakadi.domain.NakadiCursor;
@@ -158,7 +158,7 @@ public class KafkaTopicRepository implements TopicRepository {
             final String topicId,
             final String eventType,
             final BatchItem item,
-            final Map<ConsumerTag, String> consumerTags,
+            final Map<HeaderTag, String> consumerTags,
             final boolean delete) throws EventPublishingException {
         try {
             final CompletableFuture<Exception> result = new CompletableFuture<>();
@@ -172,7 +172,7 @@ public class KafkaTopicRepository implements TopicRepository {
             }
 
             if (consumerTags!= null && !consumerTags.isEmpty()) {
-                KafkaConsumerTagSerializer.serialize(consumerTags, kafkaRecord);
+                KafkaHeaderTagSerde.serialize(consumerTags, kafkaRecord);
             }
 
             producer.send(kafkaRecord, ((metadata, exception) -> {
@@ -291,7 +291,7 @@ public class KafkaTopicRepository implements TopicRepository {
     @Override
     public void syncPostBatch(
             final String topicId, final List<BatchItem> batch, final String eventType,
-            final Map<ConsumerTag, String> consumerTags, final boolean delete)
+            final Map<HeaderTag, String> consumerTags, final boolean delete)
             throws EventPublishingException {
         try {
             final Map<BatchItem, CompletableFuture<Exception>> sendFutures = new HashMap<>();
@@ -405,7 +405,7 @@ public class KafkaTopicRepository implements TopicRepository {
      */
     public List<NakadiRecordResult> sendEvents(final String topic,
                                                final List<NakadiRecord> nakadiRecords,
-                                               final Map<ConsumerTag, String> consumerTags) {
+                                               final Map<HeaderTag, String> consumerTags) {
         final CountDownLatch latch = new CountDownLatch(nakadiRecords.size());
         final Map<NakadiRecord, NakadiRecordResult> responses = new ConcurrentHashMap<>();
         try {
@@ -418,7 +418,7 @@ public class KafkaTopicRepository implements TopicRepository {
                 }
 
                 if( null != consumerTags) {
-                    KafkaConsumerTagSerializer.serialize(consumerTags, producerRecord);
+                    KafkaHeaderTagSerde.serialize(consumerTags, producerRecord);
                 }
 
                 final Producer producer =

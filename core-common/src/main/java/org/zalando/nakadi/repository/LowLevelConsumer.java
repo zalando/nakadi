@@ -1,6 +1,6 @@
 package org.zalando.nakadi.repository;
 
-import org.zalando.nakadi.domain.ConsumerTag;
+import org.zalando.nakadi.domain.HeaderTag;
 import org.zalando.nakadi.domain.EventOwnerHeader;
 import org.zalando.nakadi.domain.NakadiCursor;
 import org.zalando.nakadi.domain.TopicPartition;
@@ -29,7 +29,7 @@ public interface LowLevelConsumer extends Closeable {
         private final long offset;
         private final long timestamp;
         private final EventOwnerHeader eventOwnerHeader;
-        private final Map<ConsumerTag, String> consumerTags;
+        private final Map<HeaderTag, String> consumerTags;
 
         public Event(final byte[] data,
                      final String topic,
@@ -37,7 +37,7 @@ public interface LowLevelConsumer extends Closeable {
                      final long offset,
                      final long timestamp,
                      final EventOwnerHeader eventOwnerHeader,
-                     final Map<ConsumerTag, String> consumerTags) {
+                     final Map<HeaderTag, String> consumerTags) {
             this.data = data;
             this.topic = topic;
             this.partition = partition;
@@ -71,7 +71,7 @@ public interface LowLevelConsumer extends Closeable {
             return eventOwnerHeader;
         }
 
-        public Map<ConsumerTag, String> getConsumerTags() {
+        public Map<HeaderTag, String> getConsumerTags() {
             return consumerTags;
         }
 

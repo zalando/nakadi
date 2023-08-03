@@ -6,7 +6,7 @@ import com.google.common.base.Preconditions;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.zalando.nakadi.domain.ConsumedEvent;
-import org.zalando.nakadi.domain.ConsumerTag;
+import org.zalando.nakadi.domain.HeaderTag;
 import org.zalando.nakadi.domain.NakadiCursor;
 import org.zalando.nakadi.domain.Subscription;
 import org.zalando.nakadi.exceptions.runtime.AccessDeniedException;
@@ -287,7 +287,7 @@ public class StreamingContext implements SubscriptionStreamer {
 
     private boolean checkConsumptionAllowedFromConsumerTags(final ConsumedEvent event) {
         return event.getConsumerTags().
-                getOrDefault(ConsumerTag.SUBSCRIPTION_ID, subscription.getId()).
+                getOrDefault(HeaderTag.SUBSCRIPTION_ID, subscription.getId()).
                 equals(subscription.getId());
     }
 

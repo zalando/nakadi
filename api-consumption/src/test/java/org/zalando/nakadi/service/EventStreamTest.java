@@ -12,7 +12,7 @@ import org.junit.BeforeClass;
 import org.junit.Test;
 import org.zalando.nakadi.cache.EventTypeCache;
 import org.zalando.nakadi.domain.ConsumedEvent;
-import org.zalando.nakadi.domain.ConsumerTag;
+import org.zalando.nakadi.domain.HeaderTag;
 import org.zalando.nakadi.domain.NakadiCursor;
 import org.zalando.nakadi.domain.Timeline;
 import org.zalando.nakadi.exceptions.runtime.AccessDeniedException;
@@ -322,7 +322,7 @@ public class EventStreamTest {
                 .build();
 
         final ByteArrayOutputStream out = new ByteArrayOutputStream();
-        final var noTag = Collections.<ConsumerTag, String>emptyMap();
+        final var noTag = Collections.<HeaderTag, String>emptyMap();
         final LinkedList<ConsumedEvent> events = new LinkedList<>();
         events.add(new ConsumedEvent(DUMMY, NakadiCursor.of(TIMELINE, "0", "000000000000000000"), 0, null, noTag));
         events.add(new ConsumedEvent(DUMMY, NakadiCursor.of(TIMELINE, "1", "000000000000000000"), 0, null, noTag));

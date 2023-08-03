@@ -19,7 +19,7 @@ import org.mockito.Mockito;
 import org.mockito.MockitoAnnotations;
 import org.zalando.nakadi.config.NakadiSettings;
 import org.zalando.nakadi.domain.BatchItem;
-import org.zalando.nakadi.domain.ConsumerTag;
+import org.zalando.nakadi.domain.HeaderTag;
 import org.zalando.nakadi.domain.CursorError;
 import org.zalando.nakadi.domain.EventOwnerHeader;
 import org.zalando.nakadi.domain.EventPublishingStatus;
@@ -174,7 +174,7 @@ public class KafkaTopicRepositoryTest {
                 Collections.emptyList());
         item.setPartition("1");
         item.setOwner(new EventOwnerHeader("retailer", "nakadi"));
-        final var consumerTags = Map.of(ConsumerTag.SUBSCRIPTION_ID, "16120729-4a57-4607-ad3a-d526a4590e75");
+        final var consumerTags = Map.of(HeaderTag.SUBSCRIPTION_ID, "16120729-4a57-4607-ad3a-d526a4590e75");
         final List<BatchItem> batch = ImmutableList.of(item);
 
         when(kafkaProducer.partitionsFor(myTopic)).thenReturn(ImmutableList.of(
@@ -191,9 +191,9 @@ public class KafkaTopicRepositoryTest {
             final Header valueHeader = recordSent.headers().headers(EventOwnerHeader.AUTH_PARAM_VALUE)
                     .iterator().next();
             Assert.assertEquals(new String(valueHeader.value()), "nakadi");
-            final Header subscriptionHeader = recordSent.headers().headers(ConsumerTag.SUBSCRIPTION_ID.name())
+            final Header subscriptionHeader = recordSent.headers().headers(HeaderTag.SUBSCRIPTION_ID.name())
                     .iterator().next();
-            Assert.assertEquals(new String(subscriptionHeader.value()), consumerTags.get(ConsumerTag.SUBSCRIPTION_ID));
+            Assert.assertEquals(new String(subscriptionHeader.value()), consumerTags.get(HeaderTag.SUBSCRIPTION_ID));
         }
     }
 

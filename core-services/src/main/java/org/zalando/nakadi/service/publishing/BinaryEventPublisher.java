@@ -8,7 +8,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.stereotype.Service;
 import org.zalando.nakadi.config.NakadiSettings;
-import org.zalando.nakadi.domain.ConsumerTag;
+import org.zalando.nakadi.domain.HeaderTag;
 import org.zalando.nakadi.domain.EventType;
 import org.zalando.nakadi.domain.NakadiRecord;
 import org.zalando.nakadi.domain.NakadiRecordResult;
@@ -74,14 +74,14 @@ public class BinaryEventPublisher {
     }
 
     public List<NakadiRecordResult> publish(final EventType eventType, final List<NakadiRecord> records,
-                                            final Map<ConsumerTag, String> consumerTags) {
+                                            final Map<HeaderTag, String> consumerTags) {
         return processInternal(eventType, records, prePublishingChecks, consumerTags);
     }
 
     private List<NakadiRecordResult> processInternal(final EventType eventType,
                                                      final List<NakadiRecord> records,
                                                      final List<Check> checks,
-                                                     final Map<ConsumerTag, String> consumerTags) {
+                                                     final Map<HeaderTag, String> consumerTags) {
         for (final Check check : checks) {
             final List<NakadiRecordResult> res = check.execute(eventType, records);
             if (res != null && !res.isEmpty()) {

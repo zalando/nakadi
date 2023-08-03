@@ -12,7 +12,7 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 import org.zalando.nakadi.cache.EventTypeCache;
 import org.zalando.nakadi.domain.CleanupPolicy;
-import org.zalando.nakadi.domain.ConsumerTag;
+import org.zalando.nakadi.domain.HeaderTag;
 import org.zalando.nakadi.domain.EventPublishResult;
 import org.zalando.nakadi.domain.EventPublishingStatus;
 import org.zalando.nakadi.domain.EventType;
@@ -66,7 +66,6 @@ public class EventPublishingController {
     private final PublishingResultConverter publishingResultConverter;
     private final EventTypeCache eventTypeCache;
     private final AuthorizationValidator authValidator;
-
     private static final String X_CONSUMER_TAG = "X-CONSUMER-TAG";
 
     @Autowired
@@ -144,7 +143,7 @@ public class EventPublishingController {
 
     private ResponseEntity postBinaryEvents(final String eventTypeName,
                                             final InputStream batch,
-                                            final Map<ConsumerTag, String> consumerTags,
+                                            final Map<HeaderTag, String> consumerTags,
                                             final Client client,
                                             final boolean delete) {
         TracingService.setOperationName("publish_events")
@@ -218,7 +217,7 @@ public class EventPublishingController {
 
     private ResponseEntity postEventsWithMetrics(final String eventTypeName,
                                                  final String eventsAsString,
-                                                 final Map<ConsumerTag, String> consumerTags,
+                                                 final Map<HeaderTag, String> consumerTags,
                                                  final HttpServletRequest request,
                                                  final Client client,
                                                  final boolean delete) {
@@ -246,7 +245,7 @@ public class EventPublishingController {
 
     private ResponseEntity postEventInternal(final String eventTypeName,
                                              final String eventsAsString,
-                                             final Map<ConsumerTag, String> consumerTags,
+                                             final Map<HeaderTag, String> consumerTags,
                                              final EventTypeMetrics eventTypeMetrics,
                                              final Client client,
                                              final HttpServletRequest request,
@@ -325,17 +324,17 @@ public class EventPublishingController {
         }
     }
 
-    public static Map<ConsumerTag, String> toConsumerTagMap(final String consumerString){
-       if(consumerString == null){
-           return Collections.emptyMap();
-       }
+    public static Map<HeaderTag, String> toConsumerTagMap(final String consumerString) {
+        if (consumerString == null) {
+            return Collections.emptyMap();
+        }
 
-        if(consumerString.isBlank()){
+        if (consumerString.isBlank()) {
             throw new InvalidConsumerTagException(X_CONSUMER_TAG + ": is empty!");
         }
 
         final var arr = consumerString.split(",");
-        final Map<ConsumerTag, String> result = new HashMap<>();
+        final Map<HeaderTag, String> result = new HashMap<>();
         for (final String entry : arr) {
             final var tagAndValue = entry.replaceAll("\\s", "").split("=");
             if (tagAndValue.length != 2) {
@@ -343,7 +342,7 @@ public class EventPublishingController {
                         "expected: 2 but provided " + arr.length);
             }
 
-            final var optConsumerTag = ConsumerTag.fromString(tagAndValue[0]);
+            final var optConsumerTag = HeaderTag.fromString(tagAndValue[0]);
             if (optConsumerTag.isEmpty()) {
                 throw new InvalidConsumerTagException("invalid consumer tag: " + tagAndValue[0]);
             }
@@ -351,7 +350,7 @@ public class EventPublishingController {
                 throw new InvalidConsumerTagException("duplicate consumer tag: "
                         + optConsumerTag.get());
             }
-            if (optConsumerTag.get() == ConsumerTag.SUBSCRIPTION_ID) {
+            if (optConsumerTag.get() == HeaderTag.SUBSCRIPTION_ID) {
                 try {
                     UUID.fromString(tagAndValue[1]);
                 } catch (IllegalArgumentException e) {
