@@ -209,8 +209,8 @@ public class SubscriptionConsumptionTest {
         final AtomicReference<String[]> receivedOffset = new AtomicReference<>();
 
         publishAndConsumeOffsets(eventType, receivedOffset,
-                List.of(KeyValue.of("{\"foo\":\"normal\"}", null),                                  //offset 0
-                        KeyValue.of( "{\"foo\":\"blocked\"}", "subscription_id=" + randomSubId)),   //offset 1
+                List.of(KeyValue.of("{\"foo\":\"normal\"}", null),//offset 0
+                        KeyValue.of( "{\"foo\":\"blocked\"}", "consumer_subscription_id=" + randomSubId)),//offset 1
                 Optional.empty()
         );
 
@@ -230,7 +230,7 @@ public class SubscriptionConsumptionTest {
         publishAndConsumeOffsets(eventType, receivedOffset2,
                 List.of(KeyValue.of("{\"foo\":\"normal\"}", null),
                         KeyValue.of( "{\"foo\":\"visible\"}",
-                                "subscription_id=" + nonBlockedSubscription.getId())),
+                                "consumer_subscription_id=" + nonBlockedSubscription.getId())),
                 Optional.of(nonBlockedSubscription));
 
         //should get 2 AND 3 but not 1 as it had different sub id

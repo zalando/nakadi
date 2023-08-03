@@ -9,14 +9,14 @@ import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
 public enum HeaderTag {
-    SUBSCRIPTION_ID;
+    CONSUMER_SUBSCRIPTION_ID;
 
     private static final Map<String, HeaderTag> STRING_TO_ENUM = HeaderTag.
             stream().
             collect(Collectors.toMap(HeaderTag::name, Function.identity()));
 
-    public static Optional<HeaderTag> fromString(final String consumerTag){
-        return Optional.ofNullable(STRING_TO_ENUM.get(consumerTag));
+    public static Optional<HeaderTag> fromString(final String headerTag){
+        return Optional.ofNullable(STRING_TO_ENUM.get(headerTag.toUpperCase()));
     }
 
     private static Stream<HeaderTag> stream() {

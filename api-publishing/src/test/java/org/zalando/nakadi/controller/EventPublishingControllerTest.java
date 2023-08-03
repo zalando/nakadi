@@ -188,10 +188,10 @@ public class EventPublishingControllerTest {
         final var response = Problem.builder().
                 withStatus(Status.UNPROCESSABLE_ENTITY).
                 withTitle(Status.UNPROCESSABLE_ENTITY.getReasonPhrase()).
-                withDetail("duplicate consumer tag: SUBSCRIPTION_ID").build();
+                withDetail("duplicate header tag: CONSUMER_SUBSCRIPTION_ID").build();
 
-        postBatch(TOPIC, EVENT_BATCH, "subscription_id=16120729-4a57-4607-ad3a-d526a4590e75,  " +
-                "subscription_id = 16120729-4a57-4607-ad3a-d526a4590e76")
+        postBatch(TOPIC, EVENT_BATCH, "consumer_subscription_id=16120729-4a57-4607-ad3a-d526a4590e75,  " +
+                "consumer_subscription_id = 16120729-4a57-4607-ad3a-d526a4590e76")
                 .andExpect(content().contentType("application/problem+json"))
                 .andExpect(status().isUnprocessableEntity())
                 .andExpect(content().string(TestUtils.JSON_TEST_HELPER.matchesObject(response)));
@@ -215,9 +215,9 @@ public class EventPublishingControllerTest {
         final var response = Problem.builder().
                 withStatus(Status.UNPROCESSABLE_ENTITY).
                 withTitle(Status.UNPROCESSABLE_ENTITY.getReasonPhrase()).
-                withDetail("consumer tag value: 123f is not an UUID").build();
+                withDetail("header tag value: 123f is not an UUID").build();
 
-        postBatch(TOPIC, EVENT_BATCH, "subscription_id=123f")
+        postBatch(TOPIC, EVENT_BATCH, "consumer_subscription_id=123f")
                 .andExpect(content().contentType("application/problem+json"))
                 .andExpect(status().isUnprocessableEntity())
                 .andExpect(content().string(TestUtils.JSON_TEST_HELPER.matchesObject(response)));
@@ -228,9 +228,9 @@ public class EventPublishingControllerTest {
         final var response = Problem.builder().
                 withStatus(Status.UNPROCESSABLE_ENTITY).
                 withTitle(Status.UNPROCESSABLE_ENTITY.getReasonPhrase()).
-                withDetail("consumer tag parameter is imbalanced, expected: 2 but provided 1").build();
+                withDetail("header tag parameter is imbalanced, expected: 2 but provided 1").build();
 
-        postBatch(TOPIC, EVENT_BATCH, "subscription_id=,")
+        postBatch(TOPIC, EVENT_BATCH, "consumer_subscription_id=,")
                 .andExpect(content().contentType("application/problem+json"))
                 .andExpect(status().isUnprocessableEntity())
                 .andExpect(content().string(TestUtils.JSON_TEST_HELPER.matchesObject(response)));

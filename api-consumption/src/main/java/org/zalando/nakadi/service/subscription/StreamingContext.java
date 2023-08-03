@@ -287,7 +287,8 @@ public class StreamingContext implements SubscriptionStreamer {
 
     private boolean checkConsumptionAllowedFromConsumerTags(final ConsumedEvent event) {
         return event.getConsumerTags().
-                getOrDefault(HeaderTag.SUBSCRIPTION_ID, subscription.getId()).
+                getOrDefault(HeaderTag.CONSUMER_SUBSCRIPTION_ID,
+                        subscription.getId()).
                 equals(subscription.getId());
     }
 

@@ -97,7 +97,7 @@ public class EventPublishingController {
             throws AccessDeniedException, BlockedException, ServiceTemporarilyUnavailableException,
             InternalNakadiException, EventTypeTimeoutException, NoSuchEventTypeException {
         return postEventsWithMetrics(eventTypeName, eventsAsString,
-                toConsumerTagMap(request.getHeader(X_CONSUMER_TAG)), request, client, false);
+                toHeaderTagMap(request.getHeader(X_CONSUMER_TAG)), request, client, false);
     }
 
     @RequestMapping(
@@ -116,7 +116,7 @@ public class EventPublishingController {
 
         try {
             return postBinaryEvents(eventTypeName, request.getInputStream(),
-                    toConsumerTagMap(request.getHeader(X_CONSUMER_TAG)), client, false);
+                    toHeaderTagMap(request.getHeader(X_CONSUMER_TAG)), client, false);
         } catch (IOException e) {
             throw new InternalNakadiException("failed to parse batch", e);
         }
@@ -324,7 +324,7 @@ public class EventPublishingController {
         }
     }
 
-    public static Map<HeaderTag, String> toConsumerTagMap(final String consumerString) {
+    public static Map<HeaderTag, String> toHeaderTagMap(final String consumerString) {
         if (consumerString == null) {
             return Collections.emptyMap();
         }
@@ -338,26 +338,26 @@ public class EventPublishingController {
         for (final String entry : arr) {
             final var tagAndValue = entry.replaceAll("\\s", "").split("=");
             if (tagAndValue.length != 2) {
-                throw new InvalidConsumerTagException("consumer tag parameter is imbalanced, " +
+                throw new InvalidConsumerTagException("header tag parameter is imbalanced, " +
                         "expected: 2 but provided " + arr.length);
             }
 
-            final var optConsumerTag = HeaderTag.fromString(tagAndValue[0]);
-            if (optConsumerTag.isEmpty()) {
-                throw new InvalidConsumerTagException("invalid consumer tag: " + tagAndValue[0]);
+            final var optHeaderTag = HeaderTag.fromString(tagAndValue[0]);
+            if (optHeaderTag.isEmpty()) {
+                throw new InvalidConsumerTagException("invalid header tag: " + tagAndValue[0]);
             }
-            if (result.containsKey(optConsumerTag.get())) {
-                throw new InvalidConsumerTagException("duplicate consumer tag: "
-                        + optConsumerTag.get());
+            if (result.containsKey(optHeaderTag.get())) {
+                throw new InvalidConsumerTagException("duplicate header tag: "
+                        + optHeaderTag.get());
             }
-            if (optConsumerTag.get() == HeaderTag.SUBSCRIPTION_ID) {
+            if (optHeaderTag.get() == HeaderTag.CONSUMER_SUBSCRIPTION_ID) {
                 try {
                     UUID.fromString(tagAndValue[1]);
                 } catch (IllegalArgumentException e) {
-                    throw new InvalidConsumerTagException("consumer tag value: " + tagAndValue[1] + " is not an UUID");
+                    throw new InvalidConsumerTagException("header tag value: " + tagAndValue[1] + " is not an UUID");
                 }
             }
-            result.put(optConsumerTag.get(), tagAndValue[1]);
+            result.put(optHeaderTag.get(), tagAndValue[1]);
         }
         return result;
     }
