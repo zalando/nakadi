@@ -36,6 +36,8 @@ import java.io.IOException;
 import java.util.Collection;
 import java.util.Comparator;
 import java.util.List;
+import java.util.Objects;
+import java.util.Optional;
 import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.ScheduledExecutorService;
@@ -277,19 +279,12 @@ public class StreamingContext implements SubscriptionStreamer {
     }
 
     public boolean isConsumptionBlocked(final ConsumedEvent event) {
-        if (event.getConsumerTags().isEmpty()) {
-            return eventStreamChecks.isConsumptionBlocked(event);
+        if (event.getConsumerTags().containsKey(HeaderTag.CONSUMER_SUBSCRIPTION_ID)) {
+            return event.getConsumerTags().get(HeaderTag.CONSUMER_SUBSCRIPTION_ID)
+                    .equals(subscription.getId());
         }
 
-        return !checkConsumptionAllowedFromConsumerTags(event)
-                || eventStreamChecks.isConsumptionBlocked(event);
-    }
-
-    private boolean checkConsumptionAllowedFromConsumerTags(final ConsumedEvent event) {
-        return event.getConsumerTags().
-                getOrDefault(HeaderTag.CONSUMER_SUBSCRIPTION_ID,
-                        subscription.getId()).
-                equals(subscription.getId());
+        return eventStreamChecks.isConsumptionBlocked(event);
     }
 
     public CursorTokenService getCursorTokenService() {
