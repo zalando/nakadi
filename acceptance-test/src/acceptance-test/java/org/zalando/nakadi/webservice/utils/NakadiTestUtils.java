@@ -105,6 +105,20 @@ public class NakadiTestUtils {
         processEvents(format("/event-types/{0}/events", eventType), count, generator, consumerTagHeader);
     }
 
+    public static void publishEventsWithHeader(final String eventType,
+                                               final byte[] payload,
+                                               final String consumerTagHeader) {
+        var req = given()
+                .contentType("application/avro-binary");
+        if (consumerTagHeader != null) {
+            req.header(new Header("X-CONSUMER-TAG", consumerTagHeader));
+        }
+        req.body(payload)
+                .post(String.format("/event-types/%s/events", eventType))
+                .then()
+                .statusCode(HttpStatus.SC_OK);
+    }
+
 
     public static void deleteEvent(final String eventType, final String event) {
         deleteEvents(eventType, 1, (i) -> event);
