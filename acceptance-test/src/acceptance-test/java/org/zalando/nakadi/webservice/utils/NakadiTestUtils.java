@@ -108,7 +108,7 @@ public class NakadiTestUtils {
     public static void publishEventsWithHeader(final String eventType,
                                                final byte[] payload,
                                                final String consumerTagHeader) {
-        var req = given()
+        final var req = given()
                 .contentType("application/avro-binary");
         if (consumerTagHeader != null) {
             req.header(new Header("X-CONSUMER-TAG", consumerTagHeader));

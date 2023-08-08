@@ -274,7 +274,8 @@ public class SubscriptionConsumptionTest {
 
         publishAndConsumeOffsets(eventType, receivedOffset,
                 List.of(KeyValue.of(createPublishingPayload(eventType, "normal"), null),//offset 0
-                        KeyValue.of(createPublishingPayload(eventType, "blocked"), "consumer_subscription_id=" + randomSubId)),//offset 1
+                        KeyValue.of(createPublishingPayload(eventType, "blocked"),
+                                "consumer_subscription_id=" + randomSubId)),//offset 1
                 Optional.empty()
         );
 
