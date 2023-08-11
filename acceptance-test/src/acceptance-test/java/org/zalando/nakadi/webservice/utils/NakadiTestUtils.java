@@ -8,22 +8,33 @@ import com.jayway.restassured.RestAssured;
 import com.jayway.restassured.response.Header;
 import com.jayway.restassured.response.Response;
 import com.jayway.restassured.specification.RequestSpecification;
+import org.apache.avro.Schema;
+import org.apache.avro.generic.GenericData;
+import org.apache.avro.generic.GenericDatumWriter;
+import org.apache.avro.io.EncoderFactory;
+import org.apache.commons.math3.stat.inference.TestUtils;
 import org.apache.http.HttpStatus;
 import org.joda.time.DateTime;
 import org.joda.time.DateTimeZone;
 import org.json.JSONArray;
 import org.json.JSONObject;
 import org.junit.Assert;
+import org.springframework.core.io.DefaultResourceLoader;
 import org.zalando.nakadi.config.JsonConfig;
 import org.zalando.nakadi.domain.EnrichmentStrategyDescriptor;
 import org.zalando.nakadi.domain.EventCategory;
 import org.zalando.nakadi.domain.EventType;
+import org.zalando.nakadi.domain.EventTypeSchema;
+import org.zalando.nakadi.domain.EventTypeSchemaBase;
 import org.zalando.nakadi.domain.EventTypeStatistics;
 import org.zalando.nakadi.domain.Feature;
 import org.zalando.nakadi.domain.ItemsWrapper;
 import org.zalando.nakadi.domain.Subscription;
 import org.zalando.nakadi.domain.SubscriptionBase;
 import org.zalando.nakadi.domain.SubscriptionEventTypeStats;
+import org.zalando.nakadi.generated.avro.Envelope;
+import org.zalando.nakadi.generated.avro.Metadata;
+import org.zalando.nakadi.generated.avro.PublishingBatch;
 import org.zalando.nakadi.partitioning.PartitionStrategy;
 import org.zalando.nakadi.utils.EventTypeTestBuilder;
 import org.zalando.nakadi.utils.RandomSubscriptionBuilder;
@@ -31,7 +42,10 @@ import org.zalando.nakadi.view.PartitionCountView;
 import org.zalando.nakadi.view.SubscriptionCursor;
 import org.zalando.nakadi.view.TimelineView;
 
+import java.io.ByteArrayOutputStream;
 import java.io.IOException;
+import java.nio.ByteBuffer;
+import java.time.Instant;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
@@ -87,8 +101,51 @@ public class NakadiTestUtils {
         return eventType;
     }
 
+    public static EventType createAvroEventType(final String schemaPath) throws IOException {
+        final String testETName = TestUtils.randomValidEventTypeName();
+        final Schema avroSchema = new Schema.Parser().parse(new DefaultResourceLoader()
+                .getResource(schemaPath).getInputStream());
+
+        final var et = EventTypeTestBuilder.builder()
+                .name(testETName)
+                .category(EventCategory.BUSINESS)
+                .enrichmentStrategies(List.of(EnrichmentStrategyDescriptor.METADATA_ENRICHMENT))
+                .schema(new EventTypeSchema(
+                        new EventTypeSchemaBase(EventTypeSchemaBase.Type.AVRO_SCHEMA, avroSchema.toString()),
+                        "1.0.0", TestUtils.randomDate()))
+                .build();
+        createEventTypeInNakadi(et);
+        return et;
+    }
+
     public static EventType buildSimpleEventType() {
         return EventTypeTestBuilder.builder().build();
+    }
+
+
+    public static byte[] createPublishingPayload(final EventType et, final GenericData.Record record) {
+        final var avroSchema = new Schema.Parser().parse(et.getSchema().getSchema());
+        final ByteArrayOutputStream baos = new ByteArrayOutputStream();
+        try {
+            new GenericDatumWriter(avroSchema).write(record,
+                    EncoderFactory.get().directBinaryEncoder(baos, null));
+
+        final PublishingBatch batch = PublishingBatch.newBuilder()
+                .setEvents(List.of(Envelope.newBuilder()
+                        .setMetadata(Metadata.newBuilder()
+                                .setEventType(et.getName())
+                                .setVersion("1.0.0")
+                                .setOccurredAt(Instant.now())
+                                .setEid(UUID.randomUUID().toString())
+                                .build())
+                        .setPayload(ByteBuffer.wrap(baos.toByteArray()))
+                        .build()))
+                .build();
+
+        return PublishingBatch.getEncoder().encode(batch).array();
+        } catch (final IOException e) {
+            throw new RuntimeException(e);
+        }
     }
 
     public static void publishEvent(final String eventType, final String event) {
@@ -96,44 +153,45 @@ public class NakadiTestUtils {
     }
 
     public static void publishEvents(final String eventType, final int count, final IntFunction<String> generator) {
-        processEvents(format("/event-types/{0}/events", eventType), count, generator, null);
+        executePost(format("/event-types/{0}/events", eventType),
+                toJsonArrayBytes(count, generator), JSON.toString(), null);
     }
 
-    public static void publishEventsWithHeader(final String eventType, final int count,
-                                               final IntFunction<String> generator,
-                                               final String consumerTagHeader) {
-        processEvents(format("/event-types/{0}/events", eventType), count, generator, consumerTagHeader);
+    public static void publishEvents(final String eventType, final int count,
+                                     final IntFunction<String> generator,
+                                     final String consumerTagHeader) {
+        executePost(format("/event-types/{0}/events", eventType),
+                toJsonArrayBytes(count, generator), JSON.toString(), consumerTagHeader);
     }
 
-    public static void publishEventsWithHeader(final String eventType,
-                                               final byte[] payload,
-                                               final String consumerTagHeader) {
-        final var req = given()
-                .contentType("application/avro-binary");
-        if (consumerTagHeader != null) {
-            req.header(new Header("X-CONSUMER-TAG", consumerTagHeader));
-        }
-        req.body(payload)
-                .post(String.format("/event-types/%s/events", eventType))
-                .then()
-                .statusCode(HttpStatus.SC_OK);
+    public static void publishEvents(final String eventType,
+                                     final byte[] payload,
+                                     final String consumerTagHeader) {
+        executePost(String.format("/event-types/%s/events", eventType),
+                payload, "application/avro-binary", consumerTagHeader);
     }
-
 
     public static void deleteEvent(final String eventType, final String event) {
         deleteEvents(eventType, 1, (i) -> event);
     }
 
     public static void deleteEvents(final String eventType, final int count, final IntFunction<String> generator) {
-        processEvents(format("/event-types/{0}/deleted-events", eventType), count, generator, null);
+        executePost(format("/event-types/{0}/deleted-events", eventType),
+                toJsonArrayBytes(count, generator), JSON.toString(), null);
     }
 
-    public static void processEvents(final String path, final int count, final IntFunction<String> generator,
-                                     final String consumerTagHeader) {
-        final String events = IntStream.range(0, count).mapToObj(generator).collect(Collectors.joining(","));
+    private static byte[] toJsonArrayBytes(int count, IntFunction<String> generator) {
+        return IntStream.range(0, count).
+                mapToObj(generator).
+                map(JSONObject::new).
+                collect(JSONArray::new, JSONArray::put, (a, b) ->  a.put(b.toList())).
+                toString().getBytes();
+    }
+
+    private static void executePost(String path, final byte[] payload, final String contentType, String consumerTagHeader) {
         final var req = given()
-                .body("[" + events + "]")
-                .contentType(JSON);
+                .body(payload)
+                .contentType(contentType);
 
         if (consumerTagHeader != null) {
             req.header(new Header("X-CONSUMER-TAG", consumerTagHeader));
