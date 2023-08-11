@@ -19,24 +19,25 @@ public class DataLakeAnnotationValidator implements ConstraintValidator<DataLake
         if (annotations == null || annotations.size() == 0) {
             return true;
         }
+        String materialiseEventsAnnotation = annotations.get(MATERIALISE_EVENTS_ANNOTATION);
         if (annotations.containsKey(MATERIALISE_EVENTS_ANNOTATION)) {
-            if (!annotations.get(MATERIALISE_EVENTS_ANNOTATION).equals("off") &&
-                    !annotations.get(MATERIALISE_EVENTS_ANNOTATION).equals("on")) {
+            if (!materialiseEventsAnnotation.equals("off") &&
+                    !materialiseEventsAnnotation.equals("on")) {
                 context.disableDefaultConstraintViolation();
                 context.buildConstraintViolationWithTemplate("Annotation " + MATERIALISE_EVENTS_ANNOTATION
                                 + " is not valid. Provided value: \""
-                                + annotations.get(MATERIALISE_EVENTS_ANNOTATION)
+                                + materialiseEventsAnnotation
                                 + "\". Possible values are: \"on\" or \"off\".")
                         .addConstraintViolation();
                 return false;
             }
-            if (annotations.get(MATERIALISE_EVENTS_ANNOTATION).equals("on") &&
+            if (materialiseEventsAnnotation.equals("on") &&
                     !annotations.containsKey(RETENTION_PERIOD_ANNOTATION)) {
                 context.disableDefaultConstraintViolation();
                 context.buildConstraintViolationWithTemplate("Annotation " + RETENTION_PERIOD_ANNOTATION
                                 + " is required, when "
                                 + MATERIALISE_EVENTS_ANNOTATION + " with value: \""
-                                + annotations.get(MATERIALISE_EVENTS_ANNOTATION)
+                                + materialiseEventsAnnotation
                                 + "\" is specified.")
                         .addConstraintViolation();
                 return false;
