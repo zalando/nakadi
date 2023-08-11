@@ -19,7 +19,7 @@ public class DataLakeAnnotationValidator implements ConstraintValidator<DataLake
         if (annotations == null || annotations.size() == 0) {
             return true;
         }
-        String materialiseEventsAnnotation = annotations.get(MATERIALISE_EVENTS_ANNOTATION);
+        final String materialiseEventsAnnotation = annotations.get(MATERIALISE_EVENTS_ANNOTATION);
         if (annotations.containsKey(MATERIALISE_EVENTS_ANNOTATION)) {
             if (!materialiseEventsAnnotation.equals("off") &&
                     !materialiseEventsAnnotation.equals("on")) {

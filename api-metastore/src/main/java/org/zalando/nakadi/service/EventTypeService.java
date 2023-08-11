@@ -72,6 +72,8 @@ import java.util.List;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.Set;
+import java.util.Map;
+import java.util.Arrays;
 import java.util.concurrent.TimeoutException;
 import java.util.concurrent.atomic.AtomicReference;
 
@@ -521,8 +523,38 @@ public class EventTypeService {
     private void updateAnnotationsAndLabels(final EventType original, final EventType eventType)
             throws InvalidEventTypeException {
 
+        final List<String> breakingCompatibilitiesNames = Arrays.asList(
+                "content-visibility.inference-log.v3.test",
+                "zoutlets.wm.article-decision",
+                "merchant-price-service.work-log",
+                "merchant-price-service.work-log-raw",
+                "content.customer-targeting.segments.sqate",
+                "merchant-price-service.price-update-called",
+                "merchant-price-service.price-update-processed",
+                "octopus.analysis-metrics-v2",
+                "wholesale.purchase-order-event",
+                "zoutlets.wm.commodity-group.updated",
+                "connected-retail.article-insights-service.configuration-changed",
+                "merchant-price-service.price-threshold-updates");
+
         if (eventType.getAnnotations() == null) {
-            eventType.setAnnotations(original.getAnnotations());
+            final Map<String, String> originalAnnotations = original.getAnnotations();
+            if (breakingCompatibilitiesNames.contains(original.getName())){
+                if (!originalAnnotations.containsKey("datalake.zalando.org/retention-period")) {
+                    originalAnnotations.put("datalake.zalando.org/retention-period", "unlimited");
+                }
+                eventType.setAnnotations(originalAnnotations);
+            } else {
+                eventType.setAnnotations(originalAnnotations);
+            }
+        } else {
+            final Map<String, String> eventTypeAnnotations = eventType.getAnnotations();
+            if (breakingCompatibilitiesNames.contains(eventType.getName())){
+                if (!eventTypeAnnotations.containsKey("datalake.zalando.org/retention-period")) {
+                    eventTypeAnnotations.put("datalake.zalando.org/retention-period", "unlimited");
+                }
+                eventType.setAnnotations(eventTypeAnnotations);
+            }
         }
         if (eventType.getLabels() == null) {
             eventType.setLabels(original.getLabels());
