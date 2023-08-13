@@ -12,7 +12,6 @@ import org.apache.avro.Schema;
 import org.apache.avro.generic.GenericData;
 import org.apache.avro.generic.GenericDatumWriter;
 import org.apache.avro.io.EncoderFactory;
-import org.apache.commons.math3.stat.inference.TestUtils;
 import org.apache.http.HttpStatus;
 import org.joda.time.DateTime;
 import org.joda.time.DateTimeZone;
@@ -38,6 +37,7 @@ import org.zalando.nakadi.generated.avro.PublishingBatch;
 import org.zalando.nakadi.partitioning.PartitionStrategy;
 import org.zalando.nakadi.utils.EventTypeTestBuilder;
 import org.zalando.nakadi.utils.RandomSubscriptionBuilder;
+import org.zalando.nakadi.utils.TestUtils;
 import org.zalando.nakadi.view.PartitionCountView;
 import org.zalando.nakadi.view.SubscriptionCursor;
 import org.zalando.nakadi.view.TimelineView;
@@ -180,7 +180,8 @@ public class NakadiTestUtils {
                 toJsonArrayBytes(count, generator), JSON.toString(), null);
     }
 
-    private static byte[] toJsonArrayBytes(int count, IntFunction<String> generator) {
+    private static byte[] toJsonArrayBytes(final int count,
+                                           final IntFunction<String> generator) {
         return IntStream.range(0, count).
                 mapToObj(generator).
                 map(JSONObject::new).
@@ -188,7 +189,8 @@ public class NakadiTestUtils {
                 toString().getBytes();
     }
 
-    private static void executePost(String path, final byte[] payload, final String contentType, String consumerTagHeader) {
+    private static void executePost(final String path, final byte[] payload,
+                                    final String contentType, final String consumerTagHeader) {
         final var req = given()
                 .body(payload)
                 .contentType(contentType);
