@@ -101,7 +101,6 @@ dependencies {
     compile "org.apache.avro:avro:1.11.0"
     compile "com.fasterxml.jackson.dataformat:jackson-dataformat-avro:2.8.5"
 
-    https://github.com/facebook/zstd/releases/tag/v1.5.5
     compile 'com.github.luben:zstd-jni:1.5.5-5'
 
     // tests
