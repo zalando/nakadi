@@ -2943,7 +2943,7 @@ definitions:
             For more details about compaction implementation please read the documentation of Log Compaction in Kafka
             https://kafka.apache.org/documentation/#compaction, Nakadi currently relies on this implementation.
 
-          It's not possible to change the value of this field for existing event type.
+          For an existing event type, it is possible to change the value of this field only from `delete` to `compact_and_delete`.
 
       default_statistic:
         $ref: '#/definitions/EventTypeStatistics'
