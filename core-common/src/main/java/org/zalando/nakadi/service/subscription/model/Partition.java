@@ -36,7 +36,7 @@ public class Partition {
     @JsonProperty("state")
     private State state;
     @JsonProperty("failed_commits_count")
-    private Integer failedCommitsCount;
+    private int failedCommitsCount;
 
     public Partition() {
     }
@@ -54,8 +54,27 @@ public class Partition {
         this.state = state;
     }
 
+    public Partition(
+            final String eventType,
+            final String partition,
+            @Nullable final String session,
+            @Nullable final String nextSession,
+            final State state,
+            final int failedCommitsCount) {
+        this.eventType = eventType;
+        this.partition = partition;
+        this.session = session;
+        this.nextSession = nextSession;
+        this.state = state;
+        this.failedCommitsCount = failedCommitsCount;
+    }
+
     public Partition toState(final State state, @Nullable final String session, @Nullable final String nextSession) {
         return new Partition(eventType, partition, session, nextSession, state);
+    }
+
+    public Partition incFailedCommitsCount() {
+        return new Partition(eventType, partition, session, nextSession, state, failedCommitsCount + 1);
     }
 
     /**
@@ -136,7 +155,7 @@ public class Partition {
 
     @Override
     public String toString() {
-        return eventType + ":" + partition + "->" + state + ":" + session + "->" + nextSession;
+        return eventType + ":" + partition + "->" + state + ":" + session + "->" + nextSession + ":" + failedCommitsCount;
     }
 
     @Override
@@ -157,7 +176,10 @@ public class Partition {
 
     @Override
     public int hashCode() {
-
         return Objects.hash(eventType, partition);
+    }
+
+    public int getFailedCommitsCount() {
+        return failedCommitsCount;
     }
 }

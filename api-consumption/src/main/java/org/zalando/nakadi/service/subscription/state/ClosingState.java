@@ -11,6 +11,7 @@ import org.zalando.nakadi.service.subscription.zk.ZkSubscription;
 import org.zalando.nakadi.service.subscription.zk.ZkSubscriptionClient;
 import org.zalando.nakadi.view.SubscriptionCursorWithoutToken;
 
+import java.util.Arrays;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.HashMap;
@@ -62,7 +63,12 @@ class ClosingState extends State {
                 (System.currentTimeMillis() - lastCommitSupplier.getAsLong());
         uncommittedOffsets = uncommittedOffsetsSupplier.get();
         if (!uncommittedOffsets.isEmpty() && timeToWaitMillis > 0) {
-            scheduleTask(() -> switchState(new CleanupState()), timeToWaitMillis, TimeUnit.MILLISECONDS);
+            scheduleTask(() -> {
+                // commit timeout will be reached for the partitions, lets update topology with number of failed commits
+                updateFailedCommitsCount();
+                switchState(new CleanupState());
+            }, timeToWaitMillis, TimeUnit.MILLISECONDS);
+
             try {
                 topologyListener = getZk().subscribeForTopologyChanges(() -> addTask(this::onTopologyChanged));
             } catch (final Exception e) {
@@ -70,9 +76,29 @@ class ClosingState extends State {
                 return;
             }
             reactOnTopologyChange();
+        } else if (!uncommittedOffsets.isEmpty()) {
+            // commit timeout reached for these partitions, lets update topology with number of failed commits
+            updateFailedCommitsCount();
         } else {
             switchState(new CleanupState());
         }
+    }
+
+    private void updateFailedCommitsCount() {
+        getZk().updateTopology(topology -> {
+                    try {
+                        final Partition[] array = Arrays.stream(topology.getPartitions())
+                                .filter(p -> uncommittedOffsets.containsKey(
+                                        new EventTypePartition(p.getEventType(), p.getPartition())))
+                                .map(Partition::incFailedCommitsCount)
+                                .toArray(Partition[]::new);
+                        return array;
+                    } catch (RuntimeException re) {
+                        LOG.error("failed to increase failed commits count", re);
+                        throw re;
+                    }
+                }
+        );
     }
 
     private void onTopologyChanged() {

@@ -1,5 +1,7 @@
 package org.zalando.nakadi.service.subscription.state;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.zalando.nakadi.domain.EventTypePartition;
 import org.zalando.nakadi.exceptions.runtime.AccessDeniedException;
 import org.zalando.nakadi.exceptions.runtime.ConflictException;
@@ -9,11 +11,15 @@ import org.zalando.nakadi.service.SubscriptionInitializer;
 import org.zalando.nakadi.service.subscription.model.Partition;
 import org.zalando.nakadi.service.subscription.model.Session;
 
+import java.util.Arrays;
 import java.util.Collection;
 import java.util.List;
 import java.util.stream.Collectors;
 
 public class StartingState extends State {
+
+    private static final Logger LOG = LoggerFactory.getLogger(StartingState.class);
+
     @Override
     public void onEnter() {
         // 1. Check authorization
@@ -24,6 +30,12 @@ public class StartingState extends State {
             switchState(new CleanupState(e));
             return;
         }
+
+        Arrays.stream(getZk().getTopology().getPartitions())
+                .filter(p -> p.getFailedCommitsCount() > 0)
+                .map(p -> String.format("p%s %d ", p.getPartition(), p.getFailedCommitsCount()))
+                .forEach(LOG::error);
+
         registerSessionAndStartStreaming();
     }
 

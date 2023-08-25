@@ -171,8 +171,28 @@ class StreamingState extends State {
     }
 
     private void sendMetadata(final String metadata) {
+        final StringBuilder sb = new StringBuilder();
+        if (metadata != null) {
+            sb.append(metadata);
+        }
+
+        final Set<Partition> failedPartitions = Arrays.stream(getZk().getTopology().getPartitions())
+                .filter(p -> p.getFailedCommitsCount() > 0)
+                .collect(Collectors.toSet());
+
+        if (!failedPartitions.isEmpty()) {
+            sb.append(". Failed commit count");
+            failedPartitions.forEach(p -> sb.append(" p")
+                        .append(p.getPartition())
+                        .append(" failed ")
+                        .append(p.getFailedCommitsCount()).append(" time(s)"));
+            LOG.error(sb.toString());
+        } else {
+            LOG.error("No failed commits");
+        }
+
         offsets.entrySet().stream().findFirst()
-                .ifPresent(pk -> flushData(pk.getKey(), Collections.emptyList(), Optional.of(metadata)));
+                .ifPresent(pk -> flushData(pk.getKey(), Collections.emptyList(), Optional.of(sb.toString())));
     }
 
     private long getLastCommitMillis() {
