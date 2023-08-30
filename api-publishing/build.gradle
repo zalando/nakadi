@@ -23,14 +23,34 @@ dependencies {
     implementation project(':core-common')
     implementation project(':core-services')
 
-    testCompile 'org.hamcrest:hamcrest-all:1.3'
-    testCompile('org.junit.jupiter:junit-jupiter-api:5.5.2') {
-        exclude module: "hamcrest-core"
+    implementation "org.apache.avro:avro:1.11.0"
+    implementation "org.springframework:spring-web"
+    implementation 'com.google.guava:guava:30.1-jre'
+    implementation 'org.zalando:problem:0.22.0'
+    implementation 'org.zalando:problem-spring-web:0.23.0'
+    implementation "io.opentracing:opentracing-api:$opentracingVersion"
+    implementation "org.springframework.boot:spring-boot-starter-jetty"
+    implementation('org.springframework.boot:spring-boot-starter-security') {
+        exclude module: "logback-classic"
     }
-    testCompile "org.springframework:spring-test"
-    testCompile 'org.springframework.boot:spring-boot-test'
-    testCompile 'org.springframework.boot:spring-boot-starter-test'
-    testCompile project(path: ':core-common', configuration: 'testOutput')
+    implementation 'org.json:json:20180130'
+    implementation "org.zalando:nakadi-plugin-api:$nakadiPluginApiVersion"
+    implementation 'jakarta.annotation:jakarta.annotation-api:1.3.5'
+    implementation 'jakarta.servlet:jakarta.servlet-api:4.0.4'
+    implementation 'org.slf4j:slf4j-api:1.7.36'
+    implementation "org.springframework:spring-beans:$springframeworkVersion"
+    implementation "org.springframework:spring-context:$springframeworkVersion"
+
+    testImplementation 'org.hamcrest:hamcrest-all:1.3'
+    testImplementation "org.springframework:spring-test"
+    testImplementation 'org.springframework.boot:spring-boot-starter-test'
+    testImplementation 'com.vaadin.external.google:android-json:0.0.20131108.vaadin1'
+    testImplementation 'io.dropwizard.metrics:metrics-core:4.1.31'
+    testImplementation 'junit:junit:4.13.2'
+    testImplementation 'org.hamcrest:hamcrest:2.2'
+    testImplementation 'org.mockito:mockito-core:3.9.0'
+    testImplementation 'uk.co.datumedge:hamcrest-json:0.2'
+    testImplementation project(path: ':core-common', configuration: 'testOutput')
 }
 // end::dependencies[]
 

@@ -24,20 +24,49 @@ dependencies {
     implementation project(':core-services')
     implementation project(':core-metastore')
 
-    compile 'org.json:json:20180130'
+    implementation 'org.json:json:20180130'
+    implementation 'com.google.guava:guava:30.1-jre'
+    implementation 'commons-lang:commons-lang:2.6'
+    implementation "org.springframework:spring-beans:$springframeworkVersion"
+    implementation "org.springframework:spring-context:$springframeworkVersion"
+    implementation "org.springframework:spring-core:$springframeworkVersion"
+    implementation "org.springframework:spring-tx:$springframeworkVersion"
+    implementation "org.springframework:spring-web"
+    implementation("org.springframework.boot:spring-boot-starter-jdbc") {
+        exclude module: 'HikariCP'
+    }
+    implementation('com.github.everit-org.json-schema:org.everit.json.schema:1.8.0') {
+        exclude module: "json"
+    }
+    implementation "org.apache.avro:avro:1.11.0"
+    implementation "org.zalando:nakadi-plugin-api:$nakadiPluginApiVersion"
+    implementation 'org.zalando:problem:0.22.0'
+    implementation 'org.zalando:problem-spring-web:0.23.0'
+    implementation 'org.slf4j:slf4j-api:1.7.36'
+    implementation 'org.echocat.jomon:runtime:1.6.3'
+    implementation "io.opentracing:opentracing-api:$opentracingVersion"
+    implementation "org.springframework.boot:spring-boot-starter-validation"
+    implementation "com.fasterxml.jackson.core:jackson-annotations:$fasterXmlJacksonVersion"
+    implementation "com.fasterxml.jackson.core:jackson-core:$fasterXmlJacksonVersion"
+    implementation "com.fasterxml.jackson.core:jackson-databind:$fasterXmlJacksonDatabindVersion"
+    implementation 'com.google.code.findbugs:jsr305:3.0.2'
+    implementation 'jakarta.annotation:jakarta.annotation-api:1.3.5'
+    implementation 'jakarta.validation:jakarta.validation-api:2.0.2'
+    implementation 'javax.validation:validation-api:2.0.1.Final'
 
-    // validation
-    compile("org.springframework.boot:spring-boot-starter-validation")
-
-    testCompile 'org.hamcrest:hamcrest-all:1.3'
-    testCompile('org.junit.jupiter:junit-jupiter-api:5.5.2') {
+    testImplementation 'org.hamcrest:hamcrest-all:1.3'
+    testImplementation('org.junit.jupiter:junit-jupiter-api:5.5.2') {
         exclude module: "hamcrest-core"
     }
-    testCompile "org.springframework:spring-test"
-    testCompile 'org.springframework.boot:spring-boot-test'
-    testCompile 'org.springframework.boot:spring-boot-starter-test'
-    testCompile project(path: ':core-common', configuration: 'testOutput')
-    testCompile project(path: ':core-services', configuration: 'testOutput')
+    testImplementation "org.springframework:spring-test"
+    testImplementation 'org.springframework.boot:spring-boot-starter-test'
+    testImplementation 'com.vaadin.external.google:android-json:0.0.20131108.vaadin1'
+    testImplementation 'junit:junit:4.13.2'
+    testImplementation 'org.hamcrest:hamcrest:2.2'
+    testImplementation 'org.mockito:mockito-core:3.9.0'
+    testImplementation 'uk.co.datumedge:hamcrest-json:0.2'
+    testImplementation project(path: ':core-common', configuration: 'testOutput')
+    testImplementation project(path: ':core-services', configuration: 'testOutput')
 }
 
 bootJar {

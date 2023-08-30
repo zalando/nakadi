@@ -27,7 +27,7 @@ sourceSets {
 configurations {
     all*.exclude module: 'spring-boot-starter-logging'
     all*.exclude group: "com.vaadin.external.google", module: "android-json"
-    acceptanceTestCompile.extendsFrom testCompile
+    acceptanceTestImplementation.extendsFrom testImplementation
     acceptanceTestRuntime.extendsFrom testRuntime
 }
 
@@ -37,74 +37,35 @@ dependencies {
     ext['json-path'] = '2.4.0'
     ext['jsonassert'] = '1.5.0'
 
-    compile project(':core-common')
-    compile project(':core-metastore')
-    compile project(':core-services')
-    
-    compile "org.springframework.boot:spring-boot-starter-parent:${springBootVersion}"
-    compile project(':api-publishing')
-    compile project(':api-consumption')
-    compile project(':api-metastore')
-    compile project(':api-cursors')
-    compile project(':api-misc')
-    compile project(':app')
+    implementation project(':core-services')
+    implementation project(':api-metastore')
+    implementation project(':api-cursors')
 
     // spring
-    compile("org.springframework.boot:spring-boot-starter-web") {
+    implementation("org.springframework.boot:spring-boot-starter-web") {
         exclude module: 'logback-classic'
         exclude module: 'log4j-over-slf4j'
         exclude module: 'spring-boot-starter-tomcat'
     }
-    compile "org.springframework:spring-context"
-    compile "org.springframework:spring-web"
-    compile "org.springframework:spring-webmvc"
-    compile "org.springframework.boot:spring-boot-starter-jetty"
-
-    compile('org.springframework.boot:spring-boot-starter-security') {
+    implementation "org.springframework.boot:spring-boot-starter-jetty"
+    implementation "org.springframework.boot:spring-boot-starter-json"
+    implementation('org.springframework.boot:spring-boot-starter-security') {
         exclude module: "logback-classic"
     }
 
-    compile "org.apache.kafka:kafka-clients:$kafkaClientVersion"
-
-    compile 'org.slf4j:slf4j-log4j12'
-
-    compile "org.springframework.boot:spring-boot-starter-json"
-    compile 'org.zalando:jackson-datatype-problem:0.22.0'
-    compile 'org.zalando:problem:0.22.0'
-    compile 'org.json:json:20180130'
-
-    compile('org.zalando.stups:stups-spring-oauth2-server:1.0.24') {
-        exclude module: "httpclient"
-    }
+    runtimeOnly 'org.zalando:jackson-datatype-problem:0.22.0'
+    runtimeOnly "org.apache.kafka:kafka-clients:$kafkaClientVersion"
 
     // tests
-    testCompile 'org.hamcrest:hamcrest-all:1.3'
-    testCompile('org.junit.jupiter:junit-jupiter-api:5.5.2') {
-        exclude module: "hamcrest-core"
-    }
-    testCompile "org.springframework:spring-test"
-    testCompile 'org.springframework.boot:spring-boot-test'
-    testCompile 'org.springframework.boot:spring-boot-starter-test'
-    testCompile 'org.skyscreamer:jsonassert'
-    testCompile 'uk.co.datumedge:hamcrest-json:0.2'
-    testCompile('com.jayway.restassured:rest-assured:2.9.0') {
-        exclude module: "hamcrest-core"
-        exclude module: "hamcrest-library"
-    }
-    testCompile 'com.jayway.jsonpath:json-path'
-    testRuntime 'org.pegdown:pegdown:1.6.0'
-    testCompile project(path: ':core-common', configuration: 'testOutput')
-    testCompile project(path: ':core-services', configuration: 'testOutput')
+    testImplementation 'org.springframework.boot:spring-boot-starter-test'
+    testImplementation project(path: ':core-services', configuration: 'testOutput')
 
-    testCompile 'junit:junit:4.13.1'
+    testRuntimeOnly 'org.pegdown:pegdown:1.6.0'
 }
 
-task acceptanceTest(type: Test) {
+tasks.register("acceptanceTest", Test.class) {
     classpath = sourceSets.acceptanceTest.runtimeClasspath
     testClassesDirs = sourceSets.acceptanceTest.output.classesDirs
-}
-
-acceptanceTest {
     testLogging {
         events "passed", "skipped", "failed"
     }
