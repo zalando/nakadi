@@ -11,7 +11,10 @@ import org.junit.Ignore;
 import org.junit.Test;
 import org.mockito.Mockito;
 import org.zalando.nakadi.domain.ConsumedEvent;
+import org.zalando.nakadi.domain.NakadiCursor;
 import org.zalando.nakadi.domain.Subscription;
+import org.zalando.nakadi.domain.Timeline;
+import org.zalando.nakadi.domain.storage.Storage;
 import org.zalando.nakadi.exceptions.runtime.NakadiRuntimeException;
 import org.zalando.nakadi.generated.avro.Envelope;
 import org.zalando.nakadi.generated.avro.Metadata;
@@ -228,7 +231,7 @@ public class StreamingContextTest {
         final var deserializer = new KafkaRecordDeserializer(
                 new NakadiRecordMapper(mock(LocalSchemaRegistry.class)), schemaProvider);
 
-        final Schema schema = Schema.createRecord("Person", null, null, false);
+        final Schema schema = Schema.createRecord("Foo", null, null, false);
         schema.setFields(List.of(new Schema.Field("name", Schema.create(Schema.Type.STRING), null, null)));
 
         when(schemaProvider.getAvroSchema(incorrectEventTypeName, "1.0.0")).
@@ -248,8 +251,14 @@ public class StreamingContextTest {
         final String correctEvent = String.
                 format("{\"metadata\": {\"event_type\": \"%s\"}}", supportedEventTypeName);
 
+
+        final var cursor = NakadiCursor.of(Timeline.createTimeline(
+                supportedEventTypeName, 0, new Storage(null, Storage.Type.KAFKA), null, null),
+                        null, null);
         final Predicate<byte[]> isConsumptionBlocked =
-                bytes -> context.isConsumptionBlocked(new ConsumedEvent(bytes, null,0L, null, Collections.emptyMap()));
+                bytes -> context.isConsumptionBlocked(
+                        new ConsumedEvent(bytes, cursor, 0L, null, Collections.emptyMap()));
+
         Assert.assertEquals(true, isConsumptionBlocked.test(incorrectEvent.getBytes()));
         Assert.assertEquals(false, isConsumptionBlocked.test(correctEvent.getBytes()));
 
