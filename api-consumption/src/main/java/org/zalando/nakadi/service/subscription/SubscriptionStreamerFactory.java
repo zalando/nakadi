@@ -118,6 +118,7 @@ public class SubscriptionStreamerFactory {
                         subscription.getId(), streamParameters.getConsumingClient()))
                 .setCursorOperationsService(cursorOperationsService)
                 .setKafkaRecordDeserializer(kafkaRecordDeserializer)
+                .setEventTypeCache(eventTypeCache)
                 .build();
     }
 
