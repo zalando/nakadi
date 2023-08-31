@@ -50,6 +50,16 @@ public class KafkaRecordDeserializer implements RecordDeserializer {
         }
     }
 
+    public String getEventTypeName(final  byte[] data) {
+        if (data[0] == AVRO_V1_HEADER[0] && data[1] == AVRO_V1_HEADER[1]) {
+            final Envelope envelope = nakadiRecordMapper.fromBytesEnvelope(data);
+            return envelope.getMetadata().getEventType();
+        } else {
+            final JSONObject dataJson = new JSONObject(new String(data, StandardCharsets.UTF_8));
+            return dataJson.getJSONObject("metadata").getString("event_type");
+        }
+    }
+
     private byte[] deserializeToJsonBytes(final Envelope envelope) {
         try {
             final Metadata metadata = envelope.getMetadata();

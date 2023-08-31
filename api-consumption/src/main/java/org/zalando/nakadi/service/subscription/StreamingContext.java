@@ -12,6 +12,7 @@ import org.zalando.nakadi.domain.Subscription;
 import org.zalando.nakadi.exceptions.runtime.AccessDeniedException;
 import org.zalando.nakadi.exceptions.runtime.NakadiRuntimeException;
 import org.zalando.nakadi.exceptions.runtime.RebalanceConflictException;
+import org.zalando.nakadi.repository.kafka.KafkaRecordDeserializer;
 import org.zalando.nakadi.service.AuthorizationValidator;
 import org.zalando.nakadi.service.ConsumptionKpiCollector;
 import org.zalando.nakadi.service.CursorConverter;
@@ -76,6 +77,7 @@ public class StreamingContext implements SubscriptionStreamer {
     private Closeable authorizationCheckSubscription;
     private boolean sessionRegistered;
     private boolean zkClientClosed;
+    private KafkaRecordDeserializer kafkaRecordDeserializer;
 
     private static final Logger LOG = LoggerFactory.getLogger(StreamingContext.class);
 
@@ -102,6 +104,7 @@ public class StreamingContext implements SubscriptionStreamer {
         this.streamMemoryLimitBytes = builder.streamMemoryLimitBytes;
         this.cursorOperationsService = builder.cursorOperationsService;
         this.kpiCollector = builder.kpiCollector;
+        this.kafkaRecordDeserializer = builder.kafkaRecordDeserializer;
     }
 
     public ConsumptionKpiCollector getKpiCollector() {
@@ -277,10 +280,17 @@ public class StreamingContext implements SubscriptionStreamer {
     }
 
     public boolean isConsumptionBlocked(final ConsumedEvent event) {
+        final var metadataEventTypeName = kafkaRecordDeserializer.getEventTypeName(event.getEvent());
+        if(!subscription.getEventTypes().contains(metadataEventTypeName)){
+            LOG.warn("Found unexpected event for event type: {} " +
+                            "but expected one of {} having offset {}.",
+                    metadataEventTypeName, subscription.getEventTypes(), event.getPosition() );
+            return true;
+        }
+
         if (event.getConsumerTags().isEmpty()) {
             return eventStreamChecks.isConsumptionBlocked(event);
         }
-
         return !checkConsumptionAllowedFromConsumerTags(event)
                 || eventStreamChecks.isConsumptionBlocked(event);
     }
@@ -374,6 +384,13 @@ public class StreamingContext implements SubscriptionStreamer {
         private CursorOperationsService cursorOperationsService;
         private long streamMemoryLimitBytes;
         private ConsumptionKpiCollector kpiCollector;
+
+        private KafkaRecordDeserializer kafkaRecordDeserializer;
+
+        public Builder setKafkaRecordDeserializer(final KafkaRecordDeserializer kafkaRecordDeserializer){
+           this.kafkaRecordDeserializer = kafkaRecordDeserializer;
+           return this;
+        }
 
         public Builder setOut(final SubscriptionOutput out) {
             this.out = out;
