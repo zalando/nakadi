@@ -247,9 +247,9 @@ public class StreamingContextTest {
                 .build();
 
         final String incorrectEvent = String.
-                format("{\"metadata\": {\"event_type\": \"%s\"}}", incorrectEventTypeName);
+                format("{\"metadata\": {\"event_type\": \"%s\"}, \"foo\": \"bar\"}", incorrectEventTypeName);
         final String correctEvent = String.
-                format("{\"metadata\": {\"event_type\": \"%s\"}}", supportedEventTypeName);
+                format("{\"metadata\": {\"event_type\": \"%s\"}, \"foo\": \"bar\"}", supportedEventTypeName);
 
 
         final var cursor = NakadiCursor.of(Timeline.createTimeline(

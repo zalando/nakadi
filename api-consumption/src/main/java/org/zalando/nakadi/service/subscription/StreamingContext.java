@@ -280,14 +280,21 @@ public class StreamingContext implements SubscriptionStreamer {
     }
 
     public boolean isConsumptionBlocked(final ConsumedEvent event) {
-        final var metadataEventTypeName = kafkaRecordDeserializer.getEventTypeName(event.getEvent());
-        if(!event.getPosition().getEventType().contains(metadataEventTypeName)){
-            LOG.warn("Found unexpected event for event type: {} " +
-                            "but expected {} having offset {}. Event timestamp: {}, Source topic:  {}",
-                    metadataEventTypeName, event.getPosition().getEventType(), event.getPosition(),
-                    event.getTimestamp(),
-                    event.getPosition().getTimeline().getEventType());
-            return true;
+
+        try {
+            final String metadataEventTypeName = kafkaRecordDeserializer.getEventTypeName(event.getEvent());
+            if(!event.getPosition().getEventType().contains(metadataEventTypeName)){
+                LOG.warn("Found unexpected event for event type: {} " +
+                                "but expected {} having offset {}. Event timestamp: {}, Source topic:  {}",
+                        metadataEventTypeName, event.getPosition().getEventType(), event.getPosition(),
+                        event.getTimestamp(),
+                        event.getPosition().getTimeline().getEventType());
+                return true;
+            }
+        } catch (final IOException e) {
+            //this case shouldnt happen
+            LOG.error("Failed to parse metadata", e);
+            return false;
         }
 
         if (event.getConsumerTags().isEmpty()) {
