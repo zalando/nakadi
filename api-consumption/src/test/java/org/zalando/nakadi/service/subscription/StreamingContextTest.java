@@ -10,7 +10,10 @@ import org.junit.Assert;
 import org.junit.Ignore;
 import org.junit.Test;
 import org.mockito.Mockito;
+import org.zalando.nakadi.cache.EventTypeCache;
 import org.zalando.nakadi.domain.ConsumedEvent;
+import org.zalando.nakadi.domain.EventCategory;
+import org.zalando.nakadi.domain.EventType;
 import org.zalando.nakadi.domain.NakadiCursor;
 import org.zalando.nakadi.domain.Subscription;
 import org.zalando.nakadi.domain.Timeline;
@@ -45,6 +48,7 @@ import java.util.function.Predicate;
 
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.doNothing;
 import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.mock;
@@ -226,8 +230,12 @@ public class StreamingContextTest {
         final var supportedEventTypeName = "correct_event_type";
         final var subscription = new Subscription();
         subscription.setEventTypes(Set.of(supportedEventTypeName));
+        final var et = new EventType();
+        et.setCategory(EventCategory.BUSINESS);
+
         final var eventStreamCheck = mock(EventStreamChecks.class);
         final var schemaProvider = mock(SchemaProviderService.class);
+        final var etCache = mock(EventTypeCache.class);
         final var deserializer = new KafkaRecordDeserializer(
                 new NakadiRecordMapper(mock(LocalSchemaRegistry.class)), schemaProvider);
 
@@ -238,11 +246,13 @@ public class StreamingContextTest {
                 thenReturn(schema);
         when(eventStreamCheck.isConsumptionBlocked(any())).
                 thenReturn(false);
+        when(etCache.getEventType(eq(supportedEventTypeName))).thenReturn(et);
 
         final StreamingContext context = new StreamingContext.Builder()
                 .setSubscription(subscription)
                 .setEventStreamChecks(eventStreamCheck)
                 .setKafkaRecordDeserializer(deserializer)
+                .setEventTypeCache(etCache)
                 .setKafkaPollTimeout(0)
                 .build();
 

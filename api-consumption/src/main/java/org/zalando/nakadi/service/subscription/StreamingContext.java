@@ -284,7 +284,6 @@ public class StreamingContext implements SubscriptionStreamer {
     }
 
     public boolean isConsumptionBlocked(final ConsumedEvent event) {
-
         final var actualEventType = event.getPosition().getEventType();
         if(eventTypeCache.getEventType(actualEventType).getCategory() != EventCategory.UNDEFINED) {
             try {
