@@ -14,6 +14,7 @@ import org.zalando.nakadi.cache.EventTypeCache;
 import org.zalando.nakadi.domain.ConsumedEvent;
 import org.zalando.nakadi.domain.EventCategory;
 import org.zalando.nakadi.domain.EventType;
+import org.zalando.nakadi.domain.Feature;
 import org.zalando.nakadi.domain.NakadiCursor;
 import org.zalando.nakadi.domain.Subscription;
 import org.zalando.nakadi.domain.Timeline;
@@ -24,6 +25,7 @@ import org.zalando.nakadi.generated.avro.Metadata;
 import org.zalando.nakadi.mapper.NakadiRecordMapper;
 import org.zalando.nakadi.repository.kafka.KafkaRecordDeserializer;
 import org.zalando.nakadi.service.EventStreamChecks;
+import org.zalando.nakadi.service.FeatureToggleService;
 import org.zalando.nakadi.service.LocalSchemaRegistry;
 import org.zalando.nakadi.service.SchemaProviderService;
 import org.zalando.nakadi.service.subscription.model.Session;
@@ -235,6 +237,7 @@ public class StreamingContextTest {
 
         final var eventStreamCheck = mock(EventStreamChecks.class);
         final var schemaProvider = mock(SchemaProviderService.class);
+        final var featureToggleService = mock(FeatureToggleService.class);
         final var etCache = mock(EventTypeCache.class);
         final var deserializer = new KafkaRecordDeserializer(
                 new NakadiRecordMapper(mock(LocalSchemaRegistry.class)), schemaProvider);
@@ -247,6 +250,7 @@ public class StreamingContextTest {
         when(eventStreamCheck.isConsumptionBlocked(any())).
                 thenReturn(false);
         when(etCache.getEventType(eq(supportedEventTypeName))).thenReturn(et);
+        when(featureToggleService.isFeatureEnabled(Feature.SKIP_MISPLACED_EVENTS)).thenReturn(true);
 
         final StreamingContext context = new StreamingContext.Builder()
                 .setSubscription(subscription)
@@ -254,6 +258,7 @@ public class StreamingContextTest {
                 .setKafkaRecordDeserializer(deserializer)
                 .setEventTypeCache(etCache)
                 .setKafkaPollTimeout(0)
+                .setFeatureToggleService(featureToggleService)
                 .build();
 
         final String incorrectEvent = String.

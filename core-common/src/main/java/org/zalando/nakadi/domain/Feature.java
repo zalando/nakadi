@@ -19,6 +19,7 @@ public enum Feature {
     TOKEN_SUBSCRIPTIONS_ITERATION("token_subscription_iteration"),
     RETURN_BODY_ON_CREATE_UPDATE_EVENT_TYPE("return_body_on_create_update_event_type"),
     VALIDATE_SUBSCRIPTION_OWNING_APPLICATION("validate_subscription_owning_app"),
+    SKIP_MISPLACED_EVENTS("skip_misplaced_events"),
     VALIDATE_EVENT_TYPE_OWNING_APPLICATION("validate_event_type_owning_app");
 
     private final String id;
