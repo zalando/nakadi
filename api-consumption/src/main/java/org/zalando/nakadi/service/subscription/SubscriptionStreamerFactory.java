@@ -19,6 +19,7 @@ import org.zalando.nakadi.service.CursorTokenService;
 import org.zalando.nakadi.service.EventStreamChecks;
 import org.zalando.nakadi.service.EventStreamWriterFactory;
 import org.zalando.nakadi.service.EventTypeChangeListener;
+import org.zalando.nakadi.service.FeatureToggleService;
 import org.zalando.nakadi.service.NakadiCursorComparator;
 import org.zalando.nakadi.service.subscription.model.Session;
 import org.zalando.nakadi.service.subscription.zk.SubscriptionClientFactory;
@@ -48,6 +49,7 @@ public class SubscriptionStreamerFactory {
     private final long streamMemoryLimitBytes;
     private final ConsumptionKpiCollectorFactory consumptionKpiCollectorFactory;
     private final KafkaRecordDeserializer kafkaRecordDeserializer;
+    private final FeatureToggleService featureToggleService;
 
     @Autowired
     public SubscriptionStreamerFactory(
@@ -65,7 +67,9 @@ public class SubscriptionStreamerFactory {
             final EventStreamChecks eventStreamChecks,
             @Value("${nakadi.subscription.maxStreamMemoryBytes}") final long streamMemoryLimitBytes,
             final ConsumptionKpiCollectorFactory consumptionKpiCollectorFactory,
-            final KafkaRecordDeserializer kafkaRecordDeserializer) {
+            final KafkaRecordDeserializer kafkaRecordDeserializer,
+            final FeatureToggleService featureToggleService
+    ) {
         this.timelineService = timelineService;
         this.cursorTokenService = cursorTokenService;
         this.objectMapper = objectMapper;
@@ -81,6 +85,7 @@ public class SubscriptionStreamerFactory {
         this.streamMemoryLimitBytes = streamMemoryLimitBytes;
         this.consumptionKpiCollectorFactory = consumptionKpiCollectorFactory;
         this.kafkaRecordDeserializer = kafkaRecordDeserializer;
+        this.featureToggleService = featureToggleService;
     }
 
     public SubscriptionStreamer build(
@@ -119,6 +124,7 @@ public class SubscriptionStreamerFactory {
                 .setCursorOperationsService(cursorOperationsService)
                 .setKafkaRecordDeserializer(kafkaRecordDeserializer)
                 .setEventTypeCache(eventTypeCache)
+                .setFeatureToggleService(featureToggleService)
                 .build();
     }
 
