@@ -302,22 +302,20 @@ public class StreamingContext implements SubscriptionStreamer {
     }
 
     private boolean isMisplacedEvent(final ConsumedEvent event) {
-        final var actualEventType = event.getPosition().getEventType();
-        if (eventTypeCache.getEventType(actualEventType).getCategory() != EventCategory.UNDEFINED) {
+        final String expectedEventTypeName = event.getPosition().getEventType();
+        if (eventTypeCache.getEventType(expectedEventTypeName).getCategory() != EventCategory.UNDEFINED) {
             try {
-                final String metadataEventTypeName = kafkaRecordDeserializer.getEventTypeName(event.getEvent());
-                if (!actualEventType.contains(metadataEventTypeName)) {
-                    LOG.warn("Found unexpected event for event type: {} " +
-                                    "but expected {} having offset {}. Event timestamp: {}, Source topic:  {}",
-                            metadataEventTypeName, event.getPosition().getEventType(), event.getPosition(),
-                            event.getTimestamp(),
-                            event.getPosition().getTimeline().getEventType());
+                final String actualEventTypeName = kafkaRecordDeserializer.getEventTypeName(event.getEvent());
+                if (!expectedEventTypeName.equals(actualEventTypeName)) {
+                    LOG.warn("Consumed event for event type '{}', but expected '{}' (at position {})",
+                            actualEventTypeName, expectedEventTypeName, event.getPosition());
                     return true;
                 }
             } catch (final IOException e) {
-                //this case shouldn't happen
-                LOG.error("Failed to parse metadata", e);
-                return false;
+                throw new NakadiRuntimeException(
+                        String.format("Failed to parse metadata to check for misplaced event in '%s' at position %s",
+                                expectedEventTypeName, event.getPosition()),
+                        e);
             }
         }
         return false;
