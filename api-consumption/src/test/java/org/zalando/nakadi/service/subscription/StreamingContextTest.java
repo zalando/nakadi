@@ -262,6 +262,7 @@ public class StreamingContextTest {
                 .build();
 
         final String noMetadataEvent = "{}";
+        final String noEventTypeEvent = "{\"metadata\": {}}";
         final String incorrectEvent = String.
                 format("{\"metadata\": {\"event_type\": \"%s\"}, \"foo\": \"bar\"}", incorrectEventTypeName);
         final String correctEvent = String.
@@ -275,6 +276,7 @@ public class StreamingContextTest {
                         new ConsumedEvent(bytes, cursor, 0L, null, Collections.emptyMap()));
 
         Assert.assertEquals(true, isConsumptionBlocked.test(noMetadataEvent.getBytes()));
+        Assert.assertEquals(true, isConsumptionBlocked.test(noEventTypeEvent.getBytes()));
         Assert.assertEquals(true, isConsumptionBlocked.test(incorrectEvent.getBytes()));
         Assert.assertEquals(false, isConsumptionBlocked.test(correctEvent.getBytes()));
 

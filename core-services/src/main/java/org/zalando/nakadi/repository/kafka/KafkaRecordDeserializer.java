@@ -62,7 +62,14 @@ public class KafkaRecordDeserializer implements RecordDeserializer {
             return envelope.getMetadata().getEventType();
         } else {
             final MetadataHolder metadataHolder = OBJECT_MAPPER.readValue(data, MetadataHolder.class);
-            return metadataHolder.metadata == null ? null : metadataHolder.metadata.get("event_type").asText();
+            if (metadataHolder.metadata == null) {
+                return null;
+            }
+            final JsonNode eventTypeNode = metadataHolder.metadata.get("event_type");
+            if (eventTypeNode == null) {
+                return null;
+            }
+            return eventTypeNode.asText();
         }
     }
 
