@@ -261,11 +261,11 @@ public class StreamingContextTest {
                 .setFeatureToggleService(featureToggleService)
                 .build();
 
+        final String noMetadataEvent = "{}";
         final String incorrectEvent = String.
                 format("{\"metadata\": {\"event_type\": \"%s\"}, \"foo\": \"bar\"}", incorrectEventTypeName);
         final String correctEvent = String.
                 format("{\"metadata\": {\"event_type\": \"%s\"}, \"foo\": \"bar\"}", supportedEventTypeName);
-
 
         final var cursor = NakadiCursor.of(Timeline.createTimeline(
                 supportedEventTypeName, 0, new Storage(null, Storage.Type.KAFKA), null, null),
@@ -274,9 +274,9 @@ public class StreamingContextTest {
                 bytes -> context.isConsumptionBlocked(
                         new ConsumedEvent(bytes, cursor, 0L, null, Collections.emptyMap()));
 
+        Assert.assertEquals(true, isConsumptionBlocked.test(noMetadataEvent.getBytes()));
         Assert.assertEquals(true, isConsumptionBlocked.test(incorrectEvent.getBytes()));
         Assert.assertEquals(false, isConsumptionBlocked.test(correctEvent.getBytes()));
-
 
         final var incorrectRecord = getAvroRecordBytes(incorrectEventTypeName, schema);
         final var correctRecord = getAvroRecordBytes(supportedEventTypeName, schema);

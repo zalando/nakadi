@@ -61,8 +61,8 @@ public class KafkaRecordDeserializer implements RecordDeserializer {
             final Envelope envelope = nakadiRecordMapper.fromBytesEnvelope(data);
             return envelope.getMetadata().getEventType();
         } else {
-            return OBJECT_MAPPER.readValue(data, MetadataHolder.class).
-                    metadata.get("event_type").asText();
+            final MetadataHolder metadataHolder = OBJECT_MAPPER.readValue(data, MetadataHolder.class);
+            return metadataHolder.metadata == null ? null : metadataHolder.metadata.get("event_type").asText();
         }
     }
 
