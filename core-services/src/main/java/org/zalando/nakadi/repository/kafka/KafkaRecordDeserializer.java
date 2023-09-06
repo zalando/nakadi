@@ -1,5 +1,9 @@
 package org.zalando.nakadi.repository.kafka;
 
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
+import com.fasterxml.jackson.annotation.JsonSetter;
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import org.apache.avro.Schema;
 import org.apache.avro.generic.GenericData;
 import org.apache.avro.generic.GenericRecord;
@@ -30,6 +34,8 @@ public class KafkaRecordDeserializer implements RecordDeserializer {
     private final SchemaProviderService schemaService;
     private final NakadiRecordMapper nakadiRecordMapper;
 
+    private static final ObjectMapper OBJECT_MAPPER = new ObjectMapper();
+
     public KafkaRecordDeserializer(final NakadiRecordMapper nakadiRecordMapper,
                                    final SchemaProviderService schemaService) {
         this.nakadiRecordMapper = nakadiRecordMapper;
@@ -47,6 +53,23 @@ public class KafkaRecordDeserializer implements RecordDeserializer {
         } else {
             // then it should be JSON
             return data;
+        }
+    }
+
+    public String getEventTypeName(final  byte[] data) throws IOException {
+        if (data[0] == AVRO_V1_HEADER[0] && data[1] == AVRO_V1_HEADER[1]) {
+            final Envelope envelope = nakadiRecordMapper.fromBytesEnvelope(data);
+            return envelope.getMetadata().getEventType();
+        } else {
+            final MetadataHolder metadataHolder = OBJECT_MAPPER.readValue(data, MetadataHolder.class);
+            if (metadataHolder.metadata == null) {
+                return null;
+            }
+            final JsonNode eventTypeNode = metadataHolder.metadata.get("event_type");
+            if (eventTypeNode == null) {
+                return null;
+            }
+            return eventTypeNode.asText();
         }
     }
 
@@ -92,5 +115,11 @@ public class KafkaRecordDeserializer implements RecordDeserializer {
             }
         }
         return metadataObj;
+    }
+
+    @JsonIgnoreProperties(ignoreUnknown = true)
+    private static class MetadataHolder {
+        @JsonSetter("metadata")
+        private JsonNode metadata;
     }
 }
