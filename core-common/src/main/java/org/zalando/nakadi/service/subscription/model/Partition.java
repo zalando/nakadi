@@ -70,7 +70,8 @@ public class Partition {
     }
 
     public Partition toState(final State state, @Nullable final String session, @Nullable final String nextSession) {
-        return new Partition(eventType, partition, session, nextSession, state);
+//        return new Partition(eventType, partition, session, nextSession, state);
+        return new Partition(eventType, partition, session, nextSession, state, failedCommitsCount);
     }
 
     public Partition incFailedCommitsCount() {

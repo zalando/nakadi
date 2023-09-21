@@ -79,6 +79,7 @@ class ClosingState extends State {
         } else if (!uncommittedOffsets.isEmpty()) {
             // commit timeout reached for these partitions, lets update topology with number of failed commits
             updateFailedCommitsCount();
+            switchState(new CleanupState());
         } else {
             switchState(new CleanupState());
         }

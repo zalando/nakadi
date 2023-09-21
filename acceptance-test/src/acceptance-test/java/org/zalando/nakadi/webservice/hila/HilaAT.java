@@ -595,4 +595,26 @@ public class HilaAT extends BaseAT {
         });
 
     }
+
+    @Test(timeout = 10000)
+    public void whenCommitsFailedPrintFailedCommitsNumber() throws Exception {
+        final TestStreamingClient client = TestStreamingClient
+                .create(URL, subscription.getId(), "")
+                .start();
+
+        publishEvents(eventType.getName(), 50, i -> "{\"foo\":\"bar\"}");
+
+        Thread.sleep(6000);
+
+        System.out.println(client.getJsonBatches().get(0).getMetadata().getDebug());
+        client.close();
+
+        final TestStreamingClient client2 = TestStreamingClient
+                .create(URL, subscription.getId(), "")
+                .start();
+
+        Thread.sleep(2000);
+        System.out.println(client2.getJsonBatches().get(0).getMetadata().getDebug());
+        client2.close();
+    }
 }

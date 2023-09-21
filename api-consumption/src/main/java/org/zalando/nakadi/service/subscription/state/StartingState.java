@@ -31,12 +31,12 @@ public class StartingState extends State {
             return;
         }
 
+        registerSessionAndStartStreaming();
+
         Arrays.stream(getZk().getTopology().getPartitions())
                 .filter(p -> p.getFailedCommitsCount() > 0)
                 .map(p -> String.format("p%s %d ", p.getPartition(), p.getFailedCommitsCount()))
                 .forEach(LOG::error);
-
-        registerSessionAndStartStreaming();
     }
 
     /**

@@ -49,6 +49,7 @@ hs_err_pid*
 ## File-based project format:
 *.ipr
 *.iws
+.vscode/
 
 ## Plugin-specific files:
 
@@ -82,7 +83,7 @@ kafka-src
 .project
 *.swp
 .settings
-/bin/
+bin/
 scm-source.json
 
 *.code-workspace

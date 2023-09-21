@@ -3,14 +3,10 @@ package org.zalando.nakadi.service.subscription.state;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.zalando.nakadi.service.subscription.StreamingContext;
-import org.zalando.nakadi.service.subscription.model.Partition;
-import org.zalando.nakadi.service.subscription.zk.ZkSubscriptionClient;
 
 import javax.annotation.Nullable;
 import java.io.IOException;
 import java.util.Arrays;
-import java.util.Set;
-import java.util.stream.Collectors;
 
 public class CleanupState extends State {
     private static final Logger LOG = LoggerFactory.getLogger(CleanupState.class);

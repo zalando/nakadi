@@ -182,7 +182,7 @@ public class StreamingContext implements SubscriptionStreamer {
                 LOG.warn("Failed to process task " + task + ", will rethrow original error");
                 switchStateImmediately(new CleanupState(ex.getException()));
             } catch (final RuntimeException ex) {
-                LOG.warn("Failed to process task " + task + ", code carefully!");
+                LOG.warn("Failed to process task " + task + ", code carefully!", ex);
                 switchStateImmediately(new CleanupState(ex));
             }
         }

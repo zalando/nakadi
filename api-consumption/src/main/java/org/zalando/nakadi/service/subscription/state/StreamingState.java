@@ -171,28 +171,8 @@ class StreamingState extends State {
     }
 
     private void sendMetadata(final String metadata) {
-        final StringBuilder sb = new StringBuilder();
-        if (metadata != null) {
-            sb.append(metadata);
-        }
-
-        final Set<Partition> failedPartitions = Arrays.stream(getZk().getTopology().getPartitions())
-                .filter(p -> p.getFailedCommitsCount() > 0)
-                .collect(Collectors.toSet());
-
-        if (!failedPartitions.isEmpty()) {
-            sb.append(". Failed commit count");
-            failedPartitions.forEach(p -> sb.append(" p")
-                        .append(p.getPartition())
-                        .append(" failed ")
-                        .append(p.getFailedCommitsCount()).append(" time(s)"));
-            LOG.error(sb.toString());
-        } else {
-            LOG.error("No failed commits");
-        }
-
         offsets.entrySet().stream().findFirst()
-                .ifPresent(pk -> flushData(pk.getKey(), Collections.emptyList(), Optional.of(sb.toString())));
+                .ifPresent(pk -> flushData(pk.getKey(), Collections.emptyList(), Optional.of(metadata)));
     }
 
     private long getLastCommitMillis() {
@@ -344,7 +324,22 @@ class StreamingState extends State {
         }
 
         if (batchesSent == 0) {
-            return Optional.of("Stream started");
+            final StringBuilder sb = new StringBuilder();
+            sb.append("Stream started. Failed commits: ");
+
+            final String failedCommitsPartitions = Arrays.stream(getZk().getTopology().getPartitions())
+                    .filter(p -> p.getFailedCommitsCount() > 0)
+                    .map(Partition::toString)
+                    .collect(Collectors.joining(" "));
+
+            if (failedCommitsPartitions != null && !failedCommitsPartitions.isEmpty()) {
+                sb.append(failedCommitsPartitions);
+                LOG.error(failedCommitsPartitions);
+            } else {
+                LOG.error("No failed commits");
+            }
+
+            return Optional.of(sb.toString());
         }
 
         return Optional.empty();
