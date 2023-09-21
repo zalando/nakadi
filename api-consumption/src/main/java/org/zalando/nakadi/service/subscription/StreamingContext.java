@@ -77,6 +77,7 @@ public class StreamingContext implements SubscriptionStreamer {
     private boolean zkClientClosed;
 
     private static final Logger LOG = LoggerFactory.getLogger(StreamingContext.class);
+    private boolean lookingForDeadLetter;
 
     private StreamingContext(final Builder builder) {
         this.out = builder.out;
@@ -337,6 +338,10 @@ public class StreamingContext implements SubscriptionStreamer {
 
     public long getStreamMemoryLimitBytes() {
         return streamMemoryLimitBytes;
+    }
+
+    public void setLookingForDeadLetter(final boolean lookingForDeadLetter) {
+        this.lookingForDeadLetter = lookingForDeadLetter;
     }
 
     public static final class Builder {

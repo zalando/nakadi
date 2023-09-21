@@ -50,6 +50,7 @@ class StreamingState extends State {
     // The reasons for that if there are two partitions (p0, p1) and p0 is reassigned, if p1 is working
     // correctly, and p0 is not receiving any updates - reassignment won't complete.
     private final Map<EventTypePartition, Long> releasingPartitions = new HashMap<>();
+    private final boolean shouldLookForDeadLetters;
     private ZkSubscription<ZkSubscriptionClient.Topology> topologyChangeSubscription;
     private HighLevelConsumer eventConsumer;
     private boolean pollPaused;
@@ -73,6 +74,10 @@ class StreamingState extends State {
     private long lastCommitMillis;
 
     private static final long AUTOCOMMIT_INTERVAL_SECONDS = 5;
+
+    public StreamingState(boolean shouldLookForDeadLetters) {
+        this.shouldLookForDeadLetters = shouldLookForDeadLetters;
+    }
 
     /**
      * 1. Collects names and prepares to send metrics for bytes streamed
@@ -233,8 +238,16 @@ class StreamingState extends State {
 
     private long getMessagesAllowedToSend() {
         final long unconfirmed = offsets.values().stream().mapToLong(PartitionData::getUnconfirmed).sum();
-        final long limit = getParameters().maxUncommittedMessages - unconfirmed;
+        final long limit = getMaxUncommittedMessages() - unconfirmed;
         return getParameters().getMessagesAllowedToSend(limit, this.sentEvents);
+    }
+
+    private int getMaxUncommittedMessages() {
+        if (shouldLookForDeadLetters) {
+            return 1;
+        }
+
+        return getParameters().maxUncommittedMessages;
     }
 
     private void checkBatchTimeouts() {
@@ -264,7 +277,7 @@ class StreamingState extends State {
             List<ConsumedEvent> toSend;
             while (null != (toSend = e.getValue().takeEventsToStream(
                     currentTimeMillis,
-                    Math.min(getParameters().batchLimitEvents, messagesAllowedToSend),
+                    Math.min(getBatchLimitEvents(), messagesAllowedToSend),
                     getParameters().batchTimeoutMillis,
                     streamTimeoutReached))) {
                 sentSomething |= !toSend.isEmpty();
@@ -312,6 +325,14 @@ class StreamingState extends State {
                         .mapToInt(PartitionData::getKeepAliveInARow))) {
             shutdownGracefully("All partitions reached keepAlive limit");
         }
+    }
+
+    private int getBatchLimitEvents() {
+        if (shouldLookForDeadLetters) {
+            return 1;
+        }
+
+        return getParameters().batchLimitEvents;
     }
 
     private Optional<String> getDebugMessage(final Map.Entry<EventTypePartition, PartitionData> entry) {

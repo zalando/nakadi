@@ -91,7 +91,7 @@ class ClosingState extends State {
                         final Partition[] array = Arrays.stream(topology.getPartitions())
                                 .filter(p -> uncommittedOffsets.containsKey(
                                         new EventTypePartition(p.getEventType(), p.getPartition())))
-                                .map(Partition::incFailedCommitsCount)
+                                .map(Partition::toPartitionWithIncFailedCommits)
                                 .toArray(Partition[]::new);
                         return array;
                     } catch (RuntimeException re) {

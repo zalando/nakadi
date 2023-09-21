@@ -13,7 +13,6 @@ public class Partition {
         UNASSIGNED("unassigned"),
         REASSIGNING("reassigning"),
         ASSIGNED("assigned");
-
         private final String description;
 
         State(final String description) {
@@ -35,8 +34,11 @@ public class Partition {
     private String nextSession;
     @JsonProperty("state")
     private State state;
+    // todo create data struct
     @JsonProperty("failed_commits_count")
     private int failedCommitsCount;
+    @JsonProperty("looking_dead_letter")
+    private boolean lookingDeadLetter;
 
     public Partition() {
     }
@@ -60,22 +62,28 @@ public class Partition {
             @Nullable final String session,
             @Nullable final String nextSession,
             final State state,
-            final int failedCommitsCount) {
+            final int failedCommitsCount,
+            final boolean lookingDeadLetter) {
         this.eventType = eventType;
         this.partition = partition;
         this.session = session;
         this.nextSession = nextSession;
         this.state = state;
         this.failedCommitsCount = failedCommitsCount;
+        this.lookingDeadLetter = lookingDeadLetter;
     }
 
     public Partition toState(final State state, @Nullable final String session, @Nullable final String nextSession) {
 //        return new Partition(eventType, partition, session, nextSession, state);
-        return new Partition(eventType, partition, session, nextSession, state, failedCommitsCount);
+        return new Partition(eventType, partition, session, nextSession, state, failedCommitsCount, lookingDeadLetter);
     }
 
-    public Partition incFailedCommitsCount() {
-        return new Partition(eventType, partition, session, nextSession, state, failedCommitsCount + 1);
+    public Partition toPartitionWithIncFailedCommits() {
+        return new Partition(eventType, partition, session, nextSession, state, failedCommitsCount + 1, lookingDeadLetter);
+    }
+
+    public Partition toLookingDeadLetter(final boolean lookingDeadLetter, final int failedCommitsCount) {
+        return new Partition(eventType, partition, session, nextSession, state, failedCommitsCount, lookingDeadLetter);
     }
 
     /**
@@ -182,5 +190,9 @@ public class Partition {
 
     public int getFailedCommitsCount() {
         return failedCommitsCount;
+    }
+
+    public boolean isLookingDeadLetter() {
+        return lookingDeadLetter;
     }
 }
