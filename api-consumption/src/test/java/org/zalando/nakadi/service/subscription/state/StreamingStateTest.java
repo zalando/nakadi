@@ -39,6 +39,7 @@ import org.zalando.nakadi.view.SubscriptionCursorWithoutToken;
 import java.util.Collections;
 import java.util.Comparator;
 import java.util.Date;
+import java.util.Map;
 
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.any;
@@ -76,7 +77,7 @@ public class StreamingStateTest {
     public void prepareMocks() throws Exception {
         MockitoAnnotations.initMocks(this);
 
-        state = new StreamingState(false);
+        state = new StreamingState(Map.of());
 
         when(timelineService.createEventConsumer(Mockito.any())).thenReturn(eventConsumer);
 

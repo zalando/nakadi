@@ -74,12 +74,15 @@ public class Partition {
     }
 
     public Partition toState(final State state, @Nullable final String session, @Nullable final String nextSession) {
-//        return new Partition(eventType, partition, session, nextSession, state);
         return new Partition(eventType, partition, session, nextSession, state, failedCommitsCount, lookingDeadLetter);
     }
 
     public Partition toPartitionWithIncFailedCommits() {
         return new Partition(eventType, partition, session, nextSession, state, failedCommitsCount + 1, lookingDeadLetter);
+    }
+
+    public Partition toZeroFailedCommits() {
+        return new Partition(eventType, partition, session, nextSession, state, 0, lookingDeadLetter);
     }
 
     public Partition toLookingDeadLetter(final boolean lookingDeadLetter) {
