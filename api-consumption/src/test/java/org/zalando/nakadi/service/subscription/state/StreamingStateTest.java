@@ -76,7 +76,7 @@ public class StreamingStateTest {
     public void prepareMocks() throws Exception {
         MockitoAnnotations.initMocks(this);
 
-        state = new StreamingState();
+        state = new StreamingState(false);
 
         when(timelineService.createEventConsumer(Mockito.any())).thenReturn(eventConsumer);
 

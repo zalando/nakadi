@@ -14,6 +14,7 @@ import org.zalando.nakadi.service.subscription.model.Session;
 import java.util.Arrays;
 import java.util.Collection;
 import java.util.List;
+import java.util.Map;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.stream.Collectors;
 
@@ -79,25 +80,18 @@ public class StartingState extends State {
         }
 
         // check failed commits and indicate that streaming should switch in looking for dead letters mode
-        final AtomicBoolean shouldLookForDeadLetters = new AtomicBoolean(false);
+        getZk().updateTopology(topology -> Arrays.stream(topology.getPartitions())
+                    .filter(p -> p.getFailedCommitsCount() >= 3)
+                    .map(p -> p.toLookingDeadLetter(true))
+                    .toArray(Partition[]::new));
 
-        Arrays.stream(getZk().getTopology().getPartitions())
-                .filter(p -> p.isLookingDeadLetter() || p.getFailedCommitsCount() > 3);
-
-
-
-
-        getZk().updateTopology(topology ->  {
-            final Partition[] array = Arrays.stream(topology.getPartitions())
-                    .filter(p -> p.isLookingDeadLetter() || p.getFailedCommitsCount() > 3)
-                    .map(p -> p.toLookingDeadLetter(true, 0))
-                    .toArray(Partition[]::new);
-
-            shouldLookForDeadLetters.set(array.length > 0);
-            return array;
-        });
-
-        switchState(new StreamingState(shouldLookForDeadLetters.get()));
+        // todo: do not read from zookeeper
+        final Map<EventTypePartition, Partition> lookingDeadLetters = Arrays.stream(getZk().getTopology().getPartitions())
+                .filter(Partition::isLookingDeadLetter)
+                .collect(Collectors.toMap(
+                        p -> new EventTypePartition(p.getEventType(), p.getPartition()),
+                        p -> p));
+        switchState(new StreamingState(lookingDeadLetters));
     }
 
     private void checkStreamingSlotsAvailable(final Collection<Session> sessions)

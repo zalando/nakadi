@@ -50,7 +50,7 @@ class StreamingState extends State {
     // The reasons for that if there are two partitions (p0, p1) and p0 is reassigned, if p1 is working
     // correctly, and p0 is not receiving any updates - reassignment won't complete.
     private final Map<EventTypePartition, Long> releasingPartitions = new HashMap<>();
-    private final boolean shouldLookForDeadLetters;
+    private final Map<EventTypePartition, Partition> lookingDeadLetters;
     private ZkSubscription<ZkSubscriptionClient.Topology> topologyChangeSubscription;
     private HighLevelConsumer eventConsumer;
     private boolean pollPaused;
@@ -75,8 +75,8 @@ class StreamingState extends State {
 
     private static final long AUTOCOMMIT_INTERVAL_SECONDS = 5;
 
-    public StreamingState(boolean shouldLookForDeadLetters) {
-        this.shouldLookForDeadLetters = shouldLookForDeadLetters;
+    public StreamingState(final Map<EventTypePartition, Partition> lookingDeadLetters) {
+        this.lookingDeadLetters = lookingDeadLetters;
     }
 
     /**
@@ -243,7 +243,7 @@ class StreamingState extends State {
     }
 
     private int getMaxUncommittedMessages() {
-        if (shouldLookForDeadLetters) {
+        if (!lookingDeadLetters.isEmpty()) {
             return 1;
         }
 
@@ -280,6 +280,17 @@ class StreamingState extends State {
                     Math.min(getBatchLimitEvents(), messagesAllowedToSend),
                     getParameters().batchTimeoutMillis,
                     streamTimeoutReached))) {
+
+                if (!toSend.isEmpty() && lookingDeadLetters.containsKey(e.getKey())) {
+                    final Partition partition = lookingDeadLetters.get(e.getKey());
+                    if (partition.getFailedCommitsCount() >= 3) {
+                        final ConsumedEvent failedEvent = toSend.remove(0);
+                        // todo: skip or to dlq
+                        LOG.warn("Skipping event {} from partition {} due to failed commits count {}",
+                                failedEvent.getPosition(), e.getKey(), partition.getFailedCommitsCount());
+                    }
+                }
+
                 sentSomething |= !toSend.isEmpty();
 
                 flushData(e.getKey(), toSend, getDebugMessage(e));
@@ -328,7 +339,8 @@ class StreamingState extends State {
     }
 
     private int getBatchLimitEvents() {
-        if (shouldLookForDeadLetters) {
+        // todo: make per partition
+        if (!lookingDeadLetters.isEmpty()) {
             return 1;
         }
 

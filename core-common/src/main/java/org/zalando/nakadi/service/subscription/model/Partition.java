@@ -82,8 +82,15 @@ public class Partition {
         return new Partition(eventType, partition, session, nextSession, state, failedCommitsCount + 1, lookingDeadLetter);
     }
 
-    public Partition toLookingDeadLetter(final boolean lookingDeadLetter, final int failedCommitsCount) {
-        return new Partition(eventType, partition, session, nextSession, state, failedCommitsCount, lookingDeadLetter);
+    public Partition toLookingDeadLetter(final boolean lookingDeadLetter) {
+        if (lookingDeadLetter && !this.lookingDeadLetter) {
+            // failed commits reset to count for failures of the specific event
+            return new Partition(eventType, partition, session, nextSession, state, 0, true);
+        } else if (!lookingDeadLetter && this.lookingDeadLetter) {
+            return new Partition(eventType, partition, session, nextSession, state, 0, false);
+        }
+
+        return this;
     }
 
     /**
