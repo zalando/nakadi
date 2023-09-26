@@ -82,7 +82,7 @@ public class Partition {
     }
 
     public Partition toZeroFailedCommits() {
-        return new Partition(eventType, partition, session, nextSession, state, 0, lookingDeadLetter);
+        return new Partition(eventType, partition, session, nextSession, state, 0, false);
     }
 
     public Partition toLookingDeadLetter(final boolean lookingDeadLetter) {
@@ -174,7 +174,7 @@ public class Partition {
 
     @Override
     public String toString() {
-        return eventType + ":" + partition + "->" + state + ":" + session + "->" + nextSession + ":" + failedCommitsCount;
+        return eventType + ":" + partition + "->" + state + ":" + session + "->" + nextSession + ":" + failedCommitsCount + ":" + lookingDeadLetter;
     }
 
     @Override

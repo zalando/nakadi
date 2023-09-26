@@ -79,19 +79,7 @@ public class StartingState extends State {
             return;
         }
 
-        // check failed commits and indicate that streaming should switch in looking for dead letters mode
-        getZk().updateTopology(topology -> Arrays.stream(topology.getPartitions())
-                    .filter(p -> p.getFailedCommitsCount() >= 3)
-                    .map(p -> p.toLookingDeadLetter(true))
-                    .toArray(Partition[]::new));
-
-        // todo: do not read from zookeeper
-        final Map<EventTypePartition, Partition> lookingDeadLetters = Arrays.stream(getZk().getTopology().getPartitions())
-                .filter(Partition::isLookingDeadLetter)
-                .collect(Collectors.toMap(
-                        p -> new EventTypePartition(p.getEventType(), p.getPartition()),
-                        p -> p));
-        switchState(new StreamingState(lookingDeadLetters));
+        switchState(new StreamingState());
     }
 
     private void checkStreamingSlotsAvailable(final Collection<Session> sessions)

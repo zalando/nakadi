@@ -82,8 +82,8 @@
     "default_statistic": {
       "messages_per_minute": 100,
       "message_size": 100,
-      "read_parallelism": 8,
-      "write_parallelism": 8
+      "read_parallelism": 1,
+      "write_parallelism": 1
     },
     "options": {
       "retention_time": 345600000

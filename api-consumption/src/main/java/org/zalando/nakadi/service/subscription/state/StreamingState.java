@@ -50,7 +50,7 @@ class StreamingState extends State {
     // The reasons for that if there are two partitions (p0, p1) and p0 is reassigned, if p1 is working
     // correctly, and p0 is not receiving any updates - reassignment won't complete.
     private final Map<EventTypePartition, Long> releasingPartitions = new HashMap<>();
-    private final Map<EventTypePartition, Partition> lookingDeadLetters;
+    private Map<EventTypePartition, Partition> failedCommitPartitions;
     private ZkSubscription<ZkSubscriptionClient.Topology> topologyChangeSubscription;
     private HighLevelConsumer eventConsumer;
     private boolean pollPaused;
@@ -74,10 +74,6 @@ class StreamingState extends State {
     private long lastCommitMillis;
 
     private static final long AUTOCOMMIT_INTERVAL_SECONDS = 5;
-
-    public StreamingState(final Map<EventTypePartition, Partition> lookingDeadLetters) {
-        this.lookingDeadLetters = lookingDeadLetters;
-    }
 
     /**
      * 1. Collects names and prepares to send metrics for bytes streamed
@@ -123,6 +119,14 @@ class StreamingState extends State {
 
         cursorResetSubscription = getZk().subscribeForStreamClose(
                 () -> addTask(this::resetSubscriptionCursorsCallback));
+
+        // fixme feature toggle by failed commit count configured in subscription
+
+        // check failed commits and indicate that streaming should switch in looking for dead letters mode
+        getZk().updateTopology(topology -> Arrays.stream(topology.getPartitions())
+                .filter(p -> p.getFailedCommitsCount() >= 3)
+                .map(p -> p.toLookingDeadLetter(true))
+                .toArray(Partition[]::new));
     }
 
     private void autocommitPeriodically() {
@@ -237,16 +241,17 @@ class StreamingState extends State {
     }
 
     private long getMessagesAllowedToSend() {
+        if (failedCommitPartitions.values().stream()
+                .anyMatch(Partition::isLookingDeadLetter)) {
+            return 1;
+        }
+
         final long unconfirmed = offsets.values().stream().mapToLong(PartitionData::getUnconfirmed).sum();
         final long limit = getMaxUncommittedMessages() - unconfirmed;
         return getParameters().getMessagesAllowedToSend(limit, this.sentEvents);
     }
 
     private int getMaxUncommittedMessages() {
-        if (!lookingDeadLetters.isEmpty()) {
-            return 1;
-        }
-
         return getParameters().maxUncommittedMessages;
     }
 
@@ -275,34 +280,36 @@ class StreamingState extends State {
 
         for (final Map.Entry<EventTypePartition, PartitionData> e : offsets.entrySet()) {
             List<ConsumedEvent> toSend;
+            final EventTypePartition etp = e.getKey();
             while (null != (toSend = e.getValue().takeEventsToStream(
                     currentTimeMillis,
                     Math.min(getBatchLimitEvents(), messagesAllowedToSend),
                     getParameters().batchTimeoutMillis,
                     streamTimeoutReached))) {
 
-                if (!toSend.isEmpty() && lookingDeadLetters.containsKey(e.getKey())) {
-                    final Partition partition = lookingDeadLetters.get(e.getKey());
-                    if (partition.getFailedCommitsCount() >= 3) {
-                        final ConsumedEvent failedEvent = toSend.remove(0);
-                        // todo: skip or to dlq
-                        LOG.warn("Skipping event {} from partition {} due to failed commits count {}",
-                                failedEvent.getPosition(), e.getKey(), partition.getFailedCommitsCount());
+                final Partition partition = failedCommitPartitions.get(etp);
+                if (!toSend.isEmpty() &&
+                        partition != null &&
+                        partition.isLookingDeadLetter() &&
+                        partition.getFailedCommitsCount() >= 3) {
+                    final ConsumedEvent failedEvent = toSend.remove(0);
+                    // todo: skip or to dlq
+                    LOG.warn("Skipping event {} from partition {} due to failed commits count {}",
+                            failedEvent.getPosition(), etp, partition.getFailedCommitsCount());
 
-                        getAutocommit().addSkippedEvent(failedEvent.getPosition());
-                        getAutocommit().autocommit();
+                    getAutocommit().addSkippedEvent(failedEvent.getPosition());
+                    getAutocommit().autocommit();
 
-                        // reset looking dead letter flag
-                        getZk().updateTopology(topology -> Arrays.stream(topology.getPartitions())
-                                .filter(p -> p.getPartition().equals(e.getKey().getPartition()))
-                                .map(p -> p.toLookingDeadLetter(false))
-                                .toArray(Partition[]::new));
-                    }
+                    // reset looking dead letter flag
+                    getZk().updateTopology(topology -> Arrays.stream(topology.getPartitions())
+                            .filter(p -> p.getPartition().equals(etp.getPartition()))
+                            .map(p -> p.toLookingDeadLetter(false))
+                            .toArray(Partition[]::new));
                 }
 
                 sentSomething |= !toSend.isEmpty();
 
-                flushData(e.getKey(), toSend, getDebugMessage(e));
+                flushData(etp, toSend, getDebugMessage(e));
                 if (toSend.isEmpty()) {
                     break;
                 }
@@ -348,11 +355,6 @@ class StreamingState extends State {
     }
 
     private int getBatchLimitEvents() {
-        // todo: make per partition
-        if (!lookingDeadLetters.isEmpty()) {
-            return 1;
-        }
-
         return getParameters().batchLimitEvents;
     }
 
@@ -370,7 +372,7 @@ class StreamingState extends State {
             sb.append("Stream started");
 
             final String failedCommitsPartitions = Arrays.stream(getZk().getTopology().getPartitions())
-                    .filter(p -> p.getFailedCommitsCount() > 0)
+                    .filter(p -> p.getFailedCommitsCount() > 0 || p.isLookingDeadLetter())
                     .map(Partition::toString)
                     .collect(Collectors.joining(" "));
 
@@ -497,15 +499,12 @@ class StreamingState extends State {
         addTask(() -> refreshTopologyUnlocked(assignedPartitions));
         trackIdleness(topology);
 
-        // todo check single thread
-        lookingDeadLetters.clear();
-        lookingDeadLetters.putAll(
-                Arrays.stream(getZk().getTopology().getPartitions())
-                        .filter(Partition::isLookingDeadLetter)
-                        .collect(Collectors.toMap(
-                                p -> new EventTypePartition(p.getEventType(), p.getPartition()),
-                                p -> p))
-        );
+        // TODO TODO check single thread
+        failedCommitPartitions = Arrays.stream(getZk().getTopology().getPartitions())
+                .filter(p -> p.getFailedCommitsCount() > 0 || p.isLookingDeadLetter())
+                .collect(Collectors.toMap(
+                        p -> new EventTypePartition(p.getEventType(), p.getPartition()),
+                        p -> p));
     }
 
     void recheckTopology() {
@@ -730,9 +729,9 @@ class StreamingState extends State {
         }
     }
 
-    void offsetChanged(final EventTypePartition key) {
-        if (offsets.containsKey(key)) {
-            final PartitionData data = offsets.get(key);
+    void offsetChanged(final EventTypePartition etp) {
+        if (offsets.containsKey(etp)) {
+            final PartitionData data = offsets.get(etp);
 
             final NakadiCursor cursor = createNakadiCursor(data.getSubscription().getData());
 
@@ -740,9 +739,11 @@ class StreamingState extends State {
             getAutocommit().onCommit(cursor);
 
             // fixme do it per partition
-            if (!lookingDeadLetters.isEmpty()) {
+
+            final Partition partition = failedCommitPartitions.get(etp);
+            if (partition != null && partition.getFailedCommitsCount() > 0) {
                 getZk().updateTopology(topology -> Arrays.stream(topology.getPartitions())
-                        .filter(p -> p.getPartition().equals(key.getPartition()))
+                        .filter(p -> p.getPartition().equals(etp.getPartition()))
                         .filter(p -> p.getFailedCommitsCount() > 0)
                         .map(p -> p.toZeroFailedCommits())
                         .toArray(Partition[]::new));
@@ -762,9 +763,9 @@ class StreamingState extends State {
                 sendMetadata(debugMessage);
                 shutdownGracefully(debugMessage);
             }
-            if (releasingPartitions.containsKey(key) && data.isCommitted()) {
+            if (releasingPartitions.containsKey(etp) && data.isCommitted()) {
                 reassignCommitted();
-                logPartitionAssignment("New offset received for releasing partition " + key);
+                logPartitionAssignment("New offset received for releasing partition " + etp);
             }
         }
     }
