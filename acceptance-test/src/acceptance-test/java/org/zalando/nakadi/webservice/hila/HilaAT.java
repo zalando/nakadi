@@ -697,7 +697,7 @@ public class HilaAT extends BaseAT {
         Assert.assertEquals("001-0001-000000000000000011", client.getJsonBatches().get(0).getCursor().getOffset());
     }
 
-    @Test(timeout = 15000)
+    @Test(timeout = 20_000)
     public void whenIsLookingForDeadLetterAndSendAllEventsOneByOneThenBackToNormalBatchSize() throws InterruptedException {
         final TestStreamingClient client = TestStreamingClient
                 .create(URL, subscription.getId(), "batch_limit=10&commit_timeout=1&stream_limit=20")
@@ -724,7 +724,8 @@ public class HilaAT extends BaseAT {
         Assert.assertEquals("001-0001-000000000000000009", client.getJsonBatches().get(0).getCursor().getOffset());
 
         client.startWithAutocommit(batches -> {
-            Assert.assertEquals(11, batches.size());
+            // 12 because the last one is stream limit reached debug info
+            Assert.assertEquals(12, batches.size());
 
             batches.subList(0, 10).forEach(batch -> Assert.assertEquals(1, batch.getEvents().size()));
 
@@ -733,7 +734,7 @@ public class HilaAT extends BaseAT {
         });
 
         // wait for commit thread
-        waitFor(() -> Assert.assertFalse(client.isRunning()));
+        waitFor(() -> Assert.assertFalse(client.isRunning()), 15_000);
     }
 
     private static boolean isCommitTimeoutReached(TestStreamingClient client) {

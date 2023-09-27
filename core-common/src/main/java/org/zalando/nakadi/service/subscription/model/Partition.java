@@ -3,6 +3,8 @@ package org.zalando.nakadi.service.subscription.model;
 import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import org.zalando.nakadi.domain.EventTypePartition;
+import org.zalando.nakadi.domain.NakadiCursor;
+import org.zalando.nakadi.repository.kafka.KafkaCursor;
 
 import javax.annotation.Nullable;
 import java.util.Collection;
@@ -37,8 +39,8 @@ public class Partition {
     // todo create data struct
     @JsonProperty("failed_commits_count")
     private int failedCommitsCount;
-    @JsonProperty("looking_dead_letter")
-    private boolean lookingDeadLetter;
+    @JsonProperty("last_dead_letter_offset") // when to stop looking for dead letter
+    private String lastDeadLetterOffset;
 
     public Partition() {
     }
@@ -63,34 +65,35 @@ public class Partition {
             @Nullable final String nextSession,
             final State state,
             final int failedCommitsCount,
-            final boolean lookingDeadLetter) {
+            final String lastDeadLetterOffset) {
         this.eventType = eventType;
         this.partition = partition;
         this.session = session;
         this.nextSession = nextSession;
         this.state = state;
         this.failedCommitsCount = failedCommitsCount;
-        this.lookingDeadLetter = lookingDeadLetter;
+        this.lastDeadLetterOffset = lastDeadLetterOffset;
     }
 
     public Partition toState(final State state, @Nullable final String session, @Nullable final String nextSession) {
-        return new Partition(eventType, partition, session, nextSession, state, failedCommitsCount, lookingDeadLetter);
+        return new Partition(eventType, partition, session, nextSession, state, failedCommitsCount, lastDeadLetterOffset);
     }
 
     public Partition toPartitionWithIncFailedCommits() {
-        return new Partition(eventType, partition, session, nextSession, state, failedCommitsCount + 1, lookingDeadLetter);
+        return new Partition(eventType, partition, session, nextSession, state, failedCommitsCount + 1, lastDeadLetterOffset);
     }
 
     public Partition toZeroFailedCommits() {
-        return new Partition(eventType, partition, session, nextSession, state, 0, lookingDeadLetter);
+        return new Partition(eventType, partition, session, nextSession, state, 0, lastDeadLetterOffset);
     }
 
-    public Partition toLookingDeadLetter(final boolean lookingDeadLetter) {
-        if (lookingDeadLetter && !this.lookingDeadLetter) {
+    public Partition toLookingDeadLetter(final String lastDeadLetterOffset) {
+
+        if (lastDeadLetterOffset != null && this.lastDeadLetterOffset == null) {
             // failed commits reset to count for failures of the specific event
-            return new Partition(eventType, partition, session, nextSession, state, 0, true);
-        } else if (!lookingDeadLetter && this.lookingDeadLetter) {
-            return new Partition(eventType, partition, session, nextSession, state, 0, false);
+            return new Partition(eventType, partition, session, nextSession, state, 0, lastDeadLetterOffset);
+        } else if (lastDeadLetterOffset == null && this.lastDeadLetterOffset != null) {
+            return new Partition(eventType, partition, session, nextSession, state, 0, null);
         }
 
         return this;
@@ -174,7 +177,7 @@ public class Partition {
 
     @Override
     public String toString() {
-        return eventType + ":" + partition + "->" + state + ":" + session + "->" + nextSession + ":" + failedCommitsCount + ":" + lookingDeadLetter;
+        return eventType + ":" + partition + "->" + state + ":" + session + "->" + nextSession + ":" + failedCommitsCount + ":" + lastDeadLetterOffset;
     }
 
     @Override
@@ -202,7 +205,11 @@ public class Partition {
         return failedCommitsCount;
     }
 
-    public boolean isLookingDeadLetter() {
-        return lookingDeadLetter;
+    public String getLastDeadLetterOffset() {
+        return lastDeadLetterOffset;
+    }
+
+    public boolean isLookingForDeadLetter() {
+        return lastDeadLetterOffset != null;
     }
 }
