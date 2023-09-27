@@ -12,11 +12,7 @@ import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
 import org.zalando.nakadi.config.JsonConfig;
-import org.zalando.nakadi.domain.EventType;
-import org.zalando.nakadi.domain.ItemsWrapper;
-import org.zalando.nakadi.domain.Subscription;
-import org.zalando.nakadi.domain.SubscriptionBase;
-import org.zalando.nakadi.domain.SubscriptionEventTypeStats;
+import org.zalando.nakadi.domain.*;
 import org.zalando.nakadi.service.BlacklistService;
 import org.zalando.nakadi.util.ThreadUtils;
 import org.zalando.nakadi.utils.JsonTestHelper;
@@ -596,25 +592,55 @@ public class HilaAT extends BaseAT {
 
     }
 
-//    @Test(timeout = 10000)
-//    public void whenCommitsFailedPrintFailedCommitsNumber() throws Exception {
-//        final TestStreamingClient client = TestStreamingClient
-//                .create(URL, subscription.getId(), "")
-//                .start();
-//
-//        publishEvents(eventType.getName(), 50, i -> "{\"foo\":\"bar\"}");
-//
-//        Thread.sleep(6000);
-//
-//        System.out.println(client.getJsonBatches().get(0).getMetadata().getDebug());
-//        client.close();
-//
-//        final TestStreamingClient client2 = TestStreamingClient
-//                .create(URL, subscription.getId(), "")
-//                .start();
-//
-//        Thread.sleep(2000);
-//        System.out.println(client2.getJsonBatches().get(0).getMetadata().getDebug());
-//        client2.close();
-//    }
+    @Test(timeout = 15000)
+    public void whenCommitFailsThreeTimesAndSingleBatchEventFailsThreeTimesThenEventSkipped() {
+        final TestStreamingClient client = TestStreamingClient
+                .create(URL, subscription.getId(), "batch_limit=3&commit_timeout=1")
+                .start();
+
+        publishEvents(eventType.getName(), 50, i -> "{\"foo\":\"bar\"}");
+
+        waitFor(() -> Assert.assertFalse(client.isRunning()));
+        Assert.assertTrue(
+                client.getJsonBatches().stream()
+                        .filter(batch -> batch.getMetadata() != null)
+                        .anyMatch(batch -> batch.getMetadata().getDebug().equals("Commit timeout reached"))
+        );
+
+        client.start();
+        waitFor(() -> Assert.assertFalse(client.isRunning()));
+        Assert.assertTrue(
+                client.getJsonBatches().stream()
+                        .filter(batch -> batch.getMetadata() != null)
+                        .anyMatch(batch -> batch.getMetadata().getDebug().equals("Commit timeout reached"))
+        );
+
+        client.start();
+        waitFor(() -> Assert.assertFalse(client.isRunning()));
+        Assert.assertTrue(
+                client.getJsonBatches().stream()
+                        .filter(batch -> batch.getMetadata() != null)
+                        .anyMatch(batch -> batch.getMetadata().getDebug().equals("Commit timeout reached"))
+        );
+
+        client.start();
+        waitFor(() -> Assert.assertFalse(client.isRunning()));
+        Assert.assertEquals(2, client.getJsonBatches().size());
+        Assert.assertEquals(1, client.getJsonBatches().get(0).getEvents().size());
+
+        client.start();
+        waitFor(() -> Assert.assertFalse(client.isRunning()));
+        Assert.assertEquals(2, client.getJsonBatches().size());
+        Assert.assertEquals(1, client.getJsonBatches().get(0).getEvents().size());
+
+        client.start();
+        waitFor(() -> Assert.assertFalse(client.isRunning()));
+        Assert.assertEquals(2, client.getJsonBatches().size());
+        Assert.assertEquals(1, client.getJsonBatches().get(0).getEvents().size());
+
+        client.start();
+        waitFor(() -> Assert.assertFalse(client.isRunning()));
+        Assert.assertEquals(3, client.getJsonBatches().get(0).getEvents().size());
+        Assert.assertEquals("001-0001-000000000000000003", client.getJsonBatches().get(0).getCursor().getOffset());
+    }
 }

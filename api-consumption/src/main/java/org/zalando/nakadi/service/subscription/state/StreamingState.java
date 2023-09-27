@@ -298,13 +298,20 @@ class StreamingState extends State {
                             failedEvent.getPosition(), etp, partition.getFailedCommitsCount());
 
                     getAutocommit().addSkippedEvent(failedEvent.getPosition());
-                    getAutocommit().autocommit();
+                    this.addTask(() -> getAutocommit().autocommit());
 
-                    // reset looking dead letter flag
+                    // reset looking dead letter flag in zookeeper
                     getZk().updateTopology(topology -> Arrays.stream(topology.getPartitions())
                             .filter(p -> p.getPartition().equals(etp.getPartition()))
                             .map(p -> p.toLookingDeadLetter(false))
                             .toArray(Partition[]::new));
+
+                    // clean local copy of failed commits just in case that update from zookeeper is later or lost
+                    failedCommitPartitions.remove(etp);
+
+                    // we are sure the batch is empty
+//                     continue;
+                    break;
                 }
 
                 sentSomething |= !toSend.isEmpty();
@@ -737,8 +744,6 @@ class StreamingState extends State {
 
             final PartitionData.CommitResult commitResult = data.onCommitOffset(cursor);
             getAutocommit().onCommit(cursor);
-
-            // fixme do it per partition
 
             final Partition partition = failedCommitPartitions.get(etp);
             if (partition != null && partition.getFailedCommitsCount() > 0) {
