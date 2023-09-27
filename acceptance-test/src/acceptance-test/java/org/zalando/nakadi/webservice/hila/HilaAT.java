@@ -1,5 +1,6 @@
 package org.zalando.nakadi.webservice.hila;
 
+import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.google.common.collect.ImmutableList;
@@ -601,27 +602,15 @@ public class HilaAT extends BaseAT {
         publishEvents(eventType.getName(), 50, i -> "{\"foo\":\"bar\"}");
 
         waitFor(() -> Assert.assertFalse(client.isRunning()));
-        Assert.assertTrue(
-                client.getJsonBatches().stream()
-                        .filter(batch -> batch.getMetadata() != null)
-                        .anyMatch(batch -> batch.getMetadata().getDebug().equals("Commit timeout reached"))
-        );
+        Assert.assertTrue(isCommitTimeoutReached(client));
 
         client.start();
         waitFor(() -> Assert.assertFalse(client.isRunning()));
-        Assert.assertTrue(
-                client.getJsonBatches().stream()
-                        .filter(batch -> batch.getMetadata() != null)
-                        .anyMatch(batch -> batch.getMetadata().getDebug().equals("Commit timeout reached"))
-        );
+        Assert.assertTrue(isCommitTimeoutReached(client));
 
         client.start();
         waitFor(() -> Assert.assertFalse(client.isRunning()));
-        Assert.assertTrue(
-                client.getJsonBatches().stream()
-                        .filter(batch -> batch.getMetadata() != null)
-                        .anyMatch(batch -> batch.getMetadata().getDebug().equals("Commit timeout reached"))
-        );
+        Assert.assertTrue(isCommitTimeoutReached(client));
 
         client.start();
         waitFor(() -> Assert.assertFalse(client.isRunning()));
@@ -642,5 +631,114 @@ public class HilaAT extends BaseAT {
         waitFor(() -> Assert.assertFalse(client.isRunning()));
         Assert.assertEquals(3, client.getJsonBatches().get(0).getEvents().size());
         Assert.assertEquals("001-0001-000000000000000003", client.getJsonBatches().get(0).getCursor().getOffset());
+    }
+
+    @Test(timeout = 15000)
+    public void whenIsLookingForDeadLetterAndCommitComesThenContinueLooking() throws JsonProcessingException {
+        final TestStreamingClient client = TestStreamingClient
+                .create(URL, subscription.getId(), "batch_limit=10&commit_timeout=1")
+                .start();
+
+        publishEvents(eventType.getName(), 50, i -> "{\"foo\":\"bar\"}");
+
+        // reach commit timeout 3 times that Nakadi goes into mode to send single event in a batch to find the bad event
+        waitFor(() -> Assert.assertFalse(client.isRunning()));
+        Assert.assertTrue(isCommitTimeoutReached(client));
+        Assert.assertEquals(10, client.getJsonBatches().get(0).getEvents().size());
+        Assert.assertEquals("001-0001-000000000000000009", client.getJsonBatches().get(0).getCursor().getOffset());
+
+        client.start();
+        waitFor(() -> Assert.assertFalse(client.isRunning()));
+        Assert.assertTrue(isCommitTimeoutReached(client));
+        Assert.assertEquals(10, client.getJsonBatches().get(0).getEvents().size());
+        Assert.assertEquals("001-0001-000000000000000009", client.getJsonBatches().get(0).getCursor().getOffset());
+
+        client.start();
+        waitFor(() -> Assert.assertFalse(client.isRunning()));
+        Assert.assertTrue(isCommitTimeoutReached(client));
+        Assert.assertEquals(10, client.getJsonBatches().get(0).getEvents().size());
+        Assert.assertEquals("001-0001-000000000000000009", client.getJsonBatches().get(0).getCursor().getOffset());
+
+        // receive a single event in a batch and commit it so that Nakadi sends the next batch with a single event
+        // (since consumer was able to process the single event meaning the event is not problematic)
+        client.start();
+        waitFor(() -> Assert.assertFalse(client.getJsonBatches().isEmpty()));
+        Assert.assertEquals(1, client.getJsonBatches().size());
+        Assert.assertEquals(1, client.getJsonBatches().get(0).getEvents().size());
+        Assert.assertEquals("001-0001-000000000000000000", client.getJsonBatches().get(0).getCursor().getOffset());
+
+        final SubscriptionCursor cursor = client.getJsonBatches().get(0).getCursor();
+        commitCursors(subscription.getId(), ImmutableList.of(cursor), client.getSessionId());
+
+        // 2 because client was not closed
+        waitFor(() -> Assert.assertEquals(2, client.getJsonBatches().size()));
+        Assert.assertEquals(1, client.getJsonBatches().get(1).getEvents().size());
+        Assert.assertEquals("001-0001-000000000000000001", client.getJsonBatches().get(1).getCursor().getOffset());
+        waitFor(() -> Assert.assertFalse(client.isRunning()));
+
+        // fail the next single event batch 3 times so that Nakadi understands
+        // consumer is not able to process the event, so it should be skipped
+        client.start();
+        waitFor(() -> Assert.assertFalse(client.isRunning()));
+        Assert.assertTrue(isCommitTimeoutReached(client));
+        Assert.assertEquals(1, client.getJsonBatches().get(0).getEvents().size());
+        Assert.assertEquals("001-0001-000000000000000001", client.getJsonBatches().get(0).getCursor().getOffset());
+
+        client.start();
+        waitFor(() -> Assert.assertFalse(client.isRunning()));
+        Assert.assertTrue(isCommitTimeoutReached(client));
+        Assert.assertEquals(1, client.getJsonBatches().get(0).getEvents().size());
+        Assert.assertEquals("001-0001-000000000000000001", client.getJsonBatches().get(0).getCursor().getOffset());
+
+        client.start();
+        waitFor(() -> Assert.assertFalse(client.isRunning()));
+        Assert.assertTrue(isCommitTimeoutReached(client));
+        Assert.assertEquals(10, client.getJsonBatches().get(0).getEvents().size());
+        Assert.assertEquals("001-0001-000000000000000011", client.getJsonBatches().get(0).getCursor().getOffset());
+    }
+
+    @Test(timeout = 15000)
+    public void whenIsLookingForDeadLetterAndSendAllEventsOneByOneThenBackToNormalBatchSize() throws InterruptedException {
+        final TestStreamingClient client = TestStreamingClient
+                .create(URL, subscription.getId(), "batch_limit=10&commit_timeout=1&stream_limit=20")
+                .start();
+
+        publishEvents(eventType.getName(), 50, i -> "{\"foo\":\"bar\"}");
+
+        // reach commit timeout 3 times that Nakadi goes into mode to send single event in a batch to find the bad event
+        waitFor(() -> Assert.assertFalse(client.isRunning()));
+        Assert.assertTrue(isCommitTimeoutReached(client));
+        Assert.assertEquals(10, client.getJsonBatches().get(0).getEvents().size());
+        Assert.assertEquals("001-0001-000000000000000009", client.getJsonBatches().get(0).getCursor().getOffset());
+
+        client.start();
+        waitFor(() -> Assert.assertFalse(client.isRunning()));
+        Assert.assertTrue(isCommitTimeoutReached(client));
+        Assert.assertEquals(10, client.getJsonBatches().get(0).getEvents().size());
+        Assert.assertEquals("001-0001-000000000000000009", client.getJsonBatches().get(0).getCursor().getOffset());
+
+        client.start();
+        waitFor(() -> Assert.assertFalse(client.isRunning()));
+        Assert.assertTrue(isCommitTimeoutReached(client));
+        Assert.assertEquals(10, client.getJsonBatches().get(0).getEvents().size());
+        Assert.assertEquals("001-0001-000000000000000009", client.getJsonBatches().get(0).getCursor().getOffset());
+
+        client.startWithAutocommit(batches -> {
+            Assert.assertEquals(11, batches.size());
+
+            batches.subList(0, 10).forEach(batch -> Assert.assertEquals(1, batch.getEvents().size()));
+
+            final StreamBatch theLast = batches.get(10);
+            Assert.assertEquals(10, theLast.getEvents().size());
+        });
+
+        // wait for commit thread
+        waitFor(() -> Assert.assertFalse(client.isRunning()));
+    }
+
+    private static boolean isCommitTimeoutReached(TestStreamingClient client) {
+        return client.getJsonBatches().stream()
+                .filter(batch -> batch.getMetadata() != null)
+                .anyMatch(batch -> batch.getMetadata().getDebug().equals("Commit timeout reached"));
     }
 }

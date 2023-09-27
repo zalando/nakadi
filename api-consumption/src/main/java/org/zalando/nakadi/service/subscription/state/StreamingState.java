@@ -752,6 +752,7 @@ class StreamingState extends State {
                         .filter(p -> p.getFailedCommitsCount() > 0)
                         .map(p -> p.toZeroFailedCommits())
                         .toArray(Partition[]::new));
+                failedCommitPartitions.computeIfPresent(etp, (ignore, p) -> p.toZeroFailedCommits());
             }
 
             if (commitResult.seekOnKafka) {

@@ -82,7 +82,7 @@ public class Partition {
     }
 
     public Partition toZeroFailedCommits() {
-        return new Partition(eventType, partition, session, nextSession, state, 0, false);
+        return new Partition(eventType, partition, session, nextSession, state, 0, lookingDeadLetter);
     }
 
     public Partition toLookingDeadLetter(final boolean lookingDeadLetter) {
