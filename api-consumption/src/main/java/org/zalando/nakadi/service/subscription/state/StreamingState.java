@@ -51,7 +51,7 @@ class StreamingState extends State {
     // The reasons for that if there are two partitions (p0, p1) and p0 is reassigned, if p1 is working
     // correctly, and p0 is not receiving any updates - reassignment won't complete.
     private final Map<EventTypePartition, Long> releasingPartitions = new HashMap<>();
-    private Map<EventTypePartition, Partition> failedCommitPartitions;
+    private Map<EventTypePartition, Partition> failedCommitPartitions = Collections.emptyMap();
     private ZkSubscription<ZkSubscriptionClient.Topology> topologyChangeSubscription;
     private HighLevelConsumer eventConsumer;
     private boolean pollPaused;
@@ -519,10 +519,7 @@ class StreamingState extends State {
         addTask(() -> refreshTopologyUnlocked(assignedPartitions));
         trackIdleness(topology);
 
-        // TODO TODO check single thread
-        if (getContext().getUserFailedCommitLimit() == null) {
-            failedCommitPartitions = Collections.emptyMap();
-        } else {
+        if (getContext().getUserFailedCommitLimit() != null) {
             failedCommitPartitions = Arrays.stream(getZk().getTopology().getPartitions())
                     .filter(p -> p.getFailedCommitsCount() > 0 || p.isLookingForDeadLetter())
                     .collect(Collectors.toMap(

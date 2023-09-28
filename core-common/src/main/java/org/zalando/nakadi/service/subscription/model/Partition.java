@@ -210,6 +210,7 @@ public class Partition {
         return lastDeadLetterOffset;
     }
 
+    @JsonIgnore
     public boolean isLookingForDeadLetter() {
         return lastDeadLetterOffset != null;
     }
