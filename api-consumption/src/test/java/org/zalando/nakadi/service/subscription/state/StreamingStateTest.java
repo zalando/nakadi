@@ -19,7 +19,6 @@ import org.zalando.nakadi.exceptions.runtime.InvalidCursorException;
 import org.zalando.nakadi.exceptions.runtime.NakadiRuntimeException;
 import org.zalando.nakadi.exceptions.runtime.NoSuchEventTypeException;
 import org.zalando.nakadi.exceptions.runtime.ServiceTemporarilyUnavailableException;
-import org.zalando.nakadi.service.timeline.HighLevelConsumer;
 import org.zalando.nakadi.repository.TopicRepository;
 import org.zalando.nakadi.security.Client;
 import org.zalando.nakadi.service.ConsumptionKpiCollector;
@@ -33,13 +32,13 @@ import org.zalando.nakadi.service.subscription.autocommit.AutocommitSupport;
 import org.zalando.nakadi.service.subscription.model.Partition;
 import org.zalando.nakadi.service.subscription.zk.ZkSubscription;
 import org.zalando.nakadi.service.subscription.zk.ZkSubscriptionClient;
+import org.zalando.nakadi.service.timeline.HighLevelConsumer;
 import org.zalando.nakadi.service.timeline.TimelineService;
 import org.zalando.nakadi.view.SubscriptionCursorWithoutToken;
 
 import java.util.Collections;
 import java.util.Comparator;
 import java.util.Date;
-import java.util.Map;
 
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.any;
@@ -210,7 +209,7 @@ public class StreamingStateTest {
 
         state.onEnter();
         final NakadiCursor anyCursor = NakadiCursor.of(timeline, "0", "0");
-        when(cursorConverter.convert((SubscriptionCursorWithoutToken)any())).thenReturn(anyCursor);
+        when(cursorConverter.convert((SubscriptionCursorWithoutToken) any())).thenReturn(anyCursor);
 
         state.refreshTopologyUnlocked(new Partition[]{
                 new Partition(

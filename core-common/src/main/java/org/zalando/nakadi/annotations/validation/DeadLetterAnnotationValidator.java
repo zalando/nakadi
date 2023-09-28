@@ -4,7 +4,8 @@ import javax.validation.ConstraintValidator;
 import javax.validation.ConstraintValidatorContext;
 import java.util.Map;
 
-public class DeadLetterAnnotationValidator implements ConstraintValidator<DeadLetterValidAnnotations, Map<String, String>> {
+public class DeadLetterAnnotationValidator implements
+        ConstraintValidator<DeadLetterValidAnnotations, Map<String, String>> {
 
     public static final String AUTO_DLQ_FAILED_COMMIT_LIMIT = "nakadi.zalando.org/auto-dlq-failed-commit-limit";
 
@@ -24,7 +25,8 @@ public class DeadLetterAnnotationValidator implements ConstraintValidator<DeadLe
             commits = Integer.valueOf(failedCommitCount);
         } catch (final NumberFormatException e) {
             context.disableDefaultConstraintViolation();
-            context.buildConstraintViolationWithTemplate("nakadi.zalando.org/auto-dlq-failed-commit-limit must be an integer")
+            context.buildConstraintViolationWithTemplate(
+                    "nakadi.zalando.org/auto-dlq-failed-commit-limit must be an integer")
                     .addConstraintViolation();
             return false;
         }
@@ -32,7 +34,7 @@ public class DeadLetterAnnotationValidator implements ConstraintValidator<DeadLe
         if (commits < 2 || commits > 10) {
             context.disableDefaultConstraintViolation();
             context.buildConstraintViolationWithTemplate(
-                            "nakadi.zalando.org/auto-dlq-failed-commit-limit must be between 2 and 10")
+                    "nakadi.zalando.org/auto-dlq-failed-commit-limit must be between 2 and 10")
                     .addConstraintViolation();
             return false;
         }

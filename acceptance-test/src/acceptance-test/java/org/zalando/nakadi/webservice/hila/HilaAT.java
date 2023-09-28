@@ -1,6 +1,5 @@
 package org.zalando.nakadi.webservice.hila;
 
-import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.google.common.collect.ImmutableList;
@@ -14,7 +13,11 @@ import org.junit.Before;
 import org.junit.Test;
 import org.zalando.nakadi.annotations.validation.DeadLetterAnnotationValidator;
 import org.zalando.nakadi.config.JsonConfig;
-import org.zalando.nakadi.domain.*;
+import org.zalando.nakadi.domain.EventType;
+import org.zalando.nakadi.domain.ItemsWrapper;
+import org.zalando.nakadi.domain.Subscription;
+import org.zalando.nakadi.domain.SubscriptionBase;
+import org.zalando.nakadi.domain.SubscriptionEventTypeStats;
 import org.zalando.nakadi.service.BlacklistService;
 import org.zalando.nakadi.util.ThreadUtils;
 import org.zalando.nakadi.utils.JsonTestHelper;
@@ -702,7 +705,8 @@ public class HilaAT extends BaseAT {
     }
 
     @Test(timeout = 20_000)
-    public void whenIsLookingForDeadLetterAndSendAllEventsOneByOneThenBackToNormalBatchSize() throws InterruptedException, IOException {
+    public void whenIsLookingForDeadLetterAndSendAllEventsOneByOneThenBackToNormalBatchSize()
+            throws InterruptedException, IOException {
         final Subscription subscription = createAutoDLQSubscription();
         final TestStreamingClient client = TestStreamingClient
                 .create(URL, subscription.getId(), "batch_limit=10&commit_timeout=1&stream_limit=20")
@@ -742,7 +746,7 @@ public class HilaAT extends BaseAT {
         waitFor(() -> Assert.assertFalse(client.isRunning()), 15_000);
     }
 
-    private static boolean isCommitTimeoutReached(TestStreamingClient client) {
+    private static boolean isCommitTimeoutReached(final TestStreamingClient client) {
         return client.getJsonBatches().stream()
                 .filter(batch -> batch.getMetadata() != null)
                 .anyMatch(batch -> batch.getMetadata().getDebug().equals("Commit timeout reached"));

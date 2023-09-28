@@ -3,8 +3,6 @@ package org.zalando.nakadi.service.subscription.model;
 import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import org.zalando.nakadi.domain.EventTypePartition;
-import org.zalando.nakadi.domain.NakadiCursor;
-import org.zalando.nakadi.repository.kafka.KafkaCursor;
 
 import javax.annotation.Nullable;
 import java.util.Collection;
@@ -76,11 +74,13 @@ public class Partition {
     }
 
     public Partition toState(final State state, @Nullable final String session, @Nullable final String nextSession) {
-        return new Partition(eventType, partition, session, nextSession, state, failedCommitsCount, lastDeadLetterOffset);
+        return new Partition(eventType, partition, session, nextSession,
+                state, failedCommitsCount, lastDeadLetterOffset);
     }
 
     public Partition toPartitionWithIncFailedCommits() {
-        return new Partition(eventType, partition, session, nextSession, state, failedCommitsCount + 1, lastDeadLetterOffset);
+        return new Partition(eventType, partition, session, nextSession,
+                state, failedCommitsCount + 1, lastDeadLetterOffset);
     }
 
     public Partition toZeroFailedCommits() {
@@ -177,7 +177,8 @@ public class Partition {
 
     @Override
     public String toString() {
-        return eventType + ":" + partition + "->" + state + ":" + session + "->" + nextSession + ":" + failedCommitsCount + ":" + lastDeadLetterOffset;
+        return eventType + ":" + partition + "->" + state + ":" +
+                session + "->" + nextSession + ":" + failedCommitsCount + ":" + lastDeadLetterOffset;
     }
 
     @Override

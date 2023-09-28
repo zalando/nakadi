@@ -5,7 +5,6 @@ import com.google.common.annotations.VisibleForTesting;
 import com.google.common.base.Preconditions;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.zalando.nakadi.annotations.validation.DeadLetterAnnotationValidator;
 import org.zalando.nakadi.domain.ConsumedEvent;
 import org.zalando.nakadi.domain.EventTypePartition;
 import org.zalando.nakadi.domain.NakadiCursor;
@@ -747,7 +746,7 @@ class StreamingState extends State {
                     .shiftCursor(cursor, getBatchLimitEvents()).getOffset();
             // check failed commits and indicate that streaming should switch in looking for dead letters mode
             if (partition.getFailedCommitsCount() >= getContext().getUserFailedCommitLimit()) {
-                Partition lookingDeadLetter = partition.toLookingDeadLetter(lastDeadLetterOffset);
+                final Partition lookingDeadLetter = partition.toLookingDeadLetter(lastDeadLetterOffset);
                 failedCommitPartitions.put(partition.getKey(), lookingDeadLetter);
                 getZk().updateTopology(topology -> new Partition[]{lookingDeadLetter});
             }

@@ -1,15 +1,10 @@
 package org.zalando.nakadi.service.subscription.model;
 
-import com.fasterxml.jackson.annotation.JsonProperty;
-import com.fasterxml.jackson.core.JsonProcessingException;
-import com.fasterxml.jackson.databind.ObjectMapper;
 import com.google.common.collect.ImmutableList;
 import org.junit.Assert;
 import org.junit.Test;
-import org.zalando.nakadi.config.JsonConfig;
 import org.zalando.nakadi.domain.EventTypePartition;
 
-import java.io.IOException;
 import java.util.Arrays;
 import java.util.Collection;
 
@@ -62,10 +57,10 @@ public class PartitionTest {
         final String partition = "partition";
 
         ImmutableList.of(
-                new Partition(eventType, partition, "x", "x1", Partition.State.REASSIGNING),
-                new Partition(eventType, partition, "x", "T", Partition.State.REASSIGNING),
-                new Partition(eventType, partition, "T", "x", Partition.State.REASSIGNING),
-                new Partition(eventType, partition, "T", "T1", Partition.State.REASSIGNING))
+                        new Partition(eventType, partition, "x", "x1", Partition.State.REASSIGNING),
+                        new Partition(eventType, partition, "x", "T", Partition.State.REASSIGNING),
+                        new Partition(eventType, partition, "T", "x", Partition.State.REASSIGNING),
+                        new Partition(eventType, partition, "T", "T1", Partition.State.REASSIGNING))
                 .forEach(testPartition -> {
                     final Partition movedPartition = testPartition.moveToSessionId("T", validSessions);
                     assertEquals(new EventTypePartition(eventType, partition), movedPartition.getKey());

@@ -11,11 +11,8 @@ import org.zalando.nakadi.service.SubscriptionInitializer;
 import org.zalando.nakadi.service.subscription.model.Partition;
 import org.zalando.nakadi.service.subscription.model.Session;
 
-import java.util.Arrays;
 import java.util.Collection;
 import java.util.List;
-import java.util.Map;
-import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.stream.Collectors;
 
 public class StartingState extends State {
@@ -34,11 +31,6 @@ public class StartingState extends State {
         }
 
         registerSessionAndStartStreaming();
-
-//        Arrays.stream(getZk().getTopology().getPartitions())
-//                .filter(p -> p.getFailedCommitsCount() > 0)
-//                .map(p -> String.format("p%s %d ", p.getPartition(), p.getFailedCommitsCount()))
-//                .forEach(LOG::error);
     }
 
     /**
