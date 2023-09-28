@@ -26,6 +26,7 @@ import org.zalando.nakadi.repository.db.SchemaRepository;
 import org.zalando.nakadi.service.timeline.TimelineSync;
 import org.zalando.nakadi.utils.TestUtils;
 import org.zalando.nakadi.validation.JsonSchemaEnrichment;
+import org.zalando.nakadi.view.EventOwnerSelector;
 
 import java.io.IOException;
 import java.util.Arrays;
@@ -150,6 +151,15 @@ public class SchemaServiceTest {
     }
 
     @Test
+    public void whenPostWithUnsupportedMetaSchemaThenThrows() throws Exception {
+        eventType.getSchema().setSchema(
+                "{\"$schema\":\"https://json-schema.org/draft/2020-12/schema\", \"type\":\"object\"}");
+        eventType.setCategory(BUSINESS);
+
+        assertThrows(SchemaValidationException.class, () -> schemaService.validateSchema(eventType));
+    }
+
+    @Test
     public void whenPostWithRootElementOfTypeArrayThenThrows() throws Exception {
         eventType.getSchema().setSchema(
                 "{\\\"type\\\":\\\"array\\\" }");
@@ -187,42 +197,42 @@ public class SchemaServiceTest {
 
     @Test(expected = SchemaValidationException.class)
     public void testValidateSchemaEndingBracket() {
-        SchemaService.isStrictlyValidJson("{\"additionalProperties\": true}}");
+        SchemaService.parseJsonSchema("{\"additionalProperties\": true}}");
     }
 
     @Test(expected = SchemaValidationException.class)
     public void testValidateSchemaMultipleRoots() {
-        SchemaService.isStrictlyValidJson("{\"additionalProperties\": true}{\"additionalProperties\": true}");
+        SchemaService.parseJsonSchema("{\"additionalProperties\": true}{\"additionalProperties\": true}");
     }
 
     @Test(expected = SchemaValidationException.class)
     public void testValidateSchemaArbitraryEnding() {
-        SchemaService.isStrictlyValidJson("{\"additionalProperties\": true}NakadiRocks");
+        SchemaService.parseJsonSchema("{\"additionalProperties\": true}NakadiRocks");
     }
 
     @Test(expected = SchemaValidationException.class)
     public void testValidateSchemaArrayEnding() {
-        SchemaService.isStrictlyValidJson("[{\"additionalProperties\": true}]]");
+        SchemaService.parseJsonSchema("[{\"additionalProperties\": true}]]");
     }
 
     @Test(expected = SchemaValidationException.class)
     public void testValidateSchemaEndingCommaArray() {
-        SchemaService.isStrictlyValidJson("[{\"test\": true},]");
+        SchemaService.parseJsonSchema("[{\"test\": true},]");
     }
 
     @Test(expected = SchemaValidationException.class)
     public void testValidateSchemaEndingCommaArray2() {
-        SchemaService.isStrictlyValidJson("[\"test\",]");
+        SchemaService.parseJsonSchema("[\"test\",]");
     }
 
     @Test(expected = SchemaValidationException.class)
     public void testValidateSchemaEndingCommaObject() {
-        SchemaService.isStrictlyValidJson("{\"test\": true,}");
+        SchemaService.parseJsonSchema("{\"test\": true,}");
     }
 
     @Test
     public void testValidateSchemaFormattedJson() {
-        SchemaService.isStrictlyValidJson("{\"properties\":{\"event_class\":{\"type\":\"string\"}," +
+        SchemaService.parseJsonSchema("{\"properties\":{\"event_class\":{\"type\":\"string\"}," +
                 "\"app_domain_id\":{\"type\":\"integer\"},\"event_type\":{\"type\":\"string\"},\"time\"" +
                 ":{\"type\":\"number\"},\"partitioning_key\":{\"type\":\"string\"},\"body\":{\"type\"" +
                 ":\"object\"}},\"additionalProperties\":true}");
@@ -286,4 +296,25 @@ public class SchemaServiceTest {
         assertDoesNotThrow(() -> schemaService.validateSchema(eventType));
     }
 
+    @Test
+    public void whenEventOwnerSelectorFieldMissingInSchemaThenThrows() {
+        eventType.getSchema().setSchema("{}");
+        eventType.setEventOwnerSelector(
+                new EventOwnerSelector(EventOwnerSelector.Type.PATH, "selector_name", "retailer_id"));
+
+        assertThrows(SchemaValidationException.class, () -> schemaService.validateSchema(eventType));
+    }
+
+    @Test
+    public void whenEventOwnerSelectorFieldPresentInSchemaThenOK() throws IOException {
+        final String jsonSchemaString = Resources.toString(
+                Resources.getResource("schema-with-retailer-id.json"),
+                Charsets.UTF_8);
+
+        eventType.getSchema().setSchema(jsonSchemaString);
+        eventType.setEventOwnerSelector(
+                new EventOwnerSelector(EventOwnerSelector.Type.PATH, "selector_name", "info.retailer_id"));
+
+        assertDoesNotThrow(() -> schemaService.validateSchema(eventType));
+    }
 }

@@ -19,6 +19,7 @@ import org.mockito.Mockito;
 import org.mockito.MockitoAnnotations;
 import org.zalando.nakadi.config.NakadiSettings;
 import org.zalando.nakadi.domain.BatchItem;
+import org.zalando.nakadi.domain.HeaderTag;
 import org.zalando.nakadi.domain.CursorError;
 import org.zalando.nakadi.domain.EventOwnerHeader;
 import org.zalando.nakadi.domain.EventPublishingStatus;
@@ -152,7 +153,7 @@ public class KafkaTopicRepositoryTest {
                 new PartitionInfo(myTopic, 1, NODE, null, null)));
 
         try {
-            kafkaTopicRepository.syncPostBatch(myTopic, batch, "random", false);
+            kafkaTopicRepository.syncPostBatch(myTopic, batch, "random", null, false);
             fail();
         } catch (final EventPublishingException e) {
             final ProducerRecord<byte[], byte[]> recordSent = captureProducerRecordSent();
@@ -162,6 +163,38 @@ public class KafkaTopicRepositoryTest {
             final Header valueHeader = recordSent.headers().headers(EventOwnerHeader.AUTH_PARAM_VALUE)
                     .iterator().next();
             Assert.assertEquals(new String(valueHeader.value()), "nakadi");
+        }
+    }
+
+    @Test
+    public void testConsumerTagSetWhilePublishing() {
+        final String myTopic = "event-owner-selector-events";
+        final BatchItem item = new BatchItem("{}", null,
+                null,
+                Collections.emptyList());
+        item.setPartition("1");
+        item.setOwner(new EventOwnerHeader("retailer", "nakadi"));
+        final var consumerTags = Map.of(HeaderTag.CONSUMER_SUBSCRIPTION_ID, "16120729-4a57-4607-ad3a-d526a4590e75");
+        final List<BatchItem> batch = ImmutableList.of(item);
+
+        when(kafkaProducer.partitionsFor(myTopic)).thenReturn(ImmutableList.of(
+                new PartitionInfo(myTopic, 1, NODE, null, null)));
+
+        try {
+            kafkaTopicRepository.syncPostBatch(myTopic, batch, "random", consumerTags, false);
+            fail();
+        } catch (final EventPublishingException e) {
+            final ProducerRecord<byte[], byte[]> recordSent = captureProducerRecordSent();
+            final Header nameHeader = recordSent.headers().headers(EventOwnerHeader.AUTH_PARAM_NAME)
+                    .iterator().next();
+            Assert.assertEquals(new String(nameHeader.value()), "retailer");
+            final Header valueHeader = recordSent.headers().headers(EventOwnerHeader.AUTH_PARAM_VALUE)
+                    .iterator().next();
+            Assert.assertEquals(new String(valueHeader.value()), "nakadi");
+            final Header subscriptionHeader = recordSent.headers().headers(HeaderTag.CONSUMER_SUBSCRIPTION_ID.name())
+                    .iterator().next();
+            Assert.assertEquals(new String(subscriptionHeader.value()), consumerTags.
+                    get(HeaderTag.CONSUMER_SUBSCRIPTION_ID));
         }
     }
 
@@ -295,7 +328,7 @@ public class KafkaTopicRepositoryTest {
                 .send(any(), any());
 
         try {
-            kafkaTopicRepository.syncPostBatch(EXPECTED_PRODUCER_RECORD.topic(), batch, "random", false);
+            kafkaTopicRepository.syncPostBatch(EXPECTED_PRODUCER_RECORD.topic(), batch, "random", null, false);
             fail();
         } catch (final EventPublishingException e) {
             assertThat(item.getResponse().getPublishingStatus(), equalTo(EventPublishingStatus.FAILED));
@@ -322,7 +355,7 @@ public class KafkaTopicRepositoryTest {
                 .send(any(), any());
 
         try {
-            kafkaTopicRepository.syncPostBatch(EXPECTED_PRODUCER_RECORD.topic(), batch, "random", false);
+            kafkaTopicRepository.syncPostBatch(EXPECTED_PRODUCER_RECORD.topic(), batch, "random", null, false);
             fail();
         } catch (final EventPublishingException e) {
             assertThat(item.getResponse().getPublishingStatus(), equalTo(EventPublishingStatus.FAILED));
@@ -359,7 +392,7 @@ public class KafkaTopicRepositoryTest {
         });
 
         try {
-            kafkaTopicRepository.syncPostBatch(EXPECTED_PRODUCER_RECORD.topic(), batch, "random", false);
+            kafkaTopicRepository.syncPostBatch(EXPECTED_PRODUCER_RECORD.topic(), batch, "random", null, false);
             fail();
         } catch (final EventPublishingException e) {
             assertThat(firstItem.getResponse().getPublishingStatus(), equalTo(EventPublishingStatus.SUBMITTED));
@@ -414,7 +447,7 @@ public class KafkaTopicRepositoryTest {
             return null;
         });
 
-        final List<NakadiRecordResult> result = kafkaTopicRepository.sendEvents(topic, nakadiRecords);
+        final List<NakadiRecordResult> result = kafkaTopicRepository.sendEvents(topic, nakadiRecords, null);
         Assert.assertEquals(3, result.size());
         result.forEach(r -> Assert.assertEquals(NakadiRecordResult.Status.SUCCEEDED, r.getStatus()));
     }
@@ -442,7 +475,7 @@ public class KafkaTopicRepositoryTest {
         });
 
         final List<NakadiRecordResult> result =
-                kafkaTopicRepository.sendEvents(topic, nakadiRecords);
+                kafkaTopicRepository.sendEvents(topic, nakadiRecords, null);
         Assert.assertEquals(4, result.size());
         Assert.assertEquals(exception, result.get(0).getException());
         Assert.assertEquals(NakadiRecordResult.Status.FAILED, result.get(0).getStatus());
@@ -476,7 +509,7 @@ public class KafkaTopicRepositoryTest {
         });
 
         final List<NakadiRecordResult> result =
-                kafkaTopicRepository.sendEvents(topic, nakadiRecords);
+                kafkaTopicRepository.sendEvents(topic, nakadiRecords, null);
         Assert.assertEquals(4, result.size());
         Assert.assertEquals(null, result.get(0).getException());
         Assert.assertEquals(NakadiRecordResult.Status.SUCCEEDED, result.get(0).getStatus());

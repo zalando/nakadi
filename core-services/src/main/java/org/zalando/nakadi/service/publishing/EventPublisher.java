@@ -18,8 +18,8 @@ import org.zalando.nakadi.domain.BatchFactory;
 import org.zalando.nakadi.domain.BatchItem;
 import org.zalando.nakadi.domain.BatchItemResponse;
 import org.zalando.nakadi.domain.CleanupPolicy;
+import org.zalando.nakadi.domain.HeaderTag;
 import org.zalando.nakadi.domain.EventCategory;
-import org.zalando.nakadi.domain.EventOwnerHeader;
 import org.zalando.nakadi.domain.EventPublishResult;
 import org.zalando.nakadi.domain.EventPublishingStatus;
 import org.zalando.nakadi.domain.EventPublishingStep;
@@ -28,6 +28,7 @@ import org.zalando.nakadi.domain.Timeline;
 import org.zalando.nakadi.enrichment.Enrichment;
 import org.zalando.nakadi.exceptions.runtime.AccessDeniedException;
 import org.zalando.nakadi.exceptions.runtime.EnrichmentException;
+import org.zalando.nakadi.exceptions.runtime.EventOwnerExtractionException;
 import org.zalando.nakadi.exceptions.runtime.EventPublishingException;
 import org.zalando.nakadi.exceptions.runtime.EventTypeTimeoutException;
 import org.zalando.nakadi.exceptions.runtime.EventValidationException;
@@ -50,6 +51,7 @@ import org.zalando.nakadi.validation.ValidationError;
 import java.io.Closeable;
 import java.io.IOException;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
@@ -98,7 +100,9 @@ public class EventPublisher {
                 (Gauge<Integer>) () -> uniqueEventTypePartitions.size());
     }
 
-    public EventPublishResult publish(final String events, final String eventTypeName)
+    public EventPublishResult publish(final String events,
+                                      final String eventTypeName,
+                                      final Map<HeaderTag, String> consumerTags)
             throws NoSuchEventTypeException,
             InternalNakadiException,
             EnrichmentException,
@@ -107,7 +111,7 @@ public class EventPublisher {
             PublishEventOwnershipException,
             ServiceTemporarilyUnavailableException,
             PartitioningException {
-        return processInternal(events, eventTypeName, true, false);
+        return processInternal(events, eventTypeName, consumerTags, true, false);
     }
 
     public EventPublishResult delete(final String events, final String eventTypeName)
@@ -119,11 +123,12 @@ public class EventPublisher {
             PublishEventOwnershipException,
             ServiceTemporarilyUnavailableException,
             PartitioningException {
-        return processInternal(events, eventTypeName, true, true);
+        return processInternal(events, eventTypeName, null, true, true);
     }
 
     EventPublishResult processInternal(final String events,
                                        final String eventTypeName,
+                                       final Map<HeaderTag, String> consumerTags,
                                        final boolean useAuthz,
                                        final boolean delete)
             throws NoSuchEventTypeException, InternalNakadiException, EventTypeTimeoutException,
@@ -146,7 +151,7 @@ public class EventPublisher {
             if (!delete) {
                 enrich(batch, eventType);
             }
-            submit(batch, eventType, delete);
+            submit(batch, eventType, consumerTags, delete);
 
             return ok(batch);
         } catch (final EventValidationException e) {
@@ -243,12 +248,18 @@ public class EventPublisher {
         for (final BatchItem item : batchItems) {
             item.setStep(EventPublishingStep.VALIDATING);
 
-            final EventOwnerHeader owner = extractor.extractEventOwner(item.getEvent());
-            item.setOwner(owner);
+            try {
+                item.setOwner(extractor.extractEventOwner(item.getEvent()));
+            } catch (final EventOwnerExtractionException e) {
+                LOG.warn("Failed to extract event owner for {}: {}", eventType.getName(), e.getMessage());
+
+                //item.updateStatusAndDetail(EventPublishingStatus.FAILED, e.getMessage());
+                //throw new EventValidationException("Failed to extract event owner", e);
+            }
 
             try {
                 authValidator.authorizeEventWrite(item);
-            } catch (AccessDeniedException e) {
+            } catch (final AccessDeniedException e) {
                 item.updateStatusAndDetail(EventPublishingStatus.FAILED, e.explain());
                 throw new PublishEventOwnershipException(e.explain(), e);
             }
@@ -290,7 +301,8 @@ public class EventPublisher {
     }
 
     private void submit(
-            final List<BatchItem> batch, final EventType eventType, final boolean delete)
+            final List<BatchItem> batch, final EventType eventType,
+            final Map<HeaderTag, String> consumerTags, final boolean delete)
         throws EventPublishingException, InternalNakadiException {
         final Timeline activeTimeline = timelineService.getActiveTimeline(eventType);
         final String topic = activeTimeline.getTopic();
@@ -308,7 +320,7 @@ public class EventPublisher {
                 .withTag(Tags.MESSAGE_BUS_DESTINATION.getKey(), topic)
                 .start();
         try (Closeable ignored = TracingService.activateSpan(publishingSpan)) {
-            topicRepository.syncPostBatch(topic, batch, eventType.getName(), delete);
+            topicRepository.syncPostBatch(topic, batch, eventType.getName(), consumerTags, delete);
         } catch (final EventPublishingException epe) {
             publishingSpan.log(epe.getMessage());
             throw epe;

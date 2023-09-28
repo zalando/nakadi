@@ -1,6 +1,6 @@
 package org.zalando.nakadi.model;
 
-import org.apache.commons.lang.StringUtils;
+import org.apache.commons.lang3.StringUtils;
 import org.zalando.nakadi.domain.ResourceAuthorizationAttribute;
 import org.zalando.nakadi.plugin.api.authz.AuthorizationAttribute;
 

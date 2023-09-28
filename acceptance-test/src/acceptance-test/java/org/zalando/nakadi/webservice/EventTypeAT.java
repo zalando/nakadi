@@ -161,9 +161,9 @@ public class EventTypeAT extends BaseAT {
     }
 
     @Test
-    public void whenEventAuthSelectorCreatedThenOK() throws Exception {
+    public void whenEventAuthSelectorSetOnCreateThenOK() throws Exception {
         final EventType eventType = buildDefaultEventType();
-        eventType.setEventOwnerSelector(new EventOwnerSelector(EventOwnerSelector.Type.PATH, "x", "y"));
+        eventType.setEventOwnerSelector(new EventOwnerSelector(EventOwnerSelector.Type.PATH, "x", "foo"));
 
         given().body(MAPPER.writer().writeValueAsString(eventType))
                 .header("accept", "application/json")
@@ -181,7 +181,7 @@ public class EventTypeAT extends BaseAT {
     @Test
     public void whenEventAuthSelectorCreateWithMetadataAndValueThen422() throws Exception {
         final EventType eventType = buildDefaultEventType();
-        eventType.setEventOwnerSelector(new EventOwnerSelector(EventOwnerSelector.Type.METADATA, "x", "y"));
+        eventType.setEventOwnerSelector(new EventOwnerSelector(EventOwnerSelector.Type.METADATA, "x", "foo"));
 
         given().body(MAPPER.writer().writeValueAsString(eventType))
                 .header("accept", "application/json")
@@ -191,7 +191,7 @@ public class EventTypeAT extends BaseAT {
     }
 
     @Test
-    public void whenEventAuthSelectorUpdatedThenOK() throws Exception {
+    public void whenEventAuthSelectorSetOnUpdateThenOK() throws Exception {
         final EventType eventType = buildDefaultEventType();
         eventType.setEventOwnerSelector(null);
 
@@ -207,7 +207,7 @@ public class EventTypeAT extends BaseAT {
                 EventType.class);
         Assert.assertNull(retrievedEventType.getEventOwnerSelector());
 
-        retrievedEventType.setEventOwnerSelector(new EventOwnerSelector(EventOwnerSelector.Type.PATH, "x", "y"));
+        retrievedEventType.setEventOwnerSelector(new EventOwnerSelector(EventOwnerSelector.Type.PATH, "x", "foo"));
         final String updateBody = MAPPER.writer().writeValueAsString(retrievedEventType);
 
         given().body(updateBody)

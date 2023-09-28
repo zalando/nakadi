@@ -55,6 +55,7 @@ public class KafkaRepositoryAT extends BaseAT {
     private static final Long DEFAULT_TOPIC_RETENTION = 100000000L;
     private static final CleanupPolicy DEFAULT_CLEANUP_POLICY = CleanupPolicy.DELETE;
     private static final int KAFKA_RETRIES = 10;
+    private static final boolean KAFKA_IDEMPOTENCE = false;
     private static final int KAFKA_REQUEST_TIMEOUT = 30000;
     private static final int KAFKA_DELIVERY_TIMEOUT = 30000;
     private static final int KAFKA_MAX_BLOCK_TIMEOUT = 5000;
@@ -110,10 +111,13 @@ public class KafkaRepositoryAT extends BaseAT {
                 DEFAULT_CURATOR_MAX_LIFETIME_MS,
                 DEFAULT_CURATOR_ROTATION_MS);
 
-        kafkaSettings = new KafkaSettings(KAFKA_RETRIES, KAFKA_REQUEST_TIMEOUT, KAFKA_BATCH_SIZE, KAFKA_BUFFER_MEMORY,
+        kafkaSettings = new KafkaSettings(KAFKA_RETRIES, KAFKA_IDEMPOTENCE, KAFKA_REQUEST_TIMEOUT,
+                KAFKA_BATCH_SIZE, KAFKA_BUFFER_MEMORY,
                 KAFKA_LINGER_MS, KAFKA_MAX_IN_FLIGHT_REQUESTS_PER_CONNECTION, KAFKA_ENABLE_AUTO_COMMIT,
                 KAFKA_MAX_REQUEST_SIZE, KAFKA_DELIVERY_TIMEOUT, KAFKA_MAX_BLOCK_TIMEOUT, "",
-                KAFKA_COMPRESSION_TYPE, TCP_SEND_BUFFER_SIZE);
+                KAFKA_COMPRESSION_TYPE, TCP_SEND_BUFFER_SIZE, Optional.of(9093),
+                Optional.of("SASL_PLAINTEXT"), Optional.of("PLAIN"), Optional.of("nakadi"),
+                Optional.of("nakadi_password"));
         kafkaHelper = new KafkaTestHelper(KAFKA_URL);
         defaultTopicConfig = new NakadiTopicConfig(DEFAULT_PARTITION_COUNT, DEFAULT_CLEANUP_POLICY,
                 Optional.of(DEFAULT_RETENTION_TIME));
@@ -238,7 +242,7 @@ public class KafkaRepositoryAT extends BaseAT {
             items.add(item);
         }
 
-        kafkaTopicRepository.syncPostBatch(topicId, items, null, false);
+        kafkaTopicRepository.syncPostBatch(topicId, items, null, null, false);
 
         for (int i = 0; i < 10; i++) {
             assertThat(items.get(i).getResponse().getPublishingStatus(), equalTo(EventPublishingStatus.SUBMITTED));
@@ -257,7 +261,7 @@ public class KafkaRepositoryAT extends BaseAT {
             item.setOwner(new EventOwnerHeader("unit", "Nakadi"));
             items.add(item);
         }
-        kafkaTopicRepository.syncPostBatch(topicId, items, null, false);
+        kafkaTopicRepository.syncPostBatch(topicId, items, null, null, false);
 
         for (int i = 0; i < 10; i++) {
             assertThat(items.get(i).getResponse().getPublishingStatus(), equalTo(EventPublishingStatus.SUBMITTED));

@@ -6,12 +6,17 @@ import com.google.common.base.Preconditions;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.zalando.nakadi.annotations.validation.DeadLetterAnnotationValidator;
+import org.zalando.nakadi.cache.EventTypeCache;
 import org.zalando.nakadi.domain.ConsumedEvent;
+import org.zalando.nakadi.domain.EventCategory;
+import org.zalando.nakadi.domain.Feature;
+import org.zalando.nakadi.domain.HeaderTag;
 import org.zalando.nakadi.domain.NakadiCursor;
 import org.zalando.nakadi.domain.Subscription;
 import org.zalando.nakadi.exceptions.runtime.AccessDeniedException;
 import org.zalando.nakadi.exceptions.runtime.NakadiRuntimeException;
 import org.zalando.nakadi.exceptions.runtime.RebalanceConflictException;
+import org.zalando.nakadi.repository.kafka.KafkaRecordDeserializer;
 import org.zalando.nakadi.service.AuthorizationValidator;
 import org.zalando.nakadi.service.ConsumptionKpiCollector;
 import org.zalando.nakadi.service.CursorConverter;
@@ -20,6 +25,7 @@ import org.zalando.nakadi.service.CursorTokenService;
 import org.zalando.nakadi.service.EventStreamChecks;
 import org.zalando.nakadi.service.EventStreamWriter;
 import org.zalando.nakadi.service.EventTypeChangeListener;
+import org.zalando.nakadi.service.FeatureToggleService;
 import org.zalando.nakadi.service.subscription.autocommit.AutocommitSupport;
 import org.zalando.nakadi.service.subscription.model.Partition;
 import org.zalando.nakadi.service.subscription.model.Session;
@@ -75,9 +81,13 @@ public class StreamingContext implements SubscriptionStreamer {
     private State currentState = new DummyState();
     private ZkSubscription<List<String>> sessionListSubscription;
     private Closeable authorizationCheckSubscription;
+
+    private final FeatureToggleService featureToggleService;
     private boolean sessionRegistered;
     private boolean zkClientClosed;
+    private final KafkaRecordDeserializer kafkaRecordDeserializer;
 
+    private final EventTypeCache eventTypeCache;
     private static final Logger LOG = LoggerFactory.getLogger(StreamingContext.class);
     private final Integer userFailedCommitLimit;
 
@@ -104,11 +114,14 @@ public class StreamingContext implements SubscriptionStreamer {
         this.streamMemoryLimitBytes = builder.streamMemoryLimitBytes;
         this.cursorOperationsService = builder.cursorOperationsService;
         this.kpiCollector = builder.kpiCollector;
+        this.kafkaRecordDeserializer = builder.kafkaRecordDeserializer;
+        this.eventTypeCache = builder.eventTypeCache;
+        this.featureToggleService = builder.featureToggleService;
 
         this.userFailedCommitLimit = Optional.ofNullable(getSubscription().getAnnotations())
-                .map(ans -> ans.get(DeadLetterAnnotationValidator.AUTO_DLQ_FAILED_COMMIT_LIMIT))
-                .map(Integer::valueOf)
-                .orElse(null);
+          .map(ans -> ans.get(DeadLetterAnnotationValidator.AUTO_DLQ_FAILED_COMMIT_LIMIT))
+          .map(Integer::valueOf)
+          .orElse(null);
     }
 
     public ConsumptionKpiCollector getKpiCollector() {
@@ -284,7 +297,43 @@ public class StreamingContext implements SubscriptionStreamer {
     }
 
     public boolean isConsumptionBlocked(final ConsumedEvent event) {
-        return eventStreamChecks.isConsumptionBlocked(event);
+        if (featureToggleService.isFeatureEnabled(Feature.SKIP_MISPLACED_EVENTS)) {
+            if (isMisplacedEvent(event)) {
+                return true;
+            }
+        }
+        if (event.getConsumerTags().isEmpty()) {
+            return eventStreamChecks.isConsumptionBlocked(event);
+        }
+        return !checkConsumptionAllowedFromConsumerTags(event)
+                || eventStreamChecks.isConsumptionBlocked(event);
+    }
+
+    private boolean isMisplacedEvent(final ConsumedEvent event) {
+        final String expectedEventTypeName = event.getPosition().getEventType();
+        if (eventTypeCache.getEventType(expectedEventTypeName).getCategory() != EventCategory.UNDEFINED) {
+            try {
+                final String actualEventTypeName = kafkaRecordDeserializer.getEventTypeName(event.getEvent());
+                if (!expectedEventTypeName.equals(actualEventTypeName)) {
+                    LOG.warn("Consumed event for event type '{}', but expected '{}' (at position {})",
+                            actualEventTypeName, expectedEventTypeName, event.getPosition());
+                    return true;
+                }
+            } catch (final IOException e) {
+                throw new NakadiRuntimeException(
+                        String.format("Failed to parse metadata to check for misplaced event in '%s' at position %s",
+                                expectedEventTypeName, event.getPosition()),
+                        e);
+            }
+        }
+        return false;
+    }
+
+    private boolean checkConsumptionAllowedFromConsumerTags(final ConsumedEvent event) {
+        return event.getConsumerTags().
+                getOrDefault(HeaderTag.CONSUMER_SUBSCRIPTION_ID,
+                        subscription.getId()).
+                equals(subscription.getId());
     }
 
     public CursorTokenService getCursorTokenService() {
@@ -373,6 +422,19 @@ public class StreamingContext implements SubscriptionStreamer {
         private CursorOperationsService cursorOperationsService;
         private long streamMemoryLimitBytes;
         private ConsumptionKpiCollector kpiCollector;
+        private KafkaRecordDeserializer kafkaRecordDeserializer;
+        private EventTypeCache eventTypeCache;
+        private FeatureToggleService featureToggleService;
+
+        public Builder setEventTypeCache(final EventTypeCache eventTypeCache) {
+            this.eventTypeCache = eventTypeCache;
+            return this;
+        }
+
+        public Builder setKafkaRecordDeserializer(final KafkaRecordDeserializer kafkaRecordDeserializer) {
+            this.kafkaRecordDeserializer = kafkaRecordDeserializer;
+            return this;
+        }
 
         public Builder setOut(final SubscriptionOutput out) {
             this.out = out;
@@ -476,6 +538,11 @@ public class StreamingContext implements SubscriptionStreamer {
 
         public Builder setKpiCollector(final ConsumptionKpiCollector kpiCollector) {
             this.kpiCollector = kpiCollector;
+            return this;
+        }
+
+        public Builder setFeatureToggleService(final FeatureToggleService featureToggleService) {
+            this.featureToggleService = featureToggleService;
             return this;
         }
 

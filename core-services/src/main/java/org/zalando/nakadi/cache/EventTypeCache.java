@@ -150,10 +150,11 @@ public class EventTypeCache {
         this.eventTypeRepository = eventTypeRepository;
         this.timelineRepository = timelineRepository;
         this.topicRepositoryHolder = topicRepositoryHolder;
-        this.valueCache = CacheBuilder.newBuilder()
-                .expireAfterWrite(Duration.ofHours(2))
-                .build(CacheLoader.from(this::loadValue));
         this.scheduledExecutorService = Executors.newSingleThreadScheduledExecutor();
+        this.valueCache = CacheBuilder.newBuilder()
+                .refreshAfterWrite(Duration.ofHours(2))
+                .build(CacheLoader.asyncReloading(
+                        CacheLoader.from(this::loadValue), scheduledExecutorService));
         this.timelineSync = timelineSync;
         this.eventValidatorBuilder = eventValidatorBuilder;
         this.schemaService = schemaService;
@@ -305,7 +306,7 @@ public class EventTypeCache {
             if (ex.getCause() instanceof NoSuchEventTypeException) {
                 throw (NoSuchEventTypeException) ex.getCause();
             } else {
-                throw new InternalNakadiException("Failed to get event type", ex);
+                throw new InternalNakadiException(String.format("Failed to get event type `%s`", name), ex);
             }
         }
     }

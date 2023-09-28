@@ -4,10 +4,14 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 
+import java.util.Optional;
+
 @Component
 public class KafkaSettings {
 
     private final int retries;
+    private final boolean idempotence;
+
     // kafka client requires this property to be int
     // https://github.com/apache/kafka/blob/d9206500bf2f99ce93f6ad64c7a89483100b3b5f/clients/src/main/java/org/apache
     // /kafka/clients/producer/ProducerConfig.java#L261
@@ -26,9 +30,14 @@ public class KafkaSettings {
     private final String clientRack;
     private final String compressionType;
     private final int socketSendBufferBytes;
-
+    private final Optional<Integer> preferredListenerPort;
+    private final Optional<String> securityProtocol;
+    private final Optional<String> saslMechanism;
+    private final Optional<String> kafkaUsername;
+    private final Optional<String> kafkaPassword;
     @Autowired
     public KafkaSettings(@Value("${nakadi.kafka.retries}") final int retries,
+                         @Value("${nakadi.kafka.idempotence}") final boolean idempotence,
                          @Value("${nakadi.kafka.request.timeout.ms}") final int requestTimeoutMs,
                          @Value("${nakadi.kafka.batch.size}") final int batchSize,
                          @Value("${nakadi.kafka.buffer.memory}") final long bufferMemory,
@@ -40,8 +49,15 @@ public class KafkaSettings {
                          @Value("${nakadi.kafka.max.block.ms}") final int maxBlockMs,
                          @Value("${nakadi.kafka.client.rack:}") final String clientRack,
                          @Value("${nakadi.kafka.compression.type:lz4}") final String compressionType,
-                         @Value("${nakadi.kafka.socket.send.buffer.bytes:}") final int socketSendBufferBytes) {
+                         @Value("${nakadi.kafka.socket.send.buffer.bytes:}") final int socketSendBufferBytes,
+                         @Value("${nakadi.kafka.preferred.listener.port:#{null}}")
+                             final Optional<Integer> preferredListenerPort,
+                         @Value("${nakadi.kafka.security.protocol:#{null}}") final Optional<String> securityProtocol,
+                         @Value("${nakadi.kafka.sasl.mechanism:#{null}}") final Optional<String> saslMechanism,
+                         @Value("${nakadi.kafka.username:#{null}}") final Optional<String> kafkaUsername,
+                         @Value("${nakadi.kafka.password:#{null}}") final Optional<String> kafkaPassword) {
         this.retries = retries;
+        this.idempotence = idempotence;
         this.requestTimeoutMs = requestTimeoutMs;
         this.batchSize = batchSize;
         this.bufferMemory = bufferMemory;
@@ -54,10 +70,19 @@ public class KafkaSettings {
         this.clientRack = clientRack;
         this.compressionType = compressionType;
         this.socketSendBufferBytes = socketSendBufferBytes;
+        this.preferredListenerPort = preferredListenerPort;
+        this.securityProtocol = securityProtocol;
+        this.saslMechanism = saslMechanism;
+        this.kafkaUsername = kafkaUsername;
+        this.kafkaPassword = kafkaPassword;
     }
 
     public int getRetries() {
         return retries;
+    }
+
+    public boolean getIdempotence() {
+        return idempotence;
     }
 
     public int getRequestTimeoutMs() {
@@ -106,5 +131,25 @@ public class KafkaSettings {
 
     public int getSocketSendBufferBytes() {
         return socketSendBufferBytes;
+    }
+
+    public Optional<Integer> getPreferredListenerPort() {
+        return preferredListenerPort;
+    }
+
+    public Optional<String> getSecurityProtocol() {
+        return securityProtocol;
+    }
+
+    public Optional<String> getSaslMechanism() {
+        return saslMechanism;
+    }
+
+    public Optional<String> getKafkaUsername() {
+        return kafkaUsername;
+    }
+
+    public Optional<String> getKafkaPassword() {
+        return kafkaPassword;
     }
 }

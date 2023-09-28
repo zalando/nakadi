@@ -1,5 +1,6 @@
 package org.zalando.nakadi.service;
 
+import com.google.common.annotations.VisibleForTesting;
 import com.google.common.cache.CacheBuilder;
 import com.google.common.cache.CacheLoader;
 import com.google.common.cache.LoadingCache;
@@ -28,7 +29,6 @@ import org.zalando.nakadi.domain.EventTypeSchemaBase;
 import org.zalando.nakadi.domain.PaginationWrapper;
 import org.zalando.nakadi.domain.StrictJsonParser;
 import org.zalando.nakadi.exceptions.runtime.EventTypeUnavailableException;
-import org.zalando.nakadi.exceptions.runtime.InvalidEventTypeException;
 import org.zalando.nakadi.exceptions.runtime.InvalidLimitException;
 import org.zalando.nakadi.exceptions.runtime.InvalidVersionNumberException;
 import org.zalando.nakadi.exceptions.runtime.NoSuchSchemaException;
@@ -41,6 +41,7 @@ import org.zalando.nakadi.service.timeline.TimelineSync;
 import org.zalando.nakadi.util.AvroUtils;
 import org.zalando.nakadi.validation.JsonSchemaEnrichment;
 import org.zalando.nakadi.validation.SchemaIncompatibility;
+import org.zalando.nakadi.view.EventOwnerSelector;
 
 import java.io.Closeable;
 import java.io.IOException;
@@ -187,7 +188,6 @@ public class SchemaService implements SchemaProviderService {
             final EventTypeSchemaBase.Type schemaType = eventType.getSchema().getType();
 
             if (schemaType.equals(EventTypeSchemaBase.Type.JSON_SCHEMA)) {
-                isStrictlyValidJson(eventTypeSchema);
                 validateJsonTypeSchema(eventType, eventTypeSchema);
             } else if (schemaType.equals(EventTypeSchemaBase.Type.AVRO_SCHEMA)) {
                 validateAvroTypeSchema(eventTypeSchema);
@@ -214,22 +214,38 @@ public class SchemaService implements SchemaProviderService {
     }
 
     private void validateJsonTypeSchema(final EventTypeBase eventType, final String eventTypeSchema) {
-        final JSONObject schemaAsJson = new JSONObject(eventTypeSchema);
+        final JSONObject schemaAsJson = parseJsonSchema(eventTypeSchema);
 
         if (schemaAsJson.has("type") && !Objects.equals("object", schemaAsJson.getString("type"))) {
             throw new SchemaValidationException("\"type\" of root element in schema can only be \"object\"");
         }
 
-        final Schema schema = SchemaLoader
-                .builder()
-                .httpClient(new BlockedHttpClient())
-                .schemaJson(schemaAsJson)
-                .build()
-                .load()
+        final SchemaLoader schemaLoader;
+        try {
+            schemaLoader = SchemaLoader.builder()
+                    .httpClient(new BlockedHttpClient())
+                    .schemaJson(schemaAsJson)
+                    .build();
+        } catch (IllegalArgumentException ex) {
+            throw new SchemaValidationException(ex.getMessage());
+        }
+
+        final Schema schema = schemaLoader.load()
                 .build();
 
         if (eventType.getCategory() == EventCategory.BUSINESS && schema.definesProperty("#/metadata")) {
             throw new SchemaValidationException("\"metadata\" property is reserved");
+        }
+
+        final JSONObject effectiveSchemaAsJson = jsonSchemaEnrichment.effectiveSchema(eventType, eventTypeSchema);
+        final Schema effectiveSchema = SchemaLoader.load(effectiveSchemaAsJson);
+
+        final EventOwnerSelector eventOwnerSelector = eventType.getEventOwnerSelector();
+        if (eventOwnerSelector != null) {
+            if (eventOwnerSelector.getType() == EventOwnerSelector.Type.PATH) {
+                validateFieldsInSchema("event_owner_selector.value", List.of(eventOwnerSelector.getValue()),
+                        effectiveSchema);
+            }
         }
 
         final List<String> orderingInstanceIds = eventType.getOrderingInstanceIds();
@@ -238,8 +254,6 @@ public class SchemaService implements SchemaProviderService {
             throw new SchemaValidationException(
                     "`ordering_instance_ids` field can not be defined without defining `ordering_key_fields`");
         }
-        final JSONObject effectiveSchemaAsJson = jsonSchemaEnrichment.effectiveSchema(eventType, eventTypeSchema);
-        final Schema effectiveSchema = SchemaLoader.load(effectiveSchemaAsJson);
         validateFieldsInSchema("ordering_key_fields", orderingKeyFields, effectiveSchema);
         validateFieldsInSchema("ordering_instance_ids", orderingInstanceIds, effectiveSchema);
 
@@ -278,9 +292,10 @@ public class SchemaService implements SchemaProviderService {
         }
     }
 
-    public static void isStrictlyValidJson(final String jsonInString) throws InvalidEventTypeException {
+    @VisibleForTesting
+    static JSONObject parseJsonSchema(final String jsonInString) {
         try {
-            StrictJsonParser.parse(jsonInString, false);
+            return StrictJsonParser.parse(jsonInString, false);
         } catch (final RuntimeException jpe) {
             throw new SchemaValidationException("schema must be a valid json: " + jpe.getMessage());
         }

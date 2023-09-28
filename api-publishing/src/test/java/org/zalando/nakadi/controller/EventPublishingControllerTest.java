@@ -40,6 +40,8 @@ import org.zalando.nakadi.service.publishing.BinaryEventPublisher;
 import org.zalando.nakadi.service.publishing.EventPublisher;
 import org.zalando.nakadi.service.publishing.NakadiKpiPublisher;
 import org.zalando.nakadi.utils.TestUtils;
+import org.zalando.problem.Problem;
+import org.zalando.problem.Status;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -67,6 +69,7 @@ public class EventPublishingControllerTest {
 
     public static final String TOPIC = "my-topic";
     private static final String EVENT_BATCH = "[{\"payload\": \"My Event Payload\"}]";
+    private static final String X_CONSUMER_TAG = "X-CONSUMER-TAG";
 
     private MetricRegistry metricRegistry;
     private EventPublisher publisher;
@@ -114,9 +117,9 @@ public class EventPublishingControllerTest {
         Mockito
                 .doReturn(result)
                 .when(publisher)
-                .publish(any(String.class), eq(TOPIC));
+                .publish(any(String.class), eq(TOPIC), any());
 
-        postBatch(TOPIC, EVENT_BATCH)
+        postBatch(TOPIC, EVENT_BATCH, null)
                 .andExpect(status().isOk())
                 .andExpect(content().string(""));
     }
@@ -126,16 +129,16 @@ public class EventPublishingControllerTest {
 
         Mockito.doThrow(new JSONException("Error"))
                 .when(publisher)
-                .publish(any(String.class), eq(TOPIC));
+                .publish(any(String.class), eq(TOPIC), any());
 
-        postBatch(TOPIC, "invalid json array").andExpect(status().isBadRequest());
+        postBatch(TOPIC, "invalid json array", null).andExpect(status().isBadRequest());
     }
 
     @Test
     public void whenEventPublishTimeoutThen503() throws Exception {
-        Mockito.when(publisher.publish(any(), any())).thenThrow(new EventTypeTimeoutException(""));
+        Mockito.when(publisher.publish(any(), any(), any())).thenThrow(new EventTypeTimeoutException(""));
 
-        postBatch(TOPIC, EVENT_BATCH)
+        postBatch(TOPIC, EVENT_BATCH, null)
                 .andExpect(content().contentType("application/problem+json"))
                 .andExpect(status().isServiceUnavailable());
     }
@@ -147,9 +150,9 @@ public class EventPublishingControllerTest {
         Mockito
                 .doReturn(result)
                 .when(publisher)
-                .publish(any(String.class), eq(TOPIC));
+                .publish(any(String.class), eq(TOPIC), any());
 
-        postBatch(TOPIC, EVENT_BATCH)
+        postBatch(TOPIC, EVENT_BATCH, null)
                 .andExpect(status().isUnprocessableEntity())
                 .andExpect(content().string(TestUtils.JSON_TEST_HELPER.matchesObject(responses())));
     }
@@ -161,9 +164,9 @@ public class EventPublishingControllerTest {
         Mockito
                 .doReturn(result)
                 .when(publisher)
-                .publish(any(String.class), eq(TOPIC));
+                .publish(any(String.class), eq(TOPIC), any());
 
-        postBatch(TOPIC, EVENT_BATCH)
+        postBatch(TOPIC, EVENT_BATCH, null)
                 .andExpect(status().isMultiStatus())
                 .andExpect(content().string(TestUtils.JSON_TEST_HELPER.matchesObject(responses())));
     }
@@ -173,11 +176,64 @@ public class EventPublishingControllerTest {
         Mockito
                 .doThrow(new NoSuchEventTypeException("topic not found"))
                 .when(publisher)
-                .publish(any(String.class), eq(TOPIC));
+                .publish(any(String.class), eq(TOPIC), any());
 
-        postBatch(TOPIC, EVENT_BATCH)
+        postBatch(TOPIC, EVENT_BATCH, null)
                 .andExpect(content().contentType("application/problem+json"))
                 .andExpect(status().isNotFound());
+    }
+
+    @Test
+    public void whenConsumerTagDuplicateThen422() throws Exception {
+        final var response = Problem.builder().
+                withStatus(Status.UNPROCESSABLE_ENTITY).
+                withTitle(Status.UNPROCESSABLE_ENTITY.getReasonPhrase()).
+                withDetail("duplicate header tag: CONSUMER_SUBSCRIPTION_ID").build();
+
+        postBatch(TOPIC, EVENT_BATCH, "consumer_subscription_id=16120729-4a57-4607-ad3a-d526a4590e75,  " +
+                "consumer_subscription_id = 16120729-4a57-4607-ad3a-d526a4590e76")
+                .andExpect(content().contentType("application/problem+json"))
+                .andExpect(status().isUnprocessableEntity())
+                .andExpect(content().string(TestUtils.JSON_TEST_HELPER.matchesObject(response)));
+    }
+
+    @Test
+    public void whenConsumerTagEmptyThen422() throws Exception {
+        final var response = Problem.builder().
+                withStatus(Status.UNPROCESSABLE_ENTITY).
+                withTitle(Status.UNPROCESSABLE_ENTITY.getReasonPhrase()).
+                withDetail("X-CONSUMER-TAG: is empty!").build();
+
+        postBatch(TOPIC, EVENT_BATCH, "")
+                .andExpect(content().contentType("application/problem+json"))
+                .andExpect(status().isUnprocessableEntity())
+                .andExpect(content().string(TestUtils.JSON_TEST_HELPER.matchesObject(response)));
+    }
+
+    @Test
+    public void whenConsumerTagSubscriptionIdIsNotUUIDThen422() throws Exception {
+        final var response = Problem.builder().
+                withStatus(Status.UNPROCESSABLE_ENTITY).
+                withTitle(Status.UNPROCESSABLE_ENTITY.getReasonPhrase()).
+                withDetail("header tag value: 123f is not an UUID").build();
+
+        postBatch(TOPIC, EVENT_BATCH, "consumer_subscription_id=123f")
+                .andExpect(content().contentType("application/problem+json"))
+                .andExpect(status().isUnprocessableEntity())
+                .andExpect(content().string(TestUtils.JSON_TEST_HELPER.matchesObject(response)));
+    }
+
+    @Test
+    public void whenConsumerTagHasInvalidLengthThen422() throws Exception {
+        final var response = Problem.builder().
+                withStatus(Status.UNPROCESSABLE_ENTITY).
+                withTitle(Status.UNPROCESSABLE_ENTITY.getReasonPhrase()).
+                withDetail("header tag parameter is imbalanced, expected: 2 but provided 1").build();
+
+        postBatch(TOPIC, EVENT_BATCH, "consumer_subscription_id=,")
+                .andExpect(content().contentType("application/problem+json"))
+                .andExpect(status().isUnprocessableEntity())
+                .andExpect(content().string(TestUtils.JSON_TEST_HELPER.matchesObject(response)));
     }
 
     @Test
@@ -188,11 +244,11 @@ public class EventPublishingControllerTest {
                 .doReturn(success)
                 .doThrow(InternalNakadiException.class)
                 .when(publisher)
-                .publish(any(), any());
+                .publish(any(), any(), any());
 
-        postBatch(TOPIC, EVENT_BATCH);
-        postBatch(TOPIC, EVENT_BATCH);
-        postBatch(TOPIC, EVENT_BATCH);
+        postBatch(TOPIC, EVENT_BATCH, null);
+        postBatch(TOPIC, EVENT_BATCH, null);
+        postBatch(TOPIC, EVENT_BATCH, null);
 
         final EventTypeMetrics eventTypeMetrics = eventTypeMetricRegistry.metricsFor(TOPIC);
 
@@ -208,11 +264,11 @@ public class EventPublishingControllerTest {
                 .doReturn(success)
                 .doThrow(InternalNakadiException.class)
                 .when(publisher)
-                .publish(any(), any());
+                .publish(any(), any(), any());
 
         Mockito.when(kpiPublisher.hash(any())).thenReturn("hashed-application-name");
 
-        postBatch(TOPIC, EVENT_BATCH);
+        postBatch(TOPIC, EVENT_BATCH, null);
 
 
         Mockito.verify(kpiPublisher, Mockito.times(1)).publish(kpiEventCaptor.capture());
@@ -251,12 +307,16 @@ public class EventPublishingControllerTest {
         return responses;
     }
 
-    private ResultActions postBatch(final String eventType, final String batch) throws Exception {
+    private ResultActions postBatch(final String eventType, final String batch,
+                                    final String consumerTagHeader) throws Exception {
         final String url = "/event-types/" + eventType + "/events";
+
         final MockHttpServletRequestBuilder requestBuilder = post(url)
                 .contentType(APPLICATION_JSON)
                 .content(batch);
-
+        if(consumerTagHeader!= null){
+            requestBuilder.header(X_CONSUMER_TAG, consumerTagHeader);
+        }
         return mockMvc.perform(requestBuilder);
     }
 }
