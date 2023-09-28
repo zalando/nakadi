@@ -737,8 +737,11 @@ class StreamingState extends State {
         getAutocommit().addPartition(cursor);
 
         if (getContext().getUserFailedCommitLimit() != null) {
-            final String lastDeadLetterOffset = getContext().getCursorOperationsService()
-                    .shiftCursor(cursor, getBatchLimitEvents()).getOffset();
+            final NakadiCursor lastDeadLetterCursor = getContext().getCursorOperationsService()
+                    .shiftCursor(cursor, getBatchLimitEvents());
+            final String lastDeadLetterOffset = getContext().getCursorConverter()
+                    .convert(lastDeadLetterCursor).getOffset();
+
             // check failed commits and indicate that streaming should switch in looking for dead letters mode
             if (partition.getFailedCommitsCount() >= getContext().getUserFailedCommitLimit()) {
                 final Partition lookingDeadLetter = partition.toLookingDeadLetter(lastDeadLetterOffset);
