@@ -86,6 +86,10 @@ class ClosingState extends State {
     }
 
     private void updateFailedCommitsCount() {
+        if (getContext().getUserFailedCommitLimit() == null) {
+            return;
+        }
+
         getZk().updateTopology(topology -> {
                     try {
                         final Partition[] array = Arrays.stream(topology.getPartitions())

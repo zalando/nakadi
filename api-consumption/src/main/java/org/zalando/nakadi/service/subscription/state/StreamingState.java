@@ -5,6 +5,7 @@ import com.google.common.annotations.VisibleForTesting;
 import com.google.common.base.Preconditions;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.zalando.nakadi.annotations.validation.DeadLetterAnnotationValidator;
 import org.zalando.nakadi.domain.ConsumedEvent;
 import org.zalando.nakadi.domain.EventTypePartition;
 import org.zalando.nakadi.domain.NakadiCursor;
@@ -234,7 +235,7 @@ class StreamingState extends State {
 
     private long getMessagesAllowedToSend() {
         if (failedCommitPartitions.values().stream()
-                .anyMatch(Partition::isLookingForDeadLetter)) {
+                        .anyMatch(Partition::isLookingForDeadLetter)) {
             return 1;
         }
 
@@ -301,7 +302,7 @@ class StreamingState extends State {
                 if (!toSend.isEmpty() &&
                         partition != null &&
                         partition.isLookingForDeadLetter() &&
-                        partition.getFailedCommitsCount() >= 3) {
+                        partition.getFailedCommitsCount() >= getContext().getUserFailedCommitLimit()) {
                     final ConsumedEvent failedEvent = toSend.remove(0);
                     // todo: skip or to dlq
                     LOG.warn("Skipping event {} from partition {} due to failed commits count {}",
@@ -733,13 +734,15 @@ class StreamingState extends State {
 
         // fixme feature toggle by failed commit count configured in subscription
 
-        final String lastDeadLetterOffset = getContext().getCursorOperationsService()
-                .shiftCursor(cursor, getBatchLimitEvents()).getOffset();
-        // check failed commits and indicate that streaming should switch in looking for dead letters mode
-        if (partition.getFailedCommitsCount() >= 3) {
-            Partition lookingDeadLetter = partition.toLookingDeadLetter(lastDeadLetterOffset);
-            failedCommitPartitions.put(partition.getKey(), lookingDeadLetter);
-            getZk().updateTopology(topology -> new Partition[]{lookingDeadLetter});
+        if (getContext().getUserFailedCommitLimit() != null) {
+            final String lastDeadLetterOffset = getContext().getCursorOperationsService()
+                    .shiftCursor(cursor, getBatchLimitEvents()).getOffset();
+            // check failed commits and indicate that streaming should switch in looking for dead letters mode
+            if (partition.getFailedCommitsCount() >= getContext().getUserFailedCommitLimit()) {
+                Partition lookingDeadLetter = partition.toLookingDeadLetter(lastDeadLetterOffset);
+                failedCommitPartitions.put(partition.getKey(), lookingDeadLetter);
+                getZk().updateTopology(topology -> new Partition[]{lookingDeadLetter});
+            }
         }
     }
 

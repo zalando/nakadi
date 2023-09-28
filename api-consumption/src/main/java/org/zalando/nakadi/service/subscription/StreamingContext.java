@@ -5,6 +5,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.google.common.base.Preconditions;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.zalando.nakadi.annotations.validation.DeadLetterAnnotationValidator;
 import org.zalando.nakadi.domain.ConsumedEvent;
 import org.zalando.nakadi.domain.NakadiCursor;
 import org.zalando.nakadi.domain.Subscription;
@@ -35,6 +36,7 @@ import java.io.IOException;
 import java.util.Collection;
 import java.util.Comparator;
 import java.util.List;
+import java.util.Optional;
 import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.ScheduledExecutorService;
@@ -77,7 +79,7 @@ public class StreamingContext implements SubscriptionStreamer {
     private boolean zkClientClosed;
 
     private static final Logger LOG = LoggerFactory.getLogger(StreamingContext.class);
-    private boolean lookingForDeadLetter;
+    private final Integer userFailedCommitLimit;
 
     private StreamingContext(final Builder builder) {
         this.out = builder.out;
@@ -102,6 +104,11 @@ public class StreamingContext implements SubscriptionStreamer {
         this.streamMemoryLimitBytes = builder.streamMemoryLimitBytes;
         this.cursorOperationsService = builder.cursorOperationsService;
         this.kpiCollector = builder.kpiCollector;
+
+        this.userFailedCommitLimit = Optional.ofNullable(getSubscription().getAnnotations())
+                .map(ans -> ans.get(DeadLetterAnnotationValidator.AUTO_DLQ_FAILED_COMMIT_LIMIT))
+                .map(Integer::valueOf)
+                .orElse(null);
     }
 
     public ConsumptionKpiCollector getKpiCollector() {
@@ -340,8 +347,8 @@ public class StreamingContext implements SubscriptionStreamer {
         return streamMemoryLimitBytes;
     }
 
-    public void setLookingForDeadLetter(final boolean lookingForDeadLetter) {
-        this.lookingForDeadLetter = lookingForDeadLetter;
+    public Integer getUserFailedCommitLimit() {
+        return this.userFailedCommitLimit;
     }
 
     public static final class Builder {

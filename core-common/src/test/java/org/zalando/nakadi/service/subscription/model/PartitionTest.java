@@ -1,10 +1,15 @@
 package org.zalando.nakadi.service.subscription.model;
 
+import com.fasterxml.jackson.annotation.JsonProperty;
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.google.common.collect.ImmutableList;
 import org.junit.Assert;
 import org.junit.Test;
+import org.zalando.nakadi.config.JsonConfig;
 import org.zalando.nakadi.domain.EventTypePartition;
 
+import java.io.IOException;
 import java.util.Arrays;
 import java.util.Collection;
 
