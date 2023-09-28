@@ -21,6 +21,7 @@ import org.zalando.nakadi.service.subscription.model.Partition;
 import org.zalando.nakadi.service.subscription.zk.ZkSubscription;
 import org.zalando.nakadi.service.subscription.zk.ZkSubscriptionClient;
 import org.zalando.nakadi.service.timeline.HighLevelConsumer;
+import org.zalando.nakadi.view.Cursor;
 import org.zalando.nakadi.view.SubscriptionCursor;
 import org.zalando.nakadi.view.SubscriptionCursorWithoutToken;
 
@@ -235,7 +236,7 @@ class StreamingState extends State {
 
     private long getMessagesAllowedToSend() {
         if (failedCommitPartitions.values().stream()
-                        .anyMatch(Partition::isLookingForDeadLetter)) {
+                .anyMatch(Partition::isLookingForDeadLetter)) {
             return 1;
         }
 
@@ -277,16 +278,19 @@ class StreamingState extends State {
             Partition partition = failedCommitPartitions.get(etp);
 
             while (true) {
-                if (partition != null &&
-                        partition.isLookingForDeadLetter() &&
-                        partitionData.getCommitOffset().getOffset().compareTo(partition.getLastDeadLetterOffset()) >= 0) {
-                    getZk().updateTopology(topology -> Arrays.stream(topology.getPartitions())
-                            .filter(p -> p.getPartition().equals(etp.getPartition()))
-                            .map(p -> p.toLookingDeadLetter(null))
-                            .toArray(Partition[]::new));
-                    failedCommitPartitions.remove(etp);
-                    messagesAllowedToSend = (int) getMessagesAllowedToSend(); // fixme think
-                    partition = null;
+                if (partition != null && partition.isLookingForDeadLetter()) {
+                    final NakadiCursor lastDeadLetterCursor = getContext().getCursorConverter().convert(
+                            partition.getEventType(),
+                            new Cursor(partition.getPartition(), partition.getLastDeadLetterOffset()));
+                    if (getComparator().compare(partitionData.getCommitOffset(), lastDeadLetterCursor) >= 0) {
+                        getZk().updateTopology(topology -> Arrays.stream(topology.getPartitions())
+                                .filter(p -> p.getPartition().equals(etp.getPartition()))
+                                .map(p -> p.toLookingDeadLetter(null))
+                                .toArray(Partition[]::new));
+                        failedCommitPartitions.remove(etp);
+                        messagesAllowedToSend = (int) getMessagesAllowedToSend(); // fixme think
+                        partition = null;
+                    }
                 }
 
                 final List<ConsumedEvent> toSend = partitionData.takeEventsToStream(
@@ -517,11 +521,15 @@ class StreamingState extends State {
         trackIdleness(topology);
 
         // TODO TODO check single thread
-        failedCommitPartitions = Arrays.stream(getZk().getTopology().getPartitions())
-                .filter(p -> p.getFailedCommitsCount() > 0 || p.isLookingForDeadLetter())
-                .collect(Collectors.toMap(
-                        p -> new EventTypePartition(p.getEventType(), p.getPartition()),
-                        p -> p));
+        if (getContext().getUserFailedCommitLimit() == null) {
+            failedCommitPartitions = Collections.emptyMap();
+        } else {
+            failedCommitPartitions = Arrays.stream(getZk().getTopology().getPartitions())
+                    .filter(p -> p.getFailedCommitsCount() > 0 || p.isLookingForDeadLetter())
+                    .collect(Collectors.toMap(
+                            p -> new EventTypePartition(p.getEventType(), p.getPartition()),
+                            p -> p));
+        }
     }
 
     void recheckTopology() {

@@ -12,6 +12,7 @@ import org.hamcrest.core.StringContains;
 import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
+import org.zalando.nakadi.annotations.validation.DeadLetterAnnotationValidator;
 import org.zalando.nakadi.config.JsonConfig;
 import org.zalando.nakadi.domain.*;
 import org.zalando.nakadi.service.BlacklistService;
@@ -30,6 +31,7 @@ import org.zalando.nakadi.webservice.utils.TestStreamingClient;
 import java.io.IOException;
 import java.util.Collections;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
@@ -594,7 +596,8 @@ public class HilaAT extends BaseAT {
     }
 
     @Test(timeout = 15000)
-    public void whenCommitFailsThreeTimesAndSingleBatchEventFailsThreeTimesThenEventSkipped() {
+    public void whenCommitFailsThreeTimesAndSingleBatchEventFailsThreeTimesThenEventSkipped() throws IOException {
+        final Subscription subscription = createAutoDLQSubscription();
         final TestStreamingClient client = TestStreamingClient
                 .create(URL, subscription.getId(), "batch_limit=3&commit_timeout=1")
                 .start();
@@ -634,7 +637,8 @@ public class HilaAT extends BaseAT {
     }
 
     @Test(timeout = 15000)
-    public void whenIsLookingForDeadLetterAndCommitComesThenContinueLooking() throws JsonProcessingException {
+    public void whenIsLookingForDeadLetterAndCommitComesThenContinueLooking() throws IOException {
+        final Subscription subscription = createAutoDLQSubscription();
         final TestStreamingClient client = TestStreamingClient
                 .create(URL, subscription.getId(), "batch_limit=10&commit_timeout=1")
                 .start();
@@ -698,7 +702,8 @@ public class HilaAT extends BaseAT {
     }
 
     @Test(timeout = 20_000)
-    public void whenIsLookingForDeadLetterAndSendAllEventsOneByOneThenBackToNormalBatchSize() throws InterruptedException {
+    public void whenIsLookingForDeadLetterAndSendAllEventsOneByOneThenBackToNormalBatchSize() throws InterruptedException, IOException {
+        final Subscription subscription = createAutoDLQSubscription();
         final TestStreamingClient client = TestStreamingClient
                 .create(URL, subscription.getId(), "batch_limit=10&commit_timeout=1&stream_limit=20")
                 .start();
@@ -741,5 +746,14 @@ public class HilaAT extends BaseAT {
         return client.getJsonBatches().stream()
                 .filter(batch -> batch.getMetadata() != null)
                 .anyMatch(batch -> batch.getMetadata().getDebug().equals("Commit timeout reached"));
+    }
+
+    private Subscription createAutoDLQSubscription() throws IOException {
+        final SubscriptionBase subscription = RandomSubscriptionBuilder.builder()
+                .withEventType(eventType.getName())
+                .withStartFrom(BEGIN)
+                .buildSubscriptionBase();
+        subscription.setAnnotations(Map.of(DeadLetterAnnotationValidator.AUTO_DLQ_FAILED_COMMIT_LIMIT, "3"));
+        return createSubscription(subscription);
     }
 }
