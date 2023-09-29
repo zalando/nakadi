@@ -1,7 +1,5 @@
 package org.zalando.nakadi.service.subscription.state;
 
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 import org.zalando.nakadi.domain.EventTypePartition;
 import org.zalando.nakadi.exceptions.runtime.AccessDeniedException;
 import org.zalando.nakadi.exceptions.runtime.ConflictException;
@@ -17,8 +15,6 @@ import java.util.stream.Collectors;
 
 public class StartingState extends State {
 
-    private static final Logger LOG = LoggerFactory.getLogger(StartingState.class);
-
     @Override
     public void onEnter() {
         // 1. Check authorization
@@ -29,7 +25,6 @@ public class StartingState extends State {
             switchState(new CleanupState(e));
             return;
         }
-
         registerSessionAndStartStreaming();
     }
 

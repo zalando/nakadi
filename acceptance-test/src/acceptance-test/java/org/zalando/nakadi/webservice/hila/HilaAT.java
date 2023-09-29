@@ -757,7 +757,7 @@ public class HilaAT extends BaseAT {
                 .withEventType(eventType.getName())
                 .withStartFrom(BEGIN)
                 .buildSubscriptionBase();
-        subscription.setAnnotations(Map.of(DeadLetterAnnotationValidator.AUTO_DLQ_FAILED_COMMIT_LIMIT, "3"));
+        subscription.setAnnotations(Map.of(DeadLetterAnnotationValidator.SUBSCRIPTION_MAX_EVENT_SEND_COUNT, "3"));
         return createSubscription(subscription);
     }
 }

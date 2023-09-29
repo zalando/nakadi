@@ -57,10 +57,10 @@ public class PartitionTest {
         final String partition = "partition";
 
         ImmutableList.of(
-                        new Partition(eventType, partition, "x", "x1", Partition.State.REASSIGNING),
-                        new Partition(eventType, partition, "x", "T", Partition.State.REASSIGNING),
-                        new Partition(eventType, partition, "T", "x", Partition.State.REASSIGNING),
-                        new Partition(eventType, partition, "T", "T1", Partition.State.REASSIGNING))
+                new Partition(eventType, partition, "x", "x1", Partition.State.REASSIGNING),
+                new Partition(eventType, partition, "x", "T", Partition.State.REASSIGNING),
+                new Partition(eventType, partition, "T", "x", Partition.State.REASSIGNING),
+                new Partition(eventType, partition, "T", "T1", Partition.State.REASSIGNING))
                 .forEach(testPartition -> {
                     final Partition movedPartition = testPartition.moveToSessionId("T", validSessions);
                     assertEquals(new EventTypePartition(eventType, partition), movedPartition.getKey());

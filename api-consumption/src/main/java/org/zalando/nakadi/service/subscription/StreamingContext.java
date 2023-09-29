@@ -89,7 +89,7 @@ public class StreamingContext implements SubscriptionStreamer {
 
     private final EventTypeCache eventTypeCache;
     private static final Logger LOG = LoggerFactory.getLogger(StreamingContext.class);
-    private final Integer userFailedCommitLimit;
+    private final Integer maxEventSendCount;
 
     private StreamingContext(final Builder builder) {
         this.out = builder.out;
@@ -118,10 +118,10 @@ public class StreamingContext implements SubscriptionStreamer {
         this.eventTypeCache = builder.eventTypeCache;
         this.featureToggleService = builder.featureToggleService;
 
-        this.userFailedCommitLimit = Optional.ofNullable(getSubscription().getAnnotations())
-          .map(ans -> ans.get(DeadLetterAnnotationValidator.AUTO_DLQ_FAILED_COMMIT_LIMIT))
-          .map(Integer::valueOf)
-          .orElse(null);
+        this.maxEventSendCount = Optional.ofNullable(getSubscription().getAnnotations())
+                .map(ans -> ans.get(DeadLetterAnnotationValidator.SUBSCRIPTION_MAX_EVENT_SEND_COUNT))
+                .map(Integer::valueOf)
+                .orElse(null);
     }
 
     public ConsumptionKpiCollector getKpiCollector() {
@@ -396,8 +396,8 @@ public class StreamingContext implements SubscriptionStreamer {
         return streamMemoryLimitBytes;
     }
 
-    public Integer getUserFailedCommitLimit() {
-        return this.userFailedCommitLimit;
+    public Integer getMaxEventSendCount() {
+        return this.maxEventSendCount;
     }
 
     public static final class Builder {

@@ -86,23 +86,14 @@ class ClosingState extends State {
     }
 
     private void updateFailedCommitsCount() {
-        if (getContext().getUserFailedCommitLimit() == null) {
+        if (getContext().getMaxEventSendCount() == null) {
             return;
         }
 
-        getZk().updateTopology(topology -> {
-                    try {
-                        final Partition[] array = Arrays.stream(topology.getPartitions())
-                                .filter(p -> uncommittedOffsets.containsKey(
-                                        new EventTypePartition(p.getEventType(), p.getPartition())))
-                                .map(Partition::toPartitionWithIncFailedCommits)
-                                .toArray(Partition[]::new);
-                        return array;
-                    } catch (RuntimeException re) {
-                        LOG.error("failed to increase failed commits count", re);
-                        throw re;
-                    }
-                }
+        getZk().updateTopology(topology -> Arrays.stream(topology.getPartitions())
+                .filter(p -> uncommittedOffsets.containsKey(new EventTypePartition(p.getEventType(), p.getPartition())))
+                .map(Partition::toIncFailedCommits)
+                .toArray(Partition[]::new)
         );
     }
 

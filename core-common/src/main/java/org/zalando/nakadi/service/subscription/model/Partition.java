@@ -34,10 +34,9 @@ public class Partition {
     private String nextSession;
     @JsonProperty("state")
     private State state;
-    // todo create data struct
     @JsonProperty("failed_commits_count")
     private int failedCommitsCount;
-    @JsonProperty("last_dead_letter_offset") // when to stop looking for dead letter
+    @JsonProperty("last_dead_letter_offset")
     private String lastDeadLetterOffset;
 
     public Partition() {
@@ -78,7 +77,7 @@ public class Partition {
                 state, failedCommitsCount, lastDeadLetterOffset);
     }
 
-    public Partition toPartitionWithIncFailedCommits() {
+    public Partition toIncFailedCommits() {
         return new Partition(eventType, partition, session, nextSession,
                 state, failedCommitsCount + 1, lastDeadLetterOffset);
     }
@@ -87,13 +86,10 @@ public class Partition {
         return new Partition(eventType, partition, session, nextSession, state, 0, lastDeadLetterOffset);
     }
 
-    public Partition toLookingDeadLetter(final String lastDeadLetterOffset) {
-
-        if (lastDeadLetterOffset != null && this.lastDeadLetterOffset == null) {
-            // failed commits reset to count for failures of the specific event
+    public Partition toLastDeadLetterOffset(final String lastDeadLetterOffset) {
+        if ((lastDeadLetterOffset != null && this.lastDeadLetterOffset == null) ||
+                (lastDeadLetterOffset == null && this.lastDeadLetterOffset != null)) {
             return new Partition(eventType, partition, session, nextSession, state, 0, lastDeadLetterOffset);
-        } else if (lastDeadLetterOffset == null && this.lastDeadLetterOffset != null) {
-            return new Partition(eventType, partition, session, nextSession, state, 0, null);
         }
 
         return this;
@@ -179,6 +175,10 @@ public class Partition {
     public String toString() {
         return eventType + ":" + partition + "->" + state + ":" +
                 session + "->" + nextSession + ":" + failedCommitsCount + ":" + lastDeadLetterOffset;
+    }
+
+    public String toFailedCommitString() {
+        return eventType + ":" + partition + ":" + failedCommitsCount + ":" + lastDeadLetterOffset;
     }
 
     @Override

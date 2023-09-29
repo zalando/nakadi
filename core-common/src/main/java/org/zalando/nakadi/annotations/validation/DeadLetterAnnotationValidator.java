@@ -7,7 +7,8 @@ import java.util.Map;
 public class DeadLetterAnnotationValidator implements
         ConstraintValidator<DeadLetterValidAnnotations, Map<String, String>> {
 
-    public static final String AUTO_DLQ_FAILED_COMMIT_LIMIT = "nakadi.zalando.org/auto-dlq-failed-commit-limit";
+    public static final String SUBSCRIPTION_MAX_EVENT_SEND_COUNT =
+            "nakadi.zalando.org/subscription-max-event-send-count";
 
     @Override
     public boolean isValid(final Map<String, String> annotations, final ConstraintValidatorContext context) {
@@ -15,7 +16,7 @@ public class DeadLetterAnnotationValidator implements
             return true;
         }
 
-        final String failedCommitCount = annotations.get(AUTO_DLQ_FAILED_COMMIT_LIMIT);
+        final String failedCommitCount = annotations.get(SUBSCRIPTION_MAX_EVENT_SEND_COUNT);
         if (failedCommitCount == null) {
             return true;
         }
@@ -25,8 +26,7 @@ public class DeadLetterAnnotationValidator implements
             commits = Integer.valueOf(failedCommitCount);
         } catch (final NumberFormatException e) {
             context.disableDefaultConstraintViolation();
-            context.buildConstraintViolationWithTemplate(
-                    "nakadi.zalando.org/auto-dlq-failed-commit-limit must be an integer")
+            context.buildConstraintViolationWithTemplate(SUBSCRIPTION_MAX_EVENT_SEND_COUNT + " must be an integer")
                     .addConstraintViolation();
             return false;
         }
@@ -34,7 +34,7 @@ public class DeadLetterAnnotationValidator implements
         if (commits < 2 || commits > 10) {
             context.disableDefaultConstraintViolation();
             context.buildConstraintViolationWithTemplate(
-                    "nakadi.zalando.org/auto-dlq-failed-commit-limit must be between 2 and 10")
+                    SUBSCRIPTION_MAX_EVENT_SEND_COUNT + " must be between 2 and 10")
                     .addConstraintViolation();
             return false;
         }

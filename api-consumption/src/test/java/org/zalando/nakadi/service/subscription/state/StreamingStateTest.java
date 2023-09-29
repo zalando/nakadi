@@ -95,7 +95,7 @@ public class StreamingStateTest {
         when(contextMock.getCursorOperationsService())
                 .thenReturn(Mockito.mock(CursorOperationsService.class));
         when(contextMock.getKpiCollector()).thenReturn(mock(ConsumptionKpiCollector.class));
-        when(contextMock.getUserFailedCommitLimit()).thenReturn(null);
+        when(contextMock.getMaxEventSendCount()).thenReturn(null);
 
         final Client client = mock(Client.class);
         when(client.getClientId()).thenReturn("consumingAppId");
