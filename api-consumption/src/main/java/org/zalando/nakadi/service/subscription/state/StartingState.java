@@ -14,6 +14,7 @@ import java.util.List;
 import java.util.stream.Collectors;
 
 public class StartingState extends State {
+
     @Override
     public void onEnter() {
         // 1. Check authorization

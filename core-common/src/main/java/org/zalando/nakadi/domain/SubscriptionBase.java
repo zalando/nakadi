@@ -3,6 +3,7 @@ package org.zalando.nakadi.domain;
 import com.google.common.collect.ImmutableList;
 import org.zalando.nakadi.annotations.validation.AnnotationKey;
 import org.zalando.nakadi.annotations.validation.AnnotationValue;
+import org.zalando.nakadi.annotations.validation.DeadLetterValidAnnotations;
 import org.zalando.nakadi.annotations.validation.LabelKey;
 import org.zalando.nakadi.annotations.validation.LabelValue;
 import org.zalando.nakadi.plugin.api.authz.Resource;
@@ -52,6 +53,7 @@ public class SubscriptionBase {
     private SubscriptionAuthorization authorization;
 
     @Nullable
+    @DeadLetterValidAnnotations
     private Map<
             @AnnotationKey String,
             @AnnotationValue String> annotations;

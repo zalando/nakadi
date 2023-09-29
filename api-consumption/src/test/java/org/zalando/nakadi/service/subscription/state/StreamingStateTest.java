@@ -19,7 +19,6 @@ import org.zalando.nakadi.exceptions.runtime.InvalidCursorException;
 import org.zalando.nakadi.exceptions.runtime.NakadiRuntimeException;
 import org.zalando.nakadi.exceptions.runtime.NoSuchEventTypeException;
 import org.zalando.nakadi.exceptions.runtime.ServiceTemporarilyUnavailableException;
-import org.zalando.nakadi.service.timeline.HighLevelConsumer;
 import org.zalando.nakadi.repository.TopicRepository;
 import org.zalando.nakadi.security.Client;
 import org.zalando.nakadi.service.ConsumptionKpiCollector;
@@ -33,6 +32,7 @@ import org.zalando.nakadi.service.subscription.autocommit.AutocommitSupport;
 import org.zalando.nakadi.service.subscription.model.Partition;
 import org.zalando.nakadi.service.subscription.zk.ZkSubscription;
 import org.zalando.nakadi.service.subscription.zk.ZkSubscriptionClient;
+import org.zalando.nakadi.service.timeline.HighLevelConsumer;
 import org.zalando.nakadi.service.timeline.TimelineService;
 import org.zalando.nakadi.view.SubscriptionCursorWithoutToken;
 
@@ -95,6 +95,7 @@ public class StreamingStateTest {
         when(contextMock.getCursorOperationsService())
                 .thenReturn(Mockito.mock(CursorOperationsService.class));
         when(contextMock.getKpiCollector()).thenReturn(mock(ConsumptionKpiCollector.class));
+        when(contextMock.getMaxEventSendCount()).thenReturn(null);
 
         final Client client = mock(Client.class);
         when(client.getClientId()).thenReturn("consumingAppId");
@@ -209,7 +210,7 @@ public class StreamingStateTest {
 
         state.onEnter();
         final NakadiCursor anyCursor = NakadiCursor.of(timeline, "0", "0");
-        when(cursorConverter.convert((SubscriptionCursorWithoutToken)any())).thenReturn(anyCursor);
+        when(cursorConverter.convert((SubscriptionCursorWithoutToken) any())).thenReturn(anyCursor);
 
         state.refreshTopologyUnlocked(new Partition[]{
                 new Partition(

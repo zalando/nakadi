@@ -5,6 +5,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.google.common.base.Preconditions;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.zalando.nakadi.annotations.validation.DeadLetterAnnotationValidator;
 import org.zalando.nakadi.cache.EventTypeCache;
 import org.zalando.nakadi.domain.ConsumedEvent;
 import org.zalando.nakadi.domain.EventCategory;
@@ -41,6 +42,7 @@ import java.io.IOException;
 import java.util.Collection;
 import java.util.Comparator;
 import java.util.List;
+import java.util.Optional;
 import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.ScheduledExecutorService;
@@ -87,6 +89,7 @@ public class StreamingContext implements SubscriptionStreamer {
 
     private final EventTypeCache eventTypeCache;
     private static final Logger LOG = LoggerFactory.getLogger(StreamingContext.class);
+    private final Integer maxEventSendCount;
 
     private StreamingContext(final Builder builder) {
         this.out = builder.out;
@@ -114,6 +117,11 @@ public class StreamingContext implements SubscriptionStreamer {
         this.kafkaRecordDeserializer = builder.kafkaRecordDeserializer;
         this.eventTypeCache = builder.eventTypeCache;
         this.featureToggleService = builder.featureToggleService;
+
+        this.maxEventSendCount = Optional.ofNullable(getSubscription().getAnnotations())
+                .map(ans -> ans.get(DeadLetterAnnotationValidator.SUBSCRIPTION_MAX_EVENT_SEND_COUNT))
+                .map(Integer::valueOf)
+                .orElse(null);
     }
 
     public ConsumptionKpiCollector getKpiCollector() {
@@ -195,7 +203,7 @@ public class StreamingContext implements SubscriptionStreamer {
                 LOG.warn("Failed to process task " + task + ", will rethrow original error");
                 switchStateImmediately(new CleanupState(ex.getException()));
             } catch (final RuntimeException ex) {
-                LOG.warn("Failed to process task " + task + ", code carefully!");
+                LOG.warn("Failed to process task " + task + ", code carefully!", ex);
                 switchStateImmediately(new CleanupState(ex));
             }
         }
@@ -386,6 +394,10 @@ public class StreamingContext implements SubscriptionStreamer {
 
     public long getStreamMemoryLimitBytes() {
         return streamMemoryLimitBytes;
+    }
+
+    public Integer getMaxEventSendCount() {
+        return this.maxEventSendCount;
     }
 
     public static final class Builder {

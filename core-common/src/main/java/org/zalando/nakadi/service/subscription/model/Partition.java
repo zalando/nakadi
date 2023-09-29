@@ -13,7 +13,6 @@ public class Partition {
         UNASSIGNED("unassigned"),
         REASSIGNING("reassigning"),
         ASSIGNED("assigned");
-
         private final String description;
 
         State(final String description) {
@@ -35,6 +34,10 @@ public class Partition {
     private String nextSession;
     @JsonProperty("state")
     private State state;
+    @JsonProperty("failed_commits_count")
+    private int failedCommitsCount;
+    @JsonProperty("last_dead_letter_offset")
+    private String lastDeadLetterOffset;
 
     public Partition() {
     }
@@ -52,8 +55,44 @@ public class Partition {
         this.state = state;
     }
 
+    public Partition(
+            final String eventType,
+            final String partition,
+            @Nullable final String session,
+            @Nullable final String nextSession,
+            final State state,
+            final int failedCommitsCount,
+            final String lastDeadLetterOffset) {
+        this.eventType = eventType;
+        this.partition = partition;
+        this.session = session;
+        this.nextSession = nextSession;
+        this.state = state;
+        this.failedCommitsCount = failedCommitsCount;
+        this.lastDeadLetterOffset = lastDeadLetterOffset;
+    }
+
     public Partition toState(final State state, @Nullable final String session, @Nullable final String nextSession) {
-        return new Partition(eventType, partition, session, nextSession, state);
+        return new Partition(eventType, partition, session, nextSession,
+                state, failedCommitsCount, lastDeadLetterOffset);
+    }
+
+    public Partition toIncFailedCommits() {
+        return new Partition(eventType, partition, session, nextSession,
+                state, failedCommitsCount + 1, lastDeadLetterOffset);
+    }
+
+    public Partition toZeroFailedCommits() {
+        return new Partition(eventType, partition, session, nextSession, state, 0, lastDeadLetterOffset);
+    }
+
+    public Partition toLastDeadLetterOffset(final String lastDeadLetterOffset) {
+        if ((lastDeadLetterOffset != null && this.lastDeadLetterOffset == null) ||
+                (lastDeadLetterOffset == null && this.lastDeadLetterOffset != null)) {
+            return new Partition(eventType, partition, session, nextSession, state, 0, lastDeadLetterOffset);
+        }
+
+        return this;
     }
 
     /**
@@ -134,7 +173,12 @@ public class Partition {
 
     @Override
     public String toString() {
-        return eventType + ":" + partition + "->" + state + ":" + session + "->" + nextSession;
+        return eventType + ":" + partition + "->" + state + ":" +
+                session + "->" + nextSession + ":" + failedCommitsCount + ":" + lastDeadLetterOffset;
+    }
+
+    public String toFailedCommitString() {
+        return eventType + ":" + partition + ":" + failedCommitsCount + ":" + lastDeadLetterOffset;
     }
 
     @Override
@@ -155,7 +199,19 @@ public class Partition {
 
     @Override
     public int hashCode() {
-
         return Objects.hash(eventType, partition);
+    }
+
+    public int getFailedCommitsCount() {
+        return failedCommitsCount;
+    }
+
+    public String getLastDeadLetterOffset() {
+        return lastDeadLetterOffset;
+    }
+
+    @JsonIgnore
+    public boolean isLookingForDeadLetter() {
+        return lastDeadLetterOffset != null;
     }
 }
