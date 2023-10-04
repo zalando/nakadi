@@ -82,6 +82,9 @@ public class BinaryEventPublisher {
                                                      final List<NakadiRecord> records,
                                                      final List<Check> checks,
                                                      final Map<HeaderTag, String> consumerTags) {
+
+        TracingService.setTag("number_of_events", String.valueOf(records.size()));
+
         for (final Check check : checks) {
             final List<NakadiRecordResult> res = check.execute(eventType, records);
             if (res != null && !res.isEmpty()) {
