@@ -2,6 +2,7 @@ package org.zalando.nakadi.service;
 
 import com.google.common.collect.ImmutableList;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 import org.zalando.nakadi.cache.SubscriptionCache;
 import org.zalando.nakadi.config.NakadiSettings;
@@ -32,6 +33,8 @@ import org.zalando.nakadi.util.UUIDGenerator;
 import org.zalando.nakadi.view.SubscriptionCursorWithoutToken;
 
 import java.io.IOException;
+import java.util.Collection;
+import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -51,6 +54,7 @@ public class CursorsService {
     private final SubscriptionDbRepository subscriptionRepository;
     private final SubscriptionCache subscriptionCache;
     private final NakadiAuditLogPublisher auditLogPublisher;
+    private final List<String> additionalConsumedEventTypes;
 
     @Autowired
     public CursorsService(final SubscriptionDbRepository subscriptionRepository,
@@ -61,7 +65,8 @@ public class CursorsService {
                           final UUIDGenerator uuidGenerator,
                           final TimelineService timelineService,
                           final AuthorizationValidator authorizationValidator,
-                          final NakadiAuditLogPublisher auditLogPublisher) {
+                          final NakadiAuditLogPublisher auditLogPublisher,
+                          @Value("${nakadi.dlq.redriveEventTypeName:#{null}}") final String dlqEventType) {
         this.nakadiSettings = nakadiSettings;
         this.zkSubscriptionFactory = zkSubscriptionFactory;
         this.cursorConverter = cursorConverter;
@@ -71,6 +76,11 @@ public class CursorsService {
         this.subscriptionRepository = subscriptionRepository;
         this.subscriptionCache = subscriptionCache;
         this.auditLogPublisher = auditLogPublisher;
+        if (dlqEventType != null) {
+            additionalConsumedEventTypes = Collections.singletonList(dlqEventType);
+        } else {
+            additionalConsumedEventTypes = Collections.emptyList();
+        }
     }
 
     /**
@@ -193,7 +203,7 @@ public class CursorsService {
         authorizationValidator.authorizeSubscriptionView(subscription);
         authorizationValidator.authorizeSubscriptionAdmin(subscription);
 
-        validateCursorsBelongToSubscription(subscription, cursors);
+        validateCursorsBelongToSubscription(subscription, cursors, Collections.emptyList());
         for (final NakadiCursor cursor : cursors) {
             cursor.checkStorageAvailability();
         }
@@ -241,7 +251,7 @@ public class CursorsService {
     private void validateSubscriptionCommitCursors(final Subscription subscription,
                                                    final List<NakadiCursor> cursors)
             throws UnableProcessException {
-        validateCursorsBelongToSubscription(subscription, cursors);
+        validateCursorsBelongToSubscription(subscription, cursors, additionalConsumedEventTypes);
 
         cursors.forEach(cursor -> {
             try {
@@ -254,11 +264,16 @@ public class CursorsService {
     }
 
     private void validateCursorsBelongToSubscription(final Subscription subscription,
-                                                     final List<NakadiCursor> cursors)
+                                                     final List<NakadiCursor> cursors,
+                                                     final Collection<String> additionalAllowedEventTypes)
             throws UnableProcessException {
-        final List<String> wrongEventTypes = cursors.stream()
+        var stream = cursors.stream()
                 .map(NakadiCursor::getEventType)
-                .filter(et -> !subscription.getEventTypes().contains(et))
+                .filter(et -> !subscription.getEventTypes().contains(et));
+        if (!additionalAllowedEventTypes.isEmpty()) {
+            stream = stream.filter(et -> !additionalAllowedEventTypes.contains(et));
+        }
+        final List<String> wrongEventTypes = stream
                 .collect(Collectors.toList());
         if (!wrongEventTypes.isEmpty()) {
             TracingService.logError("Event type does not belong to subscription: " + wrongEventTypes);

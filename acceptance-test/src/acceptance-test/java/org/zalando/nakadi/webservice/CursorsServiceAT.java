@@ -121,7 +121,7 @@ public class CursorsServiceAT extends BaseAT {
         when(uuidGenerator.isUUID(any())).thenReturn(true);
         cursorsService = new CursorsService(subscriptionRepo, subscriptionCache, mock(NakadiSettings.class),
                 zkSubscriptionFactory, cursorConverter, uuidGenerator, null, mock(AuthorizationValidator.class),
-                mock(NakadiAuditLogPublisher.class));
+                mock(NakadiAuditLogPublisher.class), null);
 
         // Register cursors in converter
         registerNakadiCursor(NakadiCursor.of(buildTimeline(etName, topic, CREATED_AT), P1, NEW_OFFSET));
