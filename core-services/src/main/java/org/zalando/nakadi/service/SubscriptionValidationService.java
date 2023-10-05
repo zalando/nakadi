@@ -128,6 +128,9 @@ public class SubscriptionValidationService {
             throw new InvalidStreamParametersException("Duplicated partition specified");
         }
         // check that partitions belong to subscription
+        // Note: currently, this check validates the partitions (passed by the client) against only explicit event types
+        // of the subscription. If the client passes partitions for implicit event types (like DLQ event type), this
+        // check would fail.
         final List<EventTypePartition> allPartitions = getAllPartitions(subscription.getEventTypes());
         final List<EventTypePartition> wrongPartitions = partitions.stream()
                 .filter(p -> !allPartitions.contains(p))
@@ -145,6 +148,8 @@ public class SubscriptionValidationService {
                                         final List<EventTypePartition> allPartitions)
             throws InvalidInitialCursorsException, RepositoryProblemException {
 
+        // Note: this check only verifies explicitly listed event types for a subscription.
+        // Implicit event types (like DLQ) are not checked here on creation of the subscription.
         final boolean cursorsMissing = allPartitions.stream()
                 .anyMatch(p -> !subscription.getInitialCursors().stream().anyMatch(p::ownsCursor));
         if (cursorsMissing) {
