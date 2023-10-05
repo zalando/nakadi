@@ -85,6 +85,10 @@ public class TracingService {
         return getActiveSpan().setTag(key, value);
     }
 
+    public static Span setTag(final String key, final Number value) {
+        return getActiveSpan().setTag(key, value);
+    }
+
     public static Span setErrorFlag() {
         return setErrorFlag(getActiveSpan());
     }
