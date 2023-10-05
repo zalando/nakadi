@@ -32,7 +32,7 @@ public interface ZkSubscriptionClient extends Closeable {
      *
      * @return true if subscription was created. False if subscription already present. To operate on this value
      * additional field 'state' is used /nakadi/subscriptions/{subscriptionId}/state. Just after creation it has value
-     * CREATED. After {{@link #fillEmptySubscription}} call it will have value INITIALIZED. So true
+     * CREATED. After {{@link #fillSubscription}} call it will have value INITIALIZED. So true
      * will be returned in case of state is equal to INITIALIZED.
      */
     boolean isSubscriptionCreatedAndInitialized() throws NakadiRuntimeException;
@@ -48,7 +48,7 @@ public interface ZkSubscriptionClient extends Closeable {
      *
      * @param cursors Data to use for subscription filling.
      */
-    void fillEmptySubscription(Collection<SubscriptionCursorWithoutToken> cursors);
+    void fillSubscription(Collection<SubscriptionCursorWithoutToken> cursors, boolean updateTopology);
 
     /**
      * Updates topologies partitions by reading topology first and

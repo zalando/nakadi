@@ -19,6 +19,7 @@ import org.zalando.nakadi.exceptions.runtime.ServiceTemporarilyUnavailableExcept
 import org.zalando.nakadi.exceptions.runtime.UnableProcessException;
 import org.zalando.nakadi.exceptions.runtime.ZookeeperException;
 import org.zalando.nakadi.repository.zookeeper.ZooKeeperHolder;
+import org.zalando.nakadi.service.subscription.model.Partition;
 import org.zalando.nakadi.service.subscription.model.Session;
 import org.zalando.nakadi.util.MDCUtils;
 import org.zalando.nakadi.view.Cursor;
@@ -106,11 +107,25 @@ public abstract class AbstractZkSubscriptionClient implements ZkSubscriptionClie
     }
 
     @Override
-    public final void fillEmptySubscription(final Collection<SubscriptionCursorWithoutToken> cursors) {
+    public final void fillSubscription(
+            final Collection<SubscriptionCursorWithoutToken> cursors,
+            final boolean updateTopology) {
         try {
             createSessionsZNode();
             createOffsetZNodes(cursors);
-            createTopologyZNode(cursors);
+            if (updateTopology) {
+                updateTopology(topology ->
+                    cursors.stream().map(cursor -> new Partition(
+                            cursor.getEventType(),
+                            cursor.getPartition(),
+                            null,
+                            null,
+                            Partition.State.UNASSIGNED
+                    )).toArray(Partition[]::new)
+                );
+            } else {
+                createTopologyZNode(cursors);
+            }
             createStateZNodeAsInitialized();
         } catch (final Exception e) {
             throw new NakadiRuntimeException(e);

@@ -12,14 +12,19 @@ import org.zalando.nakadi.service.subscription.zk.ZkSubscriptionClient;
 import org.zalando.nakadi.service.timeline.TimelineService;
 import org.zalando.nakadi.view.SubscriptionCursorWithoutToken;
 
+import java.util.Arrays;
+import java.util.Collections;
 import java.util.EnumMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.stream.Collectors;
 
 import static java.util.stream.Collectors.groupingBy;
 
 public class SubscriptionInitializer {
+    // TODO: should be configurable
+    private static final String DLQ_EVENT_TYPE = "nakadi.dlq.event.type";
     
     public static void initialize(
             final ZkSubscriptionClient zkClient,
@@ -29,18 +34,39 @@ public class SubscriptionInitializer {
         if (!zkClient.isSubscriptionCreatedAndInitialized()) {
             final List<SubscriptionCursorWithoutToken> cursors = calculateStartPosition(
                     subscription, timelineService, cursorConverter);
-            zkClient.fillEmptySubscription(cursors);
+            zkClient.fillSubscription(cursors, false);
+        }
+        // TODO: feature toggle, check if subscription has opt-in attributes.
+        if (isTestSubscription(subscription) && !isEventTypeInTopology(DLQ_EVENT_TYPE, zkClient.getTopology())) {
+            final List<SubscriptionCursorWithoutToken> cursors = calculateDlqStartPosition(
+                    timelineService, cursorConverter);
+            zkClient.fillSubscription(cursors, true);
         }
     }
 
-    public interface PositionCalculator {
-        Subscription.InitialPosition getType();
-
-        List<SubscriptionCursorWithoutToken> calculate(
-                Subscription subscription, TimelineService timelineService, CursorConverter converter);
+    private static boolean isTestSubscription(final Subscription subscription) {
+        return List.of("95e293f0-48db-438d-b31c-09b7f9c244b2", "28f38c31-e980-4997-9069-b725ee077bfe")
+                .contains(subscription.getId());
     }
 
-    public static class BeginPositionCalculator implements PositionCalculator {
+    private static boolean isEventTypeInTopology(final String eventType, final ZkSubscriptionClient.Topology topology) {
+        return Arrays.stream(topology.getPartitions())
+                .anyMatch(partition -> partition.getEventType().equals(eventType));
+    }
+
+    private interface PositionCalculator {
+        Subscription.InitialPosition getType();
+
+        default List<SubscriptionCursorWithoutToken> calculate(
+                Subscription subscription, TimelineService timelineService, CursorConverter converter) {
+            return calculate(subscription.getEventTypes(), timelineService, converter);
+        }
+
+        List<SubscriptionCursorWithoutToken> calculate(
+                Set<String> eventTypes, TimelineService timelineService, CursorConverter converter);
+    }
+
+    private static class BeginPositionCalculator implements PositionCalculator {
 
         @Override
         public Subscription.InitialPosition getType() {
@@ -49,10 +75,10 @@ public class SubscriptionInitializer {
 
         @Override
         public List<SubscriptionCursorWithoutToken> calculate(
-                final Subscription subscription,
+                final Set<String> eventTypes,
                 final TimelineService timelineService,
                 final CursorConverter converter) {
-            return subscription.getEventTypes()
+            return eventTypes
                     .stream()
                     .map(et -> {
                         try {
@@ -79,7 +105,7 @@ public class SubscriptionInitializer {
         }
     }
 
-    public static class EndPositionCalculator implements PositionCalculator {
+    private static class EndPositionCalculator implements PositionCalculator {
         @Override
         public Subscription.InitialPosition getType() {
             return SubscriptionBase.InitialPosition.END;
@@ -87,10 +113,10 @@ public class SubscriptionInitializer {
 
         @Override
         public List<SubscriptionCursorWithoutToken> calculate(
-                final Subscription subscription,
+                final Set<String> eventTypes,
                 final TimelineService timelineService,
                 final CursorConverter converter) {
-            return subscription.getEventTypes()
+            return eventTypes
                     .stream()
                     .map(et -> {
                         try {
@@ -118,7 +144,7 @@ public class SubscriptionInitializer {
         }
     }
 
-    public static class CursorsPositionCalculator implements PositionCalculator {
+    private static class CursorsPositionCalculator implements PositionCalculator {
         @Override
         public Subscription.InitialPosition getType() {
             return SubscriptionBase.InitialPosition.CURSORS;
@@ -131,6 +157,26 @@ public class SubscriptionInitializer {
                 final CursorConverter converter) {
             return subscription.getInitialCursors();
         }
+
+        @Override
+        public List<SubscriptionCursorWithoutToken> calculate(
+                final Set<String> eventTypes,
+                final TimelineService timelineService,
+                final CursorConverter converter) {
+            throw new UnsupportedOperationException("CursorsPositionCalculator requires actual cursors configuration");
+        }
+    }
+
+    public static List<SubscriptionCursorWithoutToken> calculateDlqStartPosition(
+            final TimelineService timelineService,
+            final CursorConverter converter
+    ) {
+        final var initialPosition = SubscriptionBase.InitialPosition.BEGIN;
+        final PositionCalculator result = POSITION_CALCULATORS.get(initialPosition);
+        if (null == result) {
+            throw new RuntimeException("Position calculation for " + initialPosition + " is not supported");
+        }
+        return result.calculate(Collections.singleton(DLQ_EVENT_TYPE), timelineService, converter);
     }
 
     public static List<SubscriptionCursorWithoutToken> calculateStartPosition(
@@ -147,7 +193,7 @@ public class SubscriptionInitializer {
     private static final Map<Subscription.InitialPosition, PositionCalculator> POSITION_CALCULATORS =
             new EnumMap<>(SubscriptionBase.InitialPosition.class);
 
-    static void register(final PositionCalculator calculator) {
+    private static void register(final PositionCalculator calculator) {
         POSITION_CALCULATORS.put(calculator.getType(), calculator);
     }
 
