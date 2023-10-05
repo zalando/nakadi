@@ -85,7 +85,11 @@ public class CursorsService {
             final Subscription subscription = subscriptionCache.getSubscription(subscriptionId);
             authorizationValidator.authorizeSubscriptionView(subscription);
             authorizationValidator.authorizeSubscriptionCommit(subscription);
-            validateSubscriptionCommitCursors(subscription, cursors);
+            // Note: not checking directly here if cursors belong to the subscription.
+            // Such check happens indirectly (in validateStreamId) against subscription's topology.
+            // The subscription's topology might contain additional implicit event types (like DLQ event type),
+            // for which we allow committing (but not resetting) offsets.
+            checkCursorsStorageAvailability(cursors);
             try (ZkSubscriptionClient zkClient = zkSubscriptionFactory.createClient(subscription)) {
                 validateStreamId(cursors, streamId, zkClient, subscriptionId);
                 return zkClient.commitOffsets(
@@ -238,11 +242,8 @@ public class CursorsService {
         }
     }
 
-    private void validateSubscriptionCommitCursors(final Subscription subscription,
-                                                   final List<NakadiCursor> cursors)
+    private void checkCursorsStorageAvailability(final List<NakadiCursor> cursors)
             throws UnableProcessException {
-        validateCursorsBelongToSubscription(subscription, cursors);
-
         cursors.forEach(cursor -> {
             try {
                 cursor.checkStorageAvailability();
