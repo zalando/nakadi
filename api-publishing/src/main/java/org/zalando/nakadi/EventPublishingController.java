@@ -184,11 +184,11 @@ public class EventPublishingController {
                 final int eventCount = nakadiRecords.size();
                 TracingService.setTag("number_of_events", eventCount);
 
-                reportMetrics(eventTypeMetrics, result, totalSizeBytes, eventCount);
-                reportSLOs(startingNanos, totalSizeBytes, eventCount, result, eventTypeName, client);
-
                 final long totalSizeBytes = countingInputStream.getCount();
                 TracingService.setTag("slo_bucket", TracingService.getSLOBucketName(totalSizeBytes));
+
+                reportMetrics(eventTypeMetrics, result, totalSizeBytes, eventCount);
+                reportSLOs(startingNanos, totalSizeBytes, eventCount, result, eventTypeName, client);
 
                 if (result.getStatus() == EventPublishingStatus.FAILED) {
                     TracingService.setErrorFlag();
