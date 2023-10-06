@@ -137,9 +137,6 @@ public class EventPublisher {
 
         Closeable publishingCloser = null;
         final List<BatchItem> batch = BatchFactory.from(events);
-
-        TracingService.setTag("number_of_events", batch.size());
-
         try {
             publishingCloser = timelineSync.workWithEventType(eventTypeName, nakadiSettings.getTimelineWaitTimeoutMs());
 
