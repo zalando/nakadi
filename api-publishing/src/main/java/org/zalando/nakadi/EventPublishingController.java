@@ -180,7 +180,9 @@ public class EventPublishingController {
                             "publishing record result can not be empty");
                 }
                 final EventPublishResult result = publishingResultConverter.mapPublishingResultToView(recordResults);
-                final int eventCount = result.getResponses().size();
+
+                final int eventCount = nakadiRecords.size();
+                TracingService.setTag("number_of_events", eventCount);
 
                 final long totalSizeBytes = countingInputStream.getCount();
                 TracingService.setTag("slo_bucket", TracingService.getSLOBucketName(totalSizeBytes));
@@ -264,10 +266,13 @@ public class EventPublishingController {
             } else {
                 result = publisher.publish(eventsAsString, eventTypeName, consumerTags);
             }
+            // FIXME: there should be a more direct way to get the input batch size
             final int eventCount = result.getResponses().size();
 
             reportMetrics(eventTypeMetrics, result, totalSizeBytes, eventCount);
             reportSLOs(startingNanos, totalSizeBytes, eventCount, result, eventTypeName, client);
+
+            TracingService.setTag("number_of_events", eventCount);
 
             if (result.getStatus() == EventPublishingStatus.FAILED) {
                 TracingService.setErrorFlag();
