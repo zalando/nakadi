@@ -1,5 +1,6 @@
 package org.zalando.nakadi.webservice.hila;
 
+import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.google.common.collect.ImmutableList;
@@ -37,6 +38,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicReference;
 import java.util.stream.Collectors;
 
 import static com.jayway.restassured.RestAssured.given;
@@ -56,6 +58,7 @@ import static org.zalando.nakadi.webservice.utils.NakadiTestUtils.commitCursors;
 import static org.zalando.nakadi.webservice.utils.NakadiTestUtils.createEventType;
 import static org.zalando.nakadi.webservice.utils.NakadiTestUtils.createSubscription;
 import static org.zalando.nakadi.webservice.utils.NakadiTestUtils.getNumberOfAssignedStreams;
+import static org.zalando.nakadi.webservice.utils.NakadiTestUtils.publishBusinessEventWithUserDefinedPartition;
 import static org.zalando.nakadi.webservice.utils.NakadiTestUtils.publishEvent;
 import static org.zalando.nakadi.webservice.utils.NakadiTestUtils.publishEvents;
 import static org.zalando.nakadi.webservice.utils.TestStreamingClient.SESSION_ID_UNKNOWN;
@@ -100,7 +103,7 @@ public class HilaAT extends BaseAT {
     @Test(timeout = 30000)
     public void whenEventTypeRepartitionedTheNewSubscriptionShouldHaveUpdatedPartition() throws Exception {
         final EventType eventType = NakadiTestUtils.createBusinessEventTypeWithPartitions(1);
-        NakadiTestUtils.publishBusinessEventWithUserDefinedPartition(
+        publishBusinessEventWithUserDefinedPartition(
                 eventType.getName(), 1, x -> "{\"foo\":\"bar\"}", p -> "0");
         NakadiTestUtils.repartitionEventType(eventType, 2);
         final Subscription subscription = createSubscription(
@@ -111,7 +114,7 @@ public class HilaAT extends BaseAT {
         final TestStreamingClient clientAfterRepartitioning = TestStreamingClient
                 .create(URL, subscription.getId(), "")
                 .start();
-        NakadiTestUtils.publishBusinessEventWithUserDefinedPartition(
+        publishBusinessEventWithUserDefinedPartition(
                 eventType.getName(), 1, x -> "{\"foo\":\"bar" + x + "\"}", p -> "1");
         waitFor(() -> assertThat(clientAfterRepartitioning.getJsonBatches(), Matchers.hasSize(2)));
         Assert.assertTrue(clientAfterRepartitioning.getJsonBatches().stream()
@@ -600,7 +603,7 @@ public class HilaAT extends BaseAT {
 
     @Test(timeout = 15000)
     public void whenCommitFailsThreeTimesAndSingleBatchEventFailsThreeTimesThenEventSkipped() throws IOException {
-        final Subscription subscription = createAutoDLQSubscription();
+        final Subscription subscription = createAutoDLQSubscription(eventType);
         final TestStreamingClient client = TestStreamingClient
                 .create(URL, subscription.getId(), "batch_limit=3&commit_timeout=1")
                 .start();
@@ -641,7 +644,7 @@ public class HilaAT extends BaseAT {
 
     @Test(timeout = 15000)
     public void whenIsLookingForDeadLetterAndCommitComesThenContinueLooking() throws IOException {
-        final Subscription subscription = createAutoDLQSubscription();
+        final Subscription subscription = createAutoDLQSubscription(eventType);
         final TestStreamingClient client = TestStreamingClient
                 .create(URL, subscription.getId(), "batch_limit=10&commit_timeout=1")
                 .start();
@@ -707,7 +710,7 @@ public class HilaAT extends BaseAT {
     @Test(timeout = 20_000)
     public void whenIsLookingForDeadLetterAndSendAllEventsOneByOneThenBackToNormalBatchSize()
             throws InterruptedException, IOException {
-        final Subscription subscription = createAutoDLQSubscription();
+        final Subscription subscription = createAutoDLQSubscription(eventType);
         final TestStreamingClient client = TestStreamingClient
                 .create(URL, subscription.getId(), "batch_limit=10&commit_timeout=1&stream_limit=20")
                 .start();
@@ -746,13 +749,54 @@ public class HilaAT extends BaseAT {
         waitFor(() -> Assert.assertFalse(client.isRunning()), 15_000);
     }
 
+    @Test(timeout = 20_000)
+    public void shouldSkipDeadLetterdAndConsumptionToBeContinued() throws IOException {
+        final EventType eventType = NakadiTestUtils.createBusinessEventTypeWithPartitions(4);
+
+        publishBusinessEventWithUserDefinedPartition(eventType.getName(),
+                50, i -> String.format("{\"foo\":\"bar%d\"}", i), i -> String.valueOf(i % 4));
+
+        final Subscription subscription = createAutoDLQSubscription(eventType);
+
+        final AtomicReference<SubscriptionCursor> cursorWithPoisonPill = new AtomicReference<>();
+        while (true) {
+            final TestStreamingClient client = TestStreamingClient.create(
+                    URL, subscription.getId(), "batch_limit=3&commit_timeout=1&stream_timeout=2");
+            client.start(streamBatch -> {
+                if (streamBatch.getEvents().stream()
+                        .anyMatch(event -> event.get("foo").equals("{\"foo\":\"bar10\"}"))) {
+                    // skipp commit to introduce poison pill
+                    cursorWithPoisonPill.set(streamBatch.getCursor());
+                    throw new RuntimeException();
+                } else {
+                    try {
+                        NakadiTestUtils.commitCursors(
+                                subscription.getId(), ImmutableList.of(streamBatch.getCursor()), client.getSessionId());
+                    } catch (JsonProcessingException e) {
+                        throw new RuntimeException(e);
+                    }
+                }
+            });
+
+            waitFor(() -> Assert.assertFalse(client.isRunning()));
+
+            if (client.getJsonBatches().stream()
+                    .filter(streamBatch -> streamBatch.getCursor().getPartition()
+                            .equals(cursorWithPoisonPill.get().getPartition()))
+                    .anyMatch(streamBatch -> streamBatch.getCursor().getOffset()
+                            .compareTo(cursorWithPoisonPill.get().getOffset()) > 0)) {
+                return;
+            }
+        }
+    }
+
     private static boolean isCommitTimeoutReached(final TestStreamingClient client) {
         return client.getJsonBatches().stream()
                 .filter(batch -> batch.getMetadata() != null)
                 .anyMatch(batch -> batch.getMetadata().getDebug().equals("Commit timeout reached"));
     }
 
-    private Subscription createAutoDLQSubscription() throws IOException {
+    private Subscription createAutoDLQSubscription(final EventType eventType) throws IOException {
         final SubscriptionBase subscription = RandomSubscriptionBuilder.builder()
                 .withEventType(eventType.getName())
                 .withStartFrom(BEGIN)
