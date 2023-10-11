@@ -263,7 +263,7 @@ public class TestStreamingClient {
 
         private final Consumer<StreamBatch> onBatch;
 
-        public JsonConsumer(final Consumer<StreamBatch> onBatch) {
+        JsonConsumer(final Consumer<StreamBatch> onBatch) {
             this.onBatch = onBatch;
         }
 

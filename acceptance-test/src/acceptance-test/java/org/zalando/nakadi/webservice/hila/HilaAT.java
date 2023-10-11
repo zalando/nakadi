@@ -609,7 +609,8 @@ public class HilaAT extends BaseAT {
                 .create(URL, subscription.getId(), "batch_limit=3&commit_timeout=1")
                 .start();
 
-        publishBusinessEventWithUserDefinedPartition(eventType.getName(), 50, i -> "{\"foo\":\"bar\"}", i -> String.valueOf(i % 4));
+        publishBusinessEventWithUserDefinedPartition(eventType.getName(),
+                50, i -> "{\"foo\":\"bar\"}", i -> String.valueOf(i % 4));
 
         waitFor(() -> Assert.assertFalse(client.isRunning()));
         Assert.assertTrue(isCommitTimeoutReached(client));
@@ -651,7 +652,8 @@ public class HilaAT extends BaseAT {
                 .create(URL, subscription.getId(), "batch_limit=10&commit_timeout=1")
                 .start();
 
-        publishBusinessEventWithUserDefinedPartition(eventType.getName(), 50, i -> "{\"foo\":\"bar\"}", i -> String.valueOf(i % 4));
+        publishBusinessEventWithUserDefinedPartition(eventType.getName(),
+                50, i -> "{\"foo\":\"bar\"}", i -> String.valueOf(i % 4));
 
         // reach commit timeout 3 times that Nakadi goes into mode to send single event in a batch to find the bad event
         waitFor(() -> Assert.assertFalse(client.isRunning()));
@@ -718,7 +720,8 @@ public class HilaAT extends BaseAT {
                 .create(URL, subscription.getId(), "batch_limit=10&commit_timeout=1&stream_limit=20")
                 .start();
 
-        publishBusinessEventWithUserDefinedPartition(eventType.getName(), 50, i -> "{\"foo\":\"bar\"}", i -> String.valueOf(i % 4));
+        publishBusinessEventWithUserDefinedPartition(eventType.getName(),
+                50, i -> "{\"foo\":\"bar\"}", i -> String.valueOf(i % 4));
 
         // reach commit timeout 3 times that Nakadi goes into mode to send single event in a batch to find the bad event
         waitFor(() -> Assert.assertFalse(client.isRunning()));
@@ -756,13 +759,15 @@ public class HilaAT extends BaseAT {
     public void testDeadLetterShouldBeSkippedAndConsumptionToBeContinued() throws IOException {
         final EventType eventType = NakadiTestUtils.createBusinessEventTypeWithPartitions(4);
 
-        publishBusinessEventWithUserDefinedPartition(eventType.getName(), 50, i -> String.format("{\"foo\":\"bar%d\"}", i), i -> String.valueOf(i % 4));
+        publishBusinessEventWithUserDefinedPartition(eventType.getName(),
+                50, i -> String.format("{\"foo\":\"bar%d\"}", i), i -> String.valueOf(i % 4));
 
         final Subscription subscription = createAutoDLQSubscription(eventType);
 
         final AtomicReference<SubscriptionCursor> cursorWithPoisonPill = new AtomicReference<>();
         while (true) {
-            final TestStreamingClient client = TestStreamingClient.create(URL, subscription.getId(), "batch_limit=3&commit_timeout=1&stream_timeout=2");
+            final TestStreamingClient client = TestStreamingClient.create(
+                    URL, subscription.getId(), "batch_limit=3&commit_timeout=1&stream_timeout=2");
             client.start(streamBatch -> {
                 if (streamBatch.getEvents().stream()
                         .anyMatch(event -> event.get("foo").equals("{\"foo\":\"bar10\"}"))) {
@@ -771,7 +776,8 @@ public class HilaAT extends BaseAT {
                     throw new RuntimeException();
                 } else {
                     try {
-                        NakadiTestUtils.commitCursors(subscription.getId(), ImmutableList.of(streamBatch.getCursor()), client.getSessionId());
+                        NakadiTestUtils.commitCursors(
+                                subscription.getId(), ImmutableList.of(streamBatch.getCursor()), client.getSessionId());
                     } catch (JsonProcessingException e) {
                         throw new RuntimeException(e);
                     }
@@ -781,8 +787,10 @@ public class HilaAT extends BaseAT {
             waitFor(() -> Assert.assertFalse(client.isRunning()));
 
             if (client.getJsonBatches().stream()
-                    .filter(streamBatch -> streamBatch.getCursor().getPartition().equals(cursorWithPoisonPill.get().getPartition()))
-                    .anyMatch(streamBatch -> streamBatch.getCursor().getOffset().compareTo(cursorWithPoisonPill.get().getOffset()) > 0)) {
+                    .filter(streamBatch -> streamBatch.getCursor().getPartition()
+                            .equals(cursorWithPoisonPill.get().getPartition()))
+                    .anyMatch(streamBatch -> streamBatch.getCursor().getOffset()
+                            .compareTo(cursorWithPoisonPill.get().getOffset()) > 0)) {
                 return;
             }
         }
