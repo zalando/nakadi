@@ -566,7 +566,7 @@ class StreamingState extends State {
         trackIdleness(topology);
 
         if (getContext().getMaxEventSendCount() != null) {
-            failedCommitPartitions = Arrays.stream(topology.getPartitions())
+            failedCommitPartitions = Arrays.stream(assignedPartitions)
                     .filter(p -> p.getFailedCommitsCount() > 0 || p.isLookingForDeadLetter())
                     .collect(Collectors.toMap(
                             p -> new EventTypePartition(p.getEventType(), p.getPartition()),

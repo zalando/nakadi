@@ -1,5 +1,6 @@
 package org.zalando.nakadi.webservice.hila;
 
+import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.google.common.collect.ImmutableList;
@@ -35,6 +36,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicReference;
 import java.util.stream.Collectors;
 
 import static com.jayway.restassured.RestAssured.given;
@@ -60,6 +62,7 @@ import static org.zalando.nakadi.webservice.utils.NakadiTestUtils.createEventTyp
 import static org.zalando.nakadi.webservice.utils.NakadiTestUtils.createSubscription;
 import static org.zalando.nakadi.webservice.utils.NakadiTestUtils.createSubscriptionForEventType;
 import static org.zalando.nakadi.webservice.utils.NakadiTestUtils.getNumberOfAssignedStreams;
+import static org.zalando.nakadi.webservice.utils.NakadiTestUtils.publishBusinessEventWithUserDefinedPartition;
 import static org.zalando.nakadi.webservice.utils.NakadiTestUtils.publishEvent;
 import static org.zalando.nakadi.webservice.utils.NakadiTestUtils.publishEvents;
 import static org.zalando.nakadi.webservice.utils.TestStreamingClient.SESSION_ID_UNKNOWN;
@@ -104,7 +107,7 @@ public class HilaAT extends BaseAT {
     @Test(timeout = 30000)
     public void whenEventTypeRepartitionedTheNewSubscriptionShouldHaveUpdatedPartition() throws Exception {
         final EventType eventType = NakadiTestUtils.createBusinessEventTypeWithPartitions(1);
-        NakadiTestUtils.publishBusinessEventWithUserDefinedPartition(
+        publishBusinessEventWithUserDefinedPartition(
                 eventType.getName(), 1, x -> "{\"foo\":\"bar\"}", p -> "0");
         NakadiTestUtils.repartitionEventType(eventType, 2);
         final Subscription subscription = createSubscription(
@@ -115,7 +118,7 @@ public class HilaAT extends BaseAT {
         final TestStreamingClient clientAfterRepartitioning = TestStreamingClient
                 .create(URL, subscription.getId(), "")
                 .start();
-        NakadiTestUtils.publishBusinessEventWithUserDefinedPartition(
+        publishBusinessEventWithUserDefinedPartition(
                 eventType.getName(), 1, x -> "{\"foo\":\"bar" + x + "\"}", p -> "1");
         waitFor(() -> assertThat(clientAfterRepartitioning.getJsonBatches(), hasSize(2)));
         Assert.assertTrue(clientAfterRepartitioning.getJsonBatches().stream()

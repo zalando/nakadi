@@ -41,6 +41,12 @@ class ClosingState extends State {
     @Override
     public void onExit() {
         try {
+            updateFailedCommitsCount();
+        } catch (final RuntimeException re) {
+            LOG.error("Failed to update failed commits count", re);
+        }
+
+        try {
             getAutocommit().autocommit();
             freePartitions(new HashSet<>(listeners.keySet()));
         } catch (final NakadiRuntimeException | NakadiBaseException ex) {
@@ -57,6 +63,17 @@ class ClosingState extends State {
         }
     }
 
+    private void updateFailedCommitsCount() {
+        if (getContext().getMaxEventSendCount() == null) {
+            return;
+        }
+
+        getZk().updateTopology(topology -> Arrays.stream(topology.getPartitions())
+                .filter(p -> uncommittedOffsets.containsKey(new EventTypePartition(p.getEventType(), p.getPartition())))
+                .map(Partition::toIncFailedCommits)
+                .toArray(Partition[]::new));
+    }
+
     @Override
     public void onEnter() {
         final long timeToWaitMillis = getParameters().commitTimeoutMillis -
@@ -64,8 +81,6 @@ class ClosingState extends State {
         uncommittedOffsets = uncommittedOffsetsSupplier.get();
         if (!uncommittedOffsets.isEmpty() && timeToWaitMillis > 0) {
             scheduleTask(() -> {
-                // commit timeout will be reached for the partitions, lets update topology with number of failed commits
-                updateFailedCommitsCount();
                 switchState(new CleanupState());
             }, timeToWaitMillis, TimeUnit.MILLISECONDS);
 
@@ -76,25 +91,9 @@ class ClosingState extends State {
                 return;
             }
             reactOnTopologyChange();
-        } else if (!uncommittedOffsets.isEmpty()) {
-            // commit timeout reached for these partitions, lets update topology with number of failed commits
-            updateFailedCommitsCount();
-            switchState(new CleanupState());
         } else {
             switchState(new CleanupState());
         }
-    }
-
-    private void updateFailedCommitsCount() {
-        if (getContext().getMaxEventSendCount() == null) {
-            return;
-        }
-
-        getZk().updateTopology(topology -> Arrays.stream(topology.getPartitions())
-                .filter(p -> uncommittedOffsets.containsKey(new EventTypePartition(p.getEventType(), p.getPartition())))
-                .map(Partition::toIncFailedCommits)
-                .toArray(Partition[]::new)
-        );
     }
 
     private void onTopologyChanged() {
