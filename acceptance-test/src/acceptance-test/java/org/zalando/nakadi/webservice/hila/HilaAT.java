@@ -603,14 +603,12 @@ public class HilaAT extends BaseAT {
 
     @Test(timeout = 15000)
     public void whenCommitFailsThreeTimesAndSingleBatchEventFailsThreeTimesThenEventSkipped() throws IOException {
-        final EventType eventType = NakadiTestUtils.createBusinessEventTypeWithPartitions(4);
         final Subscription subscription = createAutoDLQSubscription(eventType);
         final TestStreamingClient client = TestStreamingClient
                 .create(URL, subscription.getId(), "batch_limit=3&commit_timeout=1")
                 .start();
 
-        publishBusinessEventWithUserDefinedPartition(eventType.getName(),
-                50, i -> "{\"foo\":\"bar\"}", i -> String.valueOf(i % 4));
+        publishEvents(eventType.getName(), 50, i -> "{\"foo\":\"bar\"}");
 
         waitFor(() -> Assert.assertFalse(client.isRunning()));
         Assert.assertTrue(isCommitTimeoutReached(client));
@@ -646,14 +644,12 @@ public class HilaAT extends BaseAT {
 
     @Test(timeout = 15000)
     public void whenIsLookingForDeadLetterAndCommitComesThenContinueLooking() throws IOException {
-        final EventType eventType = NakadiTestUtils.createBusinessEventTypeWithPartitions(4);
         final Subscription subscription = createAutoDLQSubscription(eventType);
         final TestStreamingClient client = TestStreamingClient
                 .create(URL, subscription.getId(), "batch_limit=10&commit_timeout=1")
                 .start();
 
-        publishBusinessEventWithUserDefinedPartition(eventType.getName(),
-                50, i -> "{\"foo\":\"bar\"}", i -> String.valueOf(i % 4));
+        publishEvents(eventType.getName(), 50, i -> "{\"foo\":\"bar\"}");
 
         // reach commit timeout 3 times that Nakadi goes into mode to send single event in a batch to find the bad event
         waitFor(() -> Assert.assertFalse(client.isRunning()));
@@ -714,14 +710,12 @@ public class HilaAT extends BaseAT {
     @Test(timeout = 20_000)
     public void whenIsLookingForDeadLetterAndSendAllEventsOneByOneThenBackToNormalBatchSize()
             throws InterruptedException, IOException {
-        final EventType eventType = NakadiTestUtils.createBusinessEventTypeWithPartitions(4);
         final Subscription subscription = createAutoDLQSubscription(eventType);
         final TestStreamingClient client = TestStreamingClient
                 .create(URL, subscription.getId(), "batch_limit=10&commit_timeout=1&stream_limit=20")
                 .start();
 
-        publishBusinessEventWithUserDefinedPartition(eventType.getName(),
-                50, i -> "{\"foo\":\"bar\"}", i -> String.valueOf(i % 4));
+        publishEvents(eventType.getName(), 50, i -> "{\"foo\":\"bar\"}");
 
         // reach commit timeout 3 times that Nakadi goes into mode to send single event in a batch to find the bad event
         waitFor(() -> Assert.assertFalse(client.isRunning()));
@@ -756,7 +750,7 @@ public class HilaAT extends BaseAT {
     }
 
     @Test(timeout = 20_000)
-    public void testDeadLetterShouldBeSkippedAndConsumptionToBeContinued() throws IOException {
+    public void shouldSkipDeadLetterdAndConsumptionToBeContinued() throws IOException {
         final EventType eventType = NakadiTestUtils.createBusinessEventTypeWithPartitions(4);
 
         publishBusinessEventWithUserDefinedPartition(eventType.getName(),
