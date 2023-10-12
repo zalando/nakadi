@@ -234,11 +234,6 @@ class StreamingState extends State {
     }
 
     private long getMessagesAllowedToSend() {
-        if (failedCommitPartitions.values().stream()
-                .anyMatch(Partition::isLookingForDeadLetter)) {
-            return 1;
-        }
-
         final long unconfirmed = offsets.values().stream().mapToLong(PartitionData::getUnconfirmed).sum();
         final long limit = getParameters().maxUncommittedMessages - unconfirmed;
         return getParameters().getMessagesAllowedToSend(limit, this.sentEvents);
@@ -263,8 +258,8 @@ class StreamingState extends State {
 
     private void streamToOutput(final boolean streamTimeoutReached) {
         final long currentTimeMillis = System.currentTimeMillis();
-        int messagesAllowedToSend = (int) getMessagesAllowedToSend();
         final boolean wasCommitted = isEverythingCommitted();
+        int messagesAllowedToSend = (int) getMessagesAllowedToSend();
         boolean sentSomething = false;
 
         for (final Map.Entry<EventTypePartition, PartitionData> e : offsets.entrySet()) {
@@ -283,14 +278,15 @@ class StreamingState extends State {
                                 .map(p -> p.toLastDeadLetterOffset(null))
                                 .toArray(Partition[]::new));
                         failedCommitPartitions.remove(etp);
-                        messagesAllowedToSend = (int) getMessagesAllowedToSend(); // fixme think
                         partition = null;
                     }
                 }
 
+                long batchLimit = (partition != null && partition.isLookingForDeadLetter()) ? 1 : getBatchLimitEvents();
+
                 final List<ConsumedEvent> toSend = partitionData.takeEventsToStream(
                         currentTimeMillis,
-                        Math.min(getBatchLimitEvents(), messagesAllowedToSend),
+                        Math.min(batchLimit, messagesAllowedToSend),
                         getParameters().batchTimeoutMillis,
                         streamTimeoutReached);
 
@@ -330,6 +326,10 @@ class StreamingState extends State {
                     break;
                 }
                 messagesAllowedToSend -= toSend.size();
+
+                if (partition != null && partition.isLookingForDeadLetter()) {
+                    break;
+                }
             }
         }
 
