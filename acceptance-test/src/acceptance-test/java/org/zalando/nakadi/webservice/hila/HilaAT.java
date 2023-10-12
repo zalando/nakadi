@@ -771,6 +771,7 @@ public class HilaAT extends BaseAT {
         Assert.assertEquals(10, client.getJsonBatches().get(0).getEvents().size());
         Assert.assertEquals("001-0001-000000000000000009", client.getJsonBatches().get(0).getCursor().getOffset());
 
+        // receive a single event in a batch and commit it so that Nakadi sends the next batch with a single event
         client.startWithAutocommit(batches -> {
             // 12 because the last one is stream limit reached debug info
             Assert.assertEquals(12, batches.size());
@@ -818,7 +819,7 @@ public class HilaAT extends BaseAT {
                 if (streamBatch.getEvents().stream()
                         .anyMatch(event -> poisonPillValue.equals(event.getString("foo")))) {
                     cursorWithPoisonPill.set(streamBatch.getCursor());
-                    throw new RuntimeException();
+                    throw new RuntimeException("poison pill found");
                 } else {
                     try {
                         NakadiTestUtils.commitCursors(
