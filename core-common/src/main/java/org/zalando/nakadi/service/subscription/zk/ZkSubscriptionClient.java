@@ -1,10 +1,8 @@
 package org.zalando.nakadi.service.subscription.zk;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
-import java.util.function.Function;
 import org.apache.commons.codec.binary.Hex;
 import org.zalando.nakadi.domain.EventTypePartition;
-import org.zalando.nakadi.exceptions.runtime.NakadiBaseException;
 import org.zalando.nakadi.exceptions.runtime.NakadiRuntimeException;
 import org.zalando.nakadi.exceptions.runtime.OperationTimeoutException;
 import org.zalando.nakadi.exceptions.runtime.ServiceTemporarilyUnavailableException;
@@ -17,12 +15,15 @@ import javax.annotation.Nullable;
 import java.io.Closeable;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
+import java.util.function.Function;
+import java.util.stream.IntStream;
 
 public interface ZkSubscriptionClient extends Closeable {
 
@@ -32,7 +33,7 @@ public interface ZkSubscriptionClient extends Closeable {
      * @return true if subscription was created. False if subscription already present. To operate on this value
      * additional field 'state' is used /nakadi/subscriptions/{subscriptionId}/state. Just after creation it has value
      * CREATED. After {{@link #fillEmptySubscription}} call it will have value INITIALIZED. So true
-     * will be returned in case of state is equal to CREATED.
+     * will be returned in case of state is equal to INITIALIZED.
      */
     boolean isSubscriptionCreatedAndInitialized() throws NakadiRuntimeException;
 
@@ -204,21 +205,18 @@ public interface ZkSubscriptionClient extends Closeable {
         }
 
         public Topology withUpdatedPartitions(final Partition[] partitions) {
-            final Partition[] resultPartitions = Arrays.copyOf(this.partitions, this.partitions.length);
+            final var resultPartitions = new ArrayList<>(Arrays.asList(this.partitions));
             for (final Partition newValue : partitions) {
-                int selectedIdx = -1;
-                for (int idx = 0; idx < resultPartitions.length; ++idx) {
-                    if (resultPartitions[idx].getKey().equals(newValue.getKey())) {
-                        selectedIdx = idx;
-                    }
+                final var selected = IntStream.range(0, resultPartitions.size())
+                        .filter(idx -> resultPartitions.get(idx).getKey().equals(newValue.getKey()))
+                        .findFirst();
+                if (selected.isPresent()) {
+                    resultPartitions.set(selected.getAsInt(), newValue);
+                } else {
+                    resultPartitions.add(newValue);
                 }
-                if (selectedIdx < 0) {
-                    throw new NakadiBaseException(
-                            "Failed to find partition " + newValue.getKey() + " in " + this);
-                }
-                resultPartitions[selectedIdx] = newValue;
             }
-            return new Topology(resultPartitions, Optional.ofNullable(version).orElse(0) + 1);
+            return new Topology(resultPartitions.toArray(new Partition[0]), Optional.ofNullable(version).orElse(0) + 1);
         }
 
         @Override
