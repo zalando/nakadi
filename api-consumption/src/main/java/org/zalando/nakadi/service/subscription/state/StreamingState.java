@@ -267,6 +267,9 @@ class StreamingState extends State {
             final PartitionData partitionData = e.getValue();
             Partition partition = failedCommitPartitions.get(etp);
 
+            int messagesAllowedForPartition =
+                    (partition != null && partition.isLookingForDeadLetter()) ? 1 : messagesAllowedToSend;
+            // loop sends all the events from partition, until max uncommitted reached or no more events
             while (true) {
                 if (partition != null && partition.isLookingForDeadLetter()) {
                     final NakadiCursor lastDeadLetterCursor = getContext().getCursorConverter().convert(
@@ -279,15 +282,13 @@ class StreamingState extends State {
                                 .toArray(Partition[]::new));
                         failedCommitPartitions.remove(etp);
                         partition = null;
+                        messagesAllowedForPartition = messagesAllowedToSend;
                     }
                 }
 
-                final int batchLimit = (partition != null && partition.isLookingForDeadLetter()) ?
-                        1 : getBatchLimitEvents();
-
                 final List<ConsumedEvent> toSend = partitionData.takeEventsToStream(
                         currentTimeMillis,
-                        Math.min(batchLimit, messagesAllowedToSend),
+                        Math.min(getBatchLimitEvents(), messagesAllowedForPartition),
                         getParameters().batchTimeoutMillis,
                         streamTimeoutReached);
 
@@ -326,11 +327,9 @@ class StreamingState extends State {
                 if (toSend.isEmpty()) {
                     break;
                 }
-                messagesAllowedToSend -= toSend.size();
 
-                if (partition != null && partition.isLookingForDeadLetter()) {
-                    break;
-                }
+                messagesAllowedToSend -= toSend.size();
+                messagesAllowedForPartition -= toSend.size();
             }
         }
 
