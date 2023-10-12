@@ -193,6 +193,17 @@ public class EventTypeService {
         if (eventType.getAnnotations() == null) {
             eventType.setAnnotations(new HashMap<>());
         }
+        else {
+            final String retentionPeriodAnnotation = "datalake.zalando.org/retention-period";
+            final String materialiseEventsAnnotationText = "datalake.zalando.org/materialize-events";
+            final Map<String, String> annotations = eventType.getAnnotations();
+            if (annotations.containsKey(materialiseEventsAnnotationText)) {
+                if (annotations.get(materialiseEventsAnnotationText).equals("on") &&
+                        !annotations.containsKey(retentionPeriodAnnotation)) {
+                    annotations.put(retentionPeriodAnnotation, "unlimited");
+                }
+            }
+        }
         if (eventType.getLabels() == null) {
             eventType.setLabels(new HashMap<>());
         }
