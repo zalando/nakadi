@@ -282,7 +282,7 @@ class StreamingState extends State {
                     }
                 }
 
-                long batchLimit = (partition != null && partition.isLookingForDeadLetter()) ? 1 : getBatchLimitEvents();
+                int batchLimit = (partition != null && partition.isLookingForDeadLetter()) ? 1 : getBatchLimitEvents();
 
                 final List<ConsumedEvent> toSend = partitionData.takeEventsToStream(
                         currentTimeMillis,
