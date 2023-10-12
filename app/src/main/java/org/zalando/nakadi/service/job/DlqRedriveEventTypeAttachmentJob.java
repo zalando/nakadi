@@ -131,14 +131,14 @@ public class DlqRedriveEventTypeAttachmentJob {
                 .updateTopology(topology -> addPartitionsIfMissing(topology.getPartitions(), unassignedDlqPartitions));
     }
 
-    private static Partition[] addPartitionsIfMissing(
+    static Partition[] addPartitionsIfMissing(
             final Partition[] initialPartitions,
             final List<Partition> toAddPartitions) {
 
         final Map<EventTypePartition, Partition> assignment =
                 Arrays.stream(initialPartitions).collect(Collectors.toMap(k -> k.getKey(), v -> v));
         return
-                Stream.concat(assignment.entrySet().stream(),
+                Stream.concat(assignment.values().stream(),
                         toAddPartitions.stream().filter(p -> !assignment.containsKey(p.getKey())))
                 .toArray(Partition[]::new);
     }
