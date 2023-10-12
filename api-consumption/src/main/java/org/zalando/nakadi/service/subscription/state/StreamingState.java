@@ -234,11 +234,6 @@ class StreamingState extends State {
     }
 
     private long getMessagesAllowedToSend() {
-        if (failedCommitPartitions.values().stream()
-                .anyMatch(Partition::isLookingForDeadLetter)) {
-            return 1;
-        }
-
         final long unconfirmed = offsets.values().stream().mapToLong(PartitionData::getUnconfirmed).sum();
         final long limit = getParameters().maxUncommittedMessages - unconfirmed;
         return getParameters().getMessagesAllowedToSend(limit, this.sentEvents);
@@ -263,8 +258,8 @@ class StreamingState extends State {
 
     private void streamToOutput(final boolean streamTimeoutReached) {
         final long currentTimeMillis = System.currentTimeMillis();
-        int messagesAllowedToSend = (int) getMessagesAllowedToSend();
         final boolean wasCommitted = isEverythingCommitted();
+        int messagesAllowedToSend = (int) getMessagesAllowedToSend();
         boolean sentSomething = false;
 
         for (final Map.Entry<EventTypePartition, PartitionData> e : offsets.entrySet()) {
@@ -272,6 +267,9 @@ class StreamingState extends State {
             final PartitionData partitionData = e.getValue();
             Partition partition = failedCommitPartitions.get(etp);
 
+            int messagesAllowedForPartition =
+                    (partition != null && partition.isLookingForDeadLetter()) ? 1 : messagesAllowedToSend;
+            // loop sends all the events from partition, until max uncommitted reached or no more events
             while (true) {
                 if (partition != null && partition.isLookingForDeadLetter()) {
                     final NakadiCursor lastDeadLetterCursor = getContext().getCursorConverter().convert(
@@ -283,14 +281,14 @@ class StreamingState extends State {
                                 .map(p -> p.toLastDeadLetterOffset(null))
                                 .toArray(Partition[]::new));
                         failedCommitPartitions.remove(etp);
-                        messagesAllowedToSend = (int) getMessagesAllowedToSend(); // fixme think
                         partition = null;
+                        messagesAllowedForPartition = messagesAllowedToSend;
                     }
                 }
 
                 final List<ConsumedEvent> toSend = partitionData.takeEventsToStream(
                         currentTimeMillis,
-                        Math.min(getBatchLimitEvents(), messagesAllowedToSend),
+                        Math.min(getBatchLimitEvents(), messagesAllowedForPartition),
                         getParameters().batchTimeoutMillis,
                         streamTimeoutReached);
 
@@ -329,7 +327,9 @@ class StreamingState extends State {
                 if (toSend.isEmpty()) {
                     break;
                 }
+
                 messagesAllowedToSend -= toSend.size();
+                messagesAllowedForPartition -= toSend.size();
             }
         }
 
