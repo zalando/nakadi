@@ -19,10 +19,11 @@ public class DlqRedriveEventTypeAttachmentJobTest {
         };
         final List<Partition> unassignedDlqPartitions = List.of(
                 new Partition("dlq-redrive", "0", null, null, Partition.State.UNASSIGNED),
-                new Partition("dlq-redrive", "1", null, null, Partition.State.UNASSIGNED));
+                new Partition("dlq-redrive", "1", null, null, Partition.State.UNASSIGNED),
+                new Partition("dlq-redrive", "2", null, null, Partition.State.UNASSIGNED));
 
         final Partition[] newPartitions =
-                DlqRedriveEventTypeAttachmentJob.addPartitionsIfMissing(
+                DlqRedriveEventTypeAttachmentJob.selectMissingPartitions(
                         existingPartitions,
                         unassignedDlqPartitions);
 
@@ -31,10 +32,8 @@ public class DlqRedriveEventTypeAttachmentJobTest {
 
         Assert.assertEquals(
                 Set.of(
-                        new Partition("abc", "0", null, null, Partition.State.UNASSIGNED),
-                        new Partition("abc", "1", "session-1", "session-2", Partition.State.ASSIGNED),
-                        new Partition("dlq-redrive", "0", "session-1", "session-2", Partition.State.ASSIGNED),
-                        new Partition("dlq-redrive", "1", null, null, Partition.State.UNASSIGNED)),
+                        new Partition("dlq-redrive", "1", null, null, Partition.State.UNASSIGNED),
+                        new Partition("dlq-redrive", "2", null, null, Partition.State.UNASSIGNED)),
                 newPartitionsSet);
     }
 }

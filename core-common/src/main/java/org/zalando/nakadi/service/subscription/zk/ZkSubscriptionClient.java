@@ -49,6 +49,8 @@ public interface ZkSubscriptionClient extends Closeable {
      */
     void fillEmptySubscription(Collection<SubscriptionCursorWithoutToken> cursors);
 
+    void createOffsetZNodes(Collection<SubscriptionCursorWithoutToken> cursors) throws Exception;
+
     /**
      * Updates topologies partitions by reading topology first and
      * then writing the change back with usage of zookeeper node version.

@@ -129,7 +129,8 @@ public abstract class AbstractZkSubscriptionClient implements ZkSubscriptionClie
         }
     }
 
-    private void createOffsetZNodes(final Collection<SubscriptionCursorWithoutToken> cursors) throws Exception {
+    @Override
+    public void createOffsetZNodes(final Collection<SubscriptionCursorWithoutToken> cursors) throws Exception {
         LOG.info("Creating offsets");
         for (final SubscriptionCursorWithoutToken cursor : cursors) {
             try {
@@ -370,6 +371,7 @@ public abstract class AbstractZkSubscriptionClient implements ZkSubscriptionClie
                 listSessions()));
     }
 
+    @Override
     public void forceCommitOffsets(final List<SubscriptionCursorWithoutToken> cursors) throws NakadiRuntimeException {
         try {
             for (final SubscriptionCursorWithoutToken cursor : cursors) {

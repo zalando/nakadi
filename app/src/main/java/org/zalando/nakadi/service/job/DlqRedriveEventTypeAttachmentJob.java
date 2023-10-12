@@ -13,14 +13,15 @@ import org.zalando.nakadi.domain.Feature;
 import org.zalando.nakadi.domain.HeaderTag;
 import org.zalando.nakadi.domain.NakadiCursor;
 import org.zalando.nakadi.domain.Subscription;
+import org.zalando.nakadi.repository.db.SubscriptionDbRepository;
 import org.zalando.nakadi.service.CursorConverter;
 import org.zalando.nakadi.service.FeatureToggleService;
-import org.zalando.nakadi.service.SubscriptionService;
 import org.zalando.nakadi.service.subscription.model.Partition;
 import org.zalando.nakadi.service.timeline.HighLevelConsumer;
 import org.zalando.nakadi.service.timeline.TimelineService;
 import org.zalando.nakadi.view.Cursor;
 import org.zalando.nakadi.service.subscription.zk.SubscriptionClientFactory;
+import org.zalando.nakadi.service.subscription.zk.ZkSubscriptionClient;
 
 import java.util.Arrays;
 import java.util.HashSet;
@@ -28,7 +29,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.stream.Collectors;
-import java.util.stream.Stream;
 
 @Service
 public class DlqRedriveEventTypeAttachmentJob {
@@ -40,7 +40,7 @@ public class DlqRedriveEventTypeAttachmentJob {
     private final FeatureToggleService featureToggleService;
     private final EventTypeCache eventTypeCache;
     private final TimelineService timelineService;
-    private final SubscriptionService subscriptionService;
+    private final SubscriptionDbRepository subscriptionRepository;
     private final SubscriptionClientFactory subscriptionClientFactory;
     private final CursorConverter cursorConverter;
     private final String dlqRedriveEventTypeName;
@@ -51,7 +51,7 @@ public class DlqRedriveEventTypeAttachmentJob {
             final FeatureToggleService featureToggleService,
             final EventTypeCache eventTypeCache,
             final TimelineService timelineService,
-            final SubscriptionService subscriptionService,
+            final SubscriptionDbRepository subscriptionRepository,
             final SubscriptionClientFactory subscriptionClientFactory,
             final CursorConverter cursorConverter,
             @Value("${nakadi.dlq.redriveEventTypeName}") final String dlqRedriveEventTypeName,
@@ -60,7 +60,7 @@ public class DlqRedriveEventTypeAttachmentJob {
         this.featureToggleService = featureToggleService;
         this.eventTypeCache = eventTypeCache;
         this.timelineService = timelineService;
-        this.subscriptionService = subscriptionService;
+        this.subscriptionRepository = subscriptionRepository;
         this.subscriptionClientFactory = subscriptionClientFactory;
         this.cursorConverter = cursorConverter;
         this.dlqRedriveEventTypeName = dlqRedriveEventTypeName;
@@ -91,6 +91,7 @@ public class DlqRedriveEventTypeAttachmentJob {
                 .map(c -> cursorConverter.convert(dlqRedriveEventTypeName, c))
                 .collect(Collectors.toList());
 
+        // it's inefficient to re-consume from begin, but we expect this event type to be empty most of the time anyway
         final HighLevelConsumer consumer = timelineService.createEventConsumer(JOB_NAME + "-job", beginCursors);
 
         final Set<String> subscriptionIds = new HashSet<>();
@@ -116,30 +117,45 @@ public class DlqRedriveEventTypeAttachmentJob {
                 .collect(Collectors.toList());
 
         // for every subscription update the topology, if needed, so that the dlq redrive event type is included
-        subscriptionIds.forEach(sid ->
-                updateSubscriptionTopology(
-                        subscriptionService.getSubscription(sid),
-                        unassignedDlqPartitions));
+        subscriptionIds.forEach(sid -> {
+                    try {
+                        addDlqPartitionsToSubscription(
+                                subscriptionRepository.getSubscription(sid),
+                                unassignedDlqPartitions);
+                    } catch (final Exception e) {
+                        // subscription is already gone, but events for redrive are still there; or failed to update
+                        // topology, etc.
+                        LOG.warn("Failed to add DLQ redrive event type to subscription: {}", sid, e);
+                    }
+                });
     }
 
-    private void updateSubscriptionTopology(
+    private void addDlqPartitionsToSubscription(
             final Subscription subscription,
-            final List<Partition> unassignedDlqPartitions) {
+            final List<Partition> unassignedDlqPartitions) throws Exception {
 
-        subscriptionClientFactory
-                .createClient(subscription)
-                .updateTopology(topology -> addPartitionsIfMissing(topology.getPartitions(), unassignedDlqPartitions));
+        final ZkSubscriptionClient client = subscriptionClientFactory.createClient(subscription);
+
+        // idempotent, does not overwrite existing offsets
+        client.createOffsetZNodes(
+                unassignedDlqPartitions.stream()
+                .map(p -> p.getPartition())
+                .map(p -> new Cursor(p, Cursor.BEFORE_OLDEST_OFFSET))
+                .map(c -> cursorConverter.convert(dlqRedriveEventTypeName, c))
+                .map(nc -> cursorConverter.convertToNoToken(nc))
+                .collect(Collectors.toList()));
+
+        client.updateTopology(topology -> selectMissingPartitions(topology.getPartitions(), unassignedDlqPartitions));
     }
 
-    static Partition[] addPartitionsIfMissing(
+    static Partition[] selectMissingPartitions(
             final Partition[] initialPartitions,
             final List<Partition> toAddPartitions) {
 
         final Map<EventTypePartition, Partition> assignment =
                 Arrays.stream(initialPartitions).collect(Collectors.toMap(k -> k.getKey(), v -> v));
-        return
-                Stream.concat(assignment.values().stream(),
-                        toAddPartitions.stream().filter(p -> !assignment.containsKey(p.getKey())))
+
+        return toAddPartitions.stream().filter(p -> !assignment.containsKey(p.getKey()))
                 .toArray(Partition[]::new);
     }
 }
