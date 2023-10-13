@@ -23,6 +23,7 @@ import org.zalando.nakadi.view.Cursor;
 import org.zalando.nakadi.service.subscription.zk.SubscriptionClientFactory;
 import org.zalando.nakadi.service.subscription.zk.ZkSubscriptionClient;
 
+import java.io.IOException;
 import java.util.Arrays;
 import java.util.HashSet;
 import java.util.List;
@@ -76,32 +77,38 @@ public class DlqRedriveEventTypeAttachmentJob {
             return;
         }
         try {
-            jobWrapper.runJobLocked(this::attachDlqRedriveEventTypeLocked);
+            jobWrapper.runJobLocked(() -> {
+                    try {
+                        attachDlqRedriveEventTypeLocked();
+                    } catch (final IOException ioe) {
+                        throw new RuntimeException(ioe);
+                    }
+                });
         } catch (final Exception e) {
             LOG.error("Failed to run the job to attach DLQ redrive event type to corresponding subscriptions", e);
         }
     }
 
-    private void attachDlqRedriveEventTypeLocked() {
+    private void attachDlqRedriveEventTypeLocked() throws IOException {
+
+        final Set<String> subscriptionIds = new HashSet<>();
 
         final List<String> orderedPartitions = eventTypeCache.getOrderedPartitions(dlqRedriveEventTypeName);
 
+        // it's inefficient to re-consume from begin, but we expect this event type to be empty most of the time anyway
         final List<NakadiCursor> beginCursors = orderedPartitions.stream()
                 .map(p -> new Cursor(p, Cursor.BEFORE_OLDEST_OFFSET))
                 .map(c -> cursorConverter.convert(dlqRedriveEventTypeName, c))
                 .collect(Collectors.toList());
 
-        // it's inefficient to re-consume from begin, but we expect this event type to be empty most of the time anyway
-        final HighLevelConsumer consumer = timelineService.createEventConsumer(JOB_NAME + "-job", beginCursors);
-
-        final Set<String> subscriptionIds = new HashSet<>();
-        while (true) {
-            final List<ConsumedEvent> events = consumer.readEvents();
-            if (events.isEmpty()) {
-                // consumed till the current end
-                break;
-            }
-            events.forEach(e -> {
+        try (HighLevelConsumer consumer = timelineService.createEventConsumer(JOB_NAME + "-job", beginCursors)) {
+            while (true) {
+                final List<ConsumedEvent> events = consumer.readEvents();
+                if (events.isEmpty()) {
+                    // consumed till the current end
+                    break;
+                }
+                events.forEach(e -> {
                         final Map<HeaderTag, String> tags = e.getConsumerTags();
                         if (tags != null) {
                             final String sid = tags.get(HeaderTag.CONSUMER_SUBSCRIPTION_ID);
@@ -110,6 +117,7 @@ public class DlqRedriveEventTypeAttachmentJob {
                             }
                         }
                     });
+            }
         }
 
         final List<Partition> unassignedDlqPartitions = orderedPartitions.stream()
