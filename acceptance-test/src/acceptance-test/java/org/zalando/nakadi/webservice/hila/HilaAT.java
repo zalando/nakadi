@@ -802,7 +802,9 @@ public class HilaAT extends BaseAT {
                 .withEventType(eventType.getName())
                 .withStartFrom(BEGIN)
                 .buildSubscriptionBase();
-        subscription.setAnnotations(Map.of(DeadLetterAnnotationValidator.SUBSCRIPTION_MAX_EVENT_SEND_COUNT, "3"));
+        subscription.setAnnotations(Map.of(
+                        DeadLetterAnnotationValidator.SUBSCRIPTION_MAX_EVENT_SEND_COUNT, "3",
+                        DeadLetterAnnotationValidator.SUBSCRIPTION_UNPROCESSABLE_EVENT_POLICY, "SKIP_EVENT"));
         return createSubscription(subscription);
     }
 }

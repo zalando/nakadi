@@ -133,7 +133,7 @@ public class StreamingContext implements SubscriptionStreamer {
         this.unprocessableEventPolicy = Optional.ofNullable(getSubscription().getAnnotations())
                 .map(ans -> ans.get(DeadLetterAnnotationValidator.SUBSCRIPTION_UNPROCESSABLE_EVENT_POLICY))
                 .map(UnprocessableEventPolicy::valueOf)
-                .orElse(UnprocessableEventPolicy.SKIP_EVENT);
+                .orElse(null);
     }
 
     public ConsumptionKpiCollector getKpiCollector() {
