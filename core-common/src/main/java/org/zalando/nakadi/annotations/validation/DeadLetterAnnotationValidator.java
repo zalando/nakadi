@@ -55,6 +55,17 @@ public class DeadLetterAnnotationValidator implements
             return false;
         }
 
+        final String unprocessableEventPolicy = annotations.get(SUBSCRIPTION_UNPROCESSABLE_EVENT_POLICY);
+        if (unprocessableEventPolicy == null) {
+            context.disableDefaultConstraintViolation();
+            context
+                    .buildConstraintViolationWithTemplate(
+                            SUBSCRIPTION_UNPROCESSABLE_EVENT_POLICY + " must be also set when setting " +
+                            SUBSCRIPTION_MAX_EVENT_SEND_COUNT)
+                    .addConstraintViolation();
+            return false;
+        }
+
         return true;
     }
 
@@ -72,7 +83,18 @@ public class DeadLetterAnnotationValidator implements
             context.disableDefaultConstraintViolation();
             context
                     .buildConstraintViolationWithTemplate(
-                            SUBSCRIPTION_UNPROCESSABLE_EVENT_POLICY + " must be one of: skip_event, dead_letter_queue")
+                            SUBSCRIPTION_UNPROCESSABLE_EVENT_POLICY + " must be one of: SKIP_EVENT, DEAD_LETTER_QUEUE")
+                    .addConstraintViolation();
+            return false;
+        }
+
+        final String maxEventSendCount = annotations.get(SUBSCRIPTION_MAX_EVENT_SEND_COUNT);
+        if (maxEventSendCount == null) {
+            context.disableDefaultConstraintViolation();
+            context
+                    .buildConstraintViolationWithTemplate(
+                            SUBSCRIPTION_MAX_EVENT_SEND_COUNT + " must be also set when setting " +
+                            SUBSCRIPTION_UNPROCESSABLE_EVENT_POLICY)
                     .addConstraintViolation();
             return false;
         }
