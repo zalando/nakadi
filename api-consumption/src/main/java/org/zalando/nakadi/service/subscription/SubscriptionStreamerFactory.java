@@ -26,6 +26,7 @@ import org.zalando.nakadi.service.subscription.model.Session;
 import org.zalando.nakadi.service.subscription.zk.SubscriptionClientFactory;
 import org.zalando.nakadi.service.subscription.zk.ZkSubscriptionClient;
 import org.zalando.nakadi.service.timeline.TimelineService;
+import org.zalando.nakadi.util.UUIDGenerator;
 
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
@@ -52,6 +53,7 @@ public class SubscriptionStreamerFactory {
     private final KafkaRecordDeserializer kafkaRecordDeserializer;
     private final FeatureToggleService featureToggleService;
     private final EventPublisher eventPublisher;
+    private final UUIDGenerator uuidGenerator ;
     private final String deadLetterQueueEventTypeName;
 
     @Autowired
@@ -73,7 +75,8 @@ public class SubscriptionStreamerFactory {
             final KafkaRecordDeserializer kafkaRecordDeserializer,
             final FeatureToggleService featureToggleService,
             final EventPublisher eventPublisher,
-            @Value("${nakadi.dlq.storeEventTypeName}") final String deadLetterQueueEventTypeName) {
+            @Value("${nakadi.dlq.storeEventTypeName}") final String deadLetterQueueEventTypeName,
+            final UUIDGenerator uuidGenerator) {
         this.timelineService = timelineService;
         this.cursorTokenService = cursorTokenService;
         this.objectMapper = objectMapper;
@@ -92,6 +95,7 @@ public class SubscriptionStreamerFactory {
         this.featureToggleService = featureToggleService;
         this.eventPublisher = eventPublisher;
         this.deadLetterQueueEventTypeName = deadLetterQueueEventTypeName;
+        this.uuidGenerator = uuidGenerator;
     }
 
     public SubscriptionStreamer build(
@@ -132,6 +136,7 @@ public class SubscriptionStreamerFactory {
                 .setFeatureToggleService(featureToggleService)
                 .setEventPublisher(eventPublisher)
                 .setDeadLetterQueueEventTypeName(deadLetterQueueEventTypeName)
+                .setUuidGenerator(uuidGenerator)
                 .build();
     }
 }

@@ -33,6 +33,7 @@ import org.zalando.nakadi.view.SubscriptionCursorWithoutToken;
 import java.io.Closeable;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
+import java.time.Instant;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.Comparator;
@@ -387,22 +388,28 @@ class StreamingState extends State {
         final String failedEventString = new String(event.getEvent(), StandardCharsets.UTF_8);
         final JSONObject failedEvent = new JSONObject(failedEventString);
 
-        final JSONObject errorMessage = new JSONObject()
+        final JSONObject errorMessage =
+                new JSONObject()
                 .put("message", "skipped due to failed commits count: " + failedCommitsCount);
 
         final SubscriptionCursorWithoutToken cursor =
                 getContext().getCursorConverter().convertToNoToken(event.getPosition());
 
-        final JSONObject deadLetter = new JSONObject()
+        final JSONObject deadLetter =
+                new JSONObject()
                 .put("subscription_id", getContext().getSubscription().getId())
                 .put("event_type", cursor.getEventType())
                 .put("partition", cursor.getPartition())
                 .put("offset", cursor.getOffset())
                 .put("error", errorMessage)
-                .put("event", failedEvent);
+                .put("event", failedEvent)
+                .put("metadata",
+                        new JSONObject()
+                        .put("eid", getContext().getUuidGenerator().randomUUID().toString())
+                        .put("occurred_at", Instant.now().toString()));
 
-        final JSONArray deadLetterBatch = new JSONArray()
-                .put(deadLetter);
+        final JSONArray deadLetterBatch =
+                new JSONArray().put(deadLetter);
 
         final EventPublishResult result;
         try {

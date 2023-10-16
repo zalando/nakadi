@@ -38,6 +38,7 @@ import org.zalando.nakadi.service.subscription.state.State;
 import org.zalando.nakadi.service.subscription.zk.ZkSubscription;
 import org.zalando.nakadi.service.subscription.zk.ZkSubscriptionClient;
 import org.zalando.nakadi.service.timeline.TimelineService;
+import org.zalando.nakadi.util.UUIDGenerator;
 
 import java.io.Closeable;
 import java.io.IOException;
@@ -95,6 +96,7 @@ public class StreamingContext implements SubscriptionStreamer {
     private final UnprocessableEventPolicy unprocessableEventPolicy;
     private final String deadLetterQueueEventTypeName;
     private final EventPublisher eventPublisher;
+    private final UUIDGenerator uuidGenerator;
 
     private StreamingContext(final Builder builder) {
         this.out = builder.out;
@@ -124,6 +126,7 @@ public class StreamingContext implements SubscriptionStreamer {
         this.featureToggleService = builder.featureToggleService;
         this.deadLetterQueueEventTypeName = builder.deadLetterQueueEventTypeName;
         this.eventPublisher = builder.eventPublisher;
+        this.uuidGenerator = builder.uuidGenerator;
 
         this.maxEventSendCount = Optional.ofNullable(getSubscription().getAnnotations())
                 .map(ans -> ans.get(DeadLetterAnnotationValidator.SUBSCRIPTION_MAX_EVENT_SEND_COUNT))
@@ -424,6 +427,10 @@ public class StreamingContext implements SubscriptionStreamer {
         return this.eventPublisher;
     }
 
+    public UUIDGenerator getUuidGenerator() {
+        return this.uuidGenerator;
+    }
+
     public static final class Builder {
         private SubscriptionOutput out;
         private StreamParameters parameters;
@@ -451,6 +458,7 @@ public class StreamingContext implements SubscriptionStreamer {
         private FeatureToggleService featureToggleService;
         private String deadLetterQueueEventTypeName;
         private EventPublisher eventPublisher;
+        private UUIDGenerator uuidGenerator;
 
         public Builder setEventTypeCache(final EventTypeCache eventTypeCache) {
             this.eventTypeCache = eventTypeCache;
@@ -579,6 +587,11 @@ public class StreamingContext implements SubscriptionStreamer {
 
         public Builder setEventPublisher(final EventPublisher eventPublisher) {
             this.eventPublisher = eventPublisher;
+            return this;
+        }
+
+        public Builder setUuidGenerator(final UUIDGenerator uuidGenerator) {
+            this.uuidGenerator = uuidGenerator;
             return this;
         }
 
