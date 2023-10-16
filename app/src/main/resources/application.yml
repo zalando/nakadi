@@ -139,6 +139,8 @@ nakadi:
       nakadiDataStreamed: "nakadi.data.streamed"
       owning_application: "stups_nakadi"
   hasher.salt: "salt"
+  dlq:
+    storeEventTypeName: "nakadi.dead.letter.queue"
 
 twintip:
   mapping: /api
