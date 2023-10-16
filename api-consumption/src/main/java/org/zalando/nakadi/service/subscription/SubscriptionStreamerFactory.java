@@ -21,6 +21,7 @@ import org.zalando.nakadi.service.EventStreamWriterFactory;
 import org.zalando.nakadi.service.EventTypeChangeListener;
 import org.zalando.nakadi.service.FeatureToggleService;
 import org.zalando.nakadi.service.NakadiCursorComparator;
+import org.zalando.nakadi.service.publishing.EventPublisher;
 import org.zalando.nakadi.service.subscription.model.Session;
 import org.zalando.nakadi.service.subscription.zk.SubscriptionClientFactory;
 import org.zalando.nakadi.service.subscription.zk.ZkSubscriptionClient;
@@ -50,6 +51,8 @@ public class SubscriptionStreamerFactory {
     private final ConsumptionKpiCollectorFactory consumptionKpiCollectorFactory;
     private final KafkaRecordDeserializer kafkaRecordDeserializer;
     private final FeatureToggleService featureToggleService;
+    private final EventPublisher eventPublisher;
+    private final String deadLetterQueueEventTypeName;
 
     @Autowired
     public SubscriptionStreamerFactory(
@@ -68,8 +71,9 @@ public class SubscriptionStreamerFactory {
             @Value("${nakadi.subscription.maxStreamMemoryBytes}") final long streamMemoryLimitBytes,
             final ConsumptionKpiCollectorFactory consumptionKpiCollectorFactory,
             final KafkaRecordDeserializer kafkaRecordDeserializer,
-            final FeatureToggleService featureToggleService
-    ) {
+            final FeatureToggleService featureToggleService,
+            final EventPublisher eventPublisher,
+            @Value("${nakadi.dlq.storeEventTypeName}") final String deadLetterQueueEventTypeName) {
         this.timelineService = timelineService;
         this.cursorTokenService = cursorTokenService;
         this.objectMapper = objectMapper;
@@ -86,6 +90,8 @@ public class SubscriptionStreamerFactory {
         this.consumptionKpiCollectorFactory = consumptionKpiCollectorFactory;
         this.kafkaRecordDeserializer = kafkaRecordDeserializer;
         this.featureToggleService = featureToggleService;
+        this.eventPublisher = eventPublisher;
+        this.deadLetterQueueEventTypeName = deadLetterQueueEventTypeName;
     }
 
     public SubscriptionStreamer build(
@@ -98,7 +104,6 @@ public class SubscriptionStreamerFactory {
         final ZkSubscriptionClient zkClient = zkClientFactory.createClient(
                 subscription,
                 streamParameters.commitTimeoutMillis);
-        // Create streaming context
         return new StreamingContext.Builder()
                 .setOut(output)
                 .setStreamMemoryLimitBytes(streamMemoryLimitBytes)
@@ -125,7 +130,8 @@ public class SubscriptionStreamerFactory {
                 .setKafkaRecordDeserializer(kafkaRecordDeserializer)
                 .setEventTypeCache(eventTypeCache)
                 .setFeatureToggleService(featureToggleService)
+                .setEventPublisher(eventPublisher)
+                .setDeadLetterQueueEventTypeName(deadLetterQueueEventTypeName)
                 .build();
     }
-
 }

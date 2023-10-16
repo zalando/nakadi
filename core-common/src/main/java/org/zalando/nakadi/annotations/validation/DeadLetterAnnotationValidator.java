@@ -1,5 +1,7 @@
 package org.zalando.nakadi.annotations.validation;
 
+import org.zalando.nakadi.domain.UnprocessableEventPolicy;
+
 import javax.validation.ConstraintValidator;
 import javax.validation.ConstraintValidatorContext;
 import java.util.Map;
@@ -10,20 +12,34 @@ public class DeadLetterAnnotationValidator implements
     public static final String SUBSCRIPTION_MAX_EVENT_SEND_COUNT =
             "nakadi.zalando.org/subscription-max-event-send-count";
 
+    public static final String SUBSCRIPTION_UNPROCESSABLE_EVENT_POLICY =
+            "nakadi.zalando.org/subscription-unprocessable-event-policy";
+
     @Override
     public boolean isValid(final Map<String, String> annotations, final ConstraintValidatorContext context) {
         if (annotations == null) {
             return true;
         }
+        if (!isValidMaxEventSendCount(annotations, context)) {
+            return false;
+        }
+        if (!isValidUnprocessableEventPolicy(annotations, context)) {
+            return false;
+        }
+        return true;
+    }
 
-        final String failedCommitCount = annotations.get(SUBSCRIPTION_MAX_EVENT_SEND_COUNT);
-        if (failedCommitCount == null) {
+    private boolean isValidMaxEventSendCount(
+            final Map<String, String> annotations, final ConstraintValidatorContext context) {
+
+        final String maxEventSendCount = annotations.get(SUBSCRIPTION_MAX_EVENT_SEND_COUNT);
+        if (maxEventSendCount == null) {
             return true;
         }
 
         final Integer commits;
         try {
-            commits = Integer.valueOf(failedCommitCount);
+            commits = Integer.valueOf(maxEventSendCount);
         } catch (final NumberFormatException e) {
             context.disableDefaultConstraintViolation();
             context.buildConstraintViolationWithTemplate(SUBSCRIPTION_MAX_EVENT_SEND_COUNT + " must be an integer")
@@ -42,4 +58,25 @@ public class DeadLetterAnnotationValidator implements
         return true;
     }
 
+    private boolean isValidUnprocessableEventPolicy(
+            final Map<String, String> annotations, final ConstraintValidatorContext context) {
+
+        final String unprocessableEventPolicy = annotations.get(SUBSCRIPTION_UNPROCESSABLE_EVENT_POLICY);
+        if (unprocessableEventPolicy == null) {
+            return true;
+        }
+
+        try {
+            UnprocessableEventPolicy.valueOf(unprocessableEventPolicy);
+        } catch (final IllegalArgumentException e) {
+            context.disableDefaultConstraintViolation();
+            context
+                    .buildConstraintViolationWithTemplate(
+                            SUBSCRIPTION_UNPROCESSABLE_EVENT_POLICY + " must be one of: skip_event, dead_letter_queue")
+                    .addConstraintViolation();
+            return false;
+        }
+
+        return true;
+    }
 }
