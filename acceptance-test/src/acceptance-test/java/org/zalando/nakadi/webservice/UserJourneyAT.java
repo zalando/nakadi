@@ -4,7 +4,6 @@ import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.google.common.base.Charsets;
 import com.google.common.collect.ImmutableList;
-import com.google.common.collect.ImmutableMap;
 import com.google.common.collect.Lists;
 import com.google.common.io.Resources;
 import com.jayway.restassured.RestAssured;
@@ -13,6 +12,7 @@ import com.jayway.restassured.response.Header;
 import com.jayway.restassured.specification.RequestSpecification;
 import org.echocat.jomon.runtime.concurrent.RetryForSpecifiedTimeStrategy;
 import org.hamcrest.Matchers;
+import org.json.JSONArray;
 import org.json.JSONObject;
 import org.junit.Before;
 import org.junit.Test;
@@ -348,7 +348,7 @@ public class UserJourneyAT extends RealEnvironmentAT {
             final SubscriptionCursor cursor = new SubscriptionCursor("0", TestUtils.toTimelineOffset(i),
                     eventTypeName, "");
             final StreamBatch expectedBatch = new StreamBatch(cursor,
-                    ImmutableList.of(ImmutableMap.of("foo", "bar" + i)),
+                    new JSONArray().put(new JSONObject().put("foo", "bar" + i)),
                     i == 0 ? new StreamMetadata("Stream started") : null);
 
             final StreamBatch batch = batches.get(i);

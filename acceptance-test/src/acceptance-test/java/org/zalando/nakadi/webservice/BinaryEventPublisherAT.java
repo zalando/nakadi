@@ -3,6 +3,7 @@ package org.zalando.nakadi.webservice;
 import org.apache.http.HttpStatus;
 import org.hamcrest.MatcherAssert;
 import org.hamcrest.Matchers;
+import org.json.JSONObject;
 import org.junit.Assert;
 import org.junit.Test;
 import org.zalando.nakadi.domain.Subscription;
@@ -12,7 +13,6 @@ import org.zalando.nakadi.webservice.utils.TestStreamingClient;
 
 import java.io.IOException;
 import java.util.List;
-import java.util.Map;
 
 import static com.jayway.restassured.RestAssured.given;
 
@@ -43,7 +43,7 @@ public class BinaryEventPublisherAT extends BaseAT {
         // So the test is only looking for a valid event.
         Assert.assertEquals(
                 NAKADI_ACCESS_LOG,
-                ((Map) event.get("metadata")).get("event_type"));
+                event.getJSONObject("metadata").get("event_type"));
         Assert.assertNotNull(event.get("method"));
         Assert.assertNotNull(event.get("path"));
         Assert.assertNotNull(event.get("query"));
@@ -75,7 +75,7 @@ public class BinaryEventPublisherAT extends BaseAT {
         // So the test is only looking for a valid event.
         Assert.assertEquals(
                 NAKADI_SUBSCRIPTION_LOG,
-                ((Map) event.get("metadata")).get("event_type"));
+                event.getJSONObject("metadata").get("event_type"));
         Assert.assertEquals("created", event.get("status"));
         Assert.assertNotNull(event.get("subscription_id"));
     }
@@ -96,7 +96,7 @@ public class BinaryEventPublisherAT extends BaseAT {
         // So the test is only looking for a valid event.
         Assert.assertEquals(
                 NAKADI_EVENT_TYPE_LOG,
-                ((Map) event.get("metadata")).get("event_type"));
+                event.getJSONObject("metadata").get("event_type"));
         Assert.assertNotNull(event.get("event_type"));
         Assert.assertNotNull(event.get("status"));
         Assert.assertNotNull(event.get("category"));
@@ -120,7 +120,7 @@ public class BinaryEventPublisherAT extends BaseAT {
         // So the test is only looking for a valid event.
         Assert.assertEquals(
                 NAKADI_BATCH_PUBLISHED,
-                ((Map) event.get("metadata")).get("event_type"));
+                event.getJSONObject("metadata").get("event_type"));
         Assert.assertNotNull(event.get("event_type"));
         Assert.assertNotNull(event.get("app"));
         Assert.assertNotNull(event.get("app_hashed"));
@@ -145,7 +145,7 @@ public class BinaryEventPublisherAT extends BaseAT {
         final var event = events.get(0);
         // All acceptance tests are run against same instance, so the exact event that is consumed is unpredictable.
         // So the test is only looking for a valid event.
-        final var metadata = (Map) event.get("metadata");
+        final var metadata = event.getJSONObject("metadata");
         Assert.assertEquals(NAKADI_DATA_STREAMED, metadata.get("event_type"));
         Assert.assertNotNull(metadata.get("occurred_at"));
         Assert.assertNotNull(metadata.get("received_at"));
@@ -162,7 +162,7 @@ public class BinaryEventPublisherAT extends BaseAT {
         Assert.assertNotNull(event.get("batches_streamed"));
     }
 
-    private List<Map> consumeEvent(final TestStreamingClient client) {
+    private List<JSONObject> consumeEvent(final TestStreamingClient client) {
         TestUtils.waitFor(() -> MatcherAssert.assertThat(
                 client.getJsonBatches().size(), Matchers.greaterThanOrEqualTo(1)), 10000);
         return client.getJsonBatches().get(0).getEvents();

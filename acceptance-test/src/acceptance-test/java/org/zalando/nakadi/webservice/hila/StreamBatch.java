@@ -1,21 +1,26 @@
 package org.zalando.nakadi.webservice.hila;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
-import com.google.common.collect.ImmutableList;
 import org.apache.commons.lang3.StringUtils;
 import org.hamcrest.BaseMatcher;
 import org.hamcrest.Description;
+import org.json.JSONArray;
+import org.json.JSONObject;
 import org.zalando.nakadi.domain.StreamMetadata;
 import org.zalando.nakadi.repository.kafka.KafkaTestHelper;
 import org.zalando.nakadi.view.SubscriptionCursor;
 
 import javax.annotation.Nullable;
 import javax.annotation.concurrent.Immutable;
+import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.stream.Collectors;
+import java.util.stream.IntStream;
 
-import static java.util.Collections.unmodifiableList;
+import static org.hamcrest.core.Is.is;
+import static uk.co.datumedge.hamcrest.json.SameJSONAs.sameJSONObjectAs;
 
 @Immutable
 public class StreamBatch {
@@ -23,14 +28,24 @@ public class StreamBatch {
     private static final String DUMMY_TOKEN = "dummy-token";
 
     private final SubscriptionCursor cursor;
-    private final List<Map> events;
+    private final List<JSONObject> events;
     private final StreamMetadata metadata;
 
     public StreamBatch(@JsonProperty("cursor") final SubscriptionCursor cursor,
-                       @Nullable @JsonProperty("events") final List<Map> events,
+                       @Nullable @JsonProperty("events") final List<Map<String, Object>> events,
                        @Nullable @JsonProperty("info") final StreamMetadata metadata) {
         this.cursor = cursor;
-        this.events = Optional.ofNullable(events).orElse(ImmutableList.of());
+        this.events = Optional.ofNullable(events)
+                .map(evs -> evs.stream().map(JSONObject::new).collect(Collectors.toUnmodifiableList()))
+                .orElse(Collections.emptyList());
+        this.metadata = metadata;
+    }
+
+    public StreamBatch(final SubscriptionCursor cursor, final JSONArray eventsArray, final StreamMetadata metadata) {
+        this.cursor = cursor;
+        this.events = IntStream.range(0, eventsArray.length())
+                .mapToObj(i -> eventsArray.getJSONObject(i))
+                .collect(Collectors.toUnmodifiableList());
         this.metadata = metadata;
     }
 
@@ -38,8 +53,8 @@ public class StreamBatch {
         return cursor;
     }
 
-    public List<Map> getEvents() {
-        return unmodifiableList(events);
+    public List<JSONObject> getEvents() {
+        return events;
     }
 
     @Override
@@ -69,23 +84,44 @@ public class StreamBatch {
         return metadata;
     }
 
-    public static StreamBatch singleEventBatch(final String partition, final String offset, final String eventType,
-                                               final Map event, final String metadata) {
+    public static StreamBatch emptyEventBatch(final String partition, final String offset, final String eventType,
+                                              final String debugInfo) {
+
         final String paddedOffset = StringUtils.leftPad(offset, KafkaTestHelper.CURSOR_OFFSET_LENGTH, '0');
-        if (event.isEmpty()) {
-            return new StreamBatch(new SubscriptionCursor(partition, paddedOffset, eventType, DUMMY_TOKEN),
-                    ImmutableList.of(), new StreamMetadata(metadata));
-        } else {
-            return new StreamBatch(new SubscriptionCursor(partition, paddedOffset, eventType, DUMMY_TOKEN),
-                    ImmutableList.of(event), new StreamMetadata(metadata));
-        }
+        return new StreamBatch(
+                new SubscriptionCursor(partition, paddedOffset, eventType, DUMMY_TOKEN),
+                new JSONArray(),
+                new StreamMetadata(debugInfo));
     }
 
     public static StreamBatch singleEventBatch(final String partition, final String offset, final String eventType,
-                                               final Map event) {
+                                               final JSONObject event) {
+
         final String paddedOffset = StringUtils.leftPad(offset, KafkaTestHelper.CURSOR_OFFSET_LENGTH, '0');
-        return new StreamBatch(new SubscriptionCursor(partition, paddedOffset, eventType, DUMMY_TOKEN),
-                ImmutableList.of(event), null);
+        return new StreamBatch(
+                new SubscriptionCursor(partition, paddedOffset, eventType, DUMMY_TOKEN),
+                new JSONArray().put(event),
+                null);
+    }
+
+    public static StreamBatch singleEventBatch(final String partition, final String offset, final String eventType,
+                                               final JSONObject event, final String debugInfo) {
+
+        final String paddedOffset = StringUtils.leftPad(offset, KafkaTestHelper.CURSOR_OFFSET_LENGTH, '0');
+        return new StreamBatch(
+                new SubscriptionCursor(partition, paddedOffset, eventType, DUMMY_TOKEN),
+                new JSONArray().put(event),
+                new StreamMetadata(debugInfo));
+    }
+
+    private static StreamBatch singleEventBatch(final String partition, final String offset, final String eventType,
+                                                final JSONObject event, final StreamMetadata metadata) {
+
+        final String paddedOffset = StringUtils.leftPad(offset, KafkaTestHelper.CURSOR_OFFSET_LENGTH, '0');
+        return new StreamBatch(
+                new SubscriptionCursor(partition, paddedOffset, eventType, DUMMY_TOKEN),
+                new JSONArray().put(event),
+                metadata);
     }
 
     @Override
@@ -96,6 +132,10 @@ public class StreamBatch {
                 ", metadata=" + metadata +
                 '}';
     }
+
+    // public static Matcher<StreamBatch> equalToBatchIgnoringToken(final StreamBatch batch) {
+    //     return equalTo(batch.getCursor());
+    // }
 
     public static class MatcherIgnoringToken extends BaseMatcher<StreamBatch> {
 
@@ -110,17 +150,26 @@ public class StreamBatch {
             if (!(item instanceof StreamBatch)) {
                 return false;
             }
-            final StreamBatch batchTocheck = (StreamBatch) item;
+            final StreamBatch batchToCheck = (StreamBatch) item;
             final SubscriptionCursor cursor = batch.getCursor();
-            final SubscriptionCursor cursorToCheck = batchTocheck.getCursor();
+            final SubscriptionCursor cursorToCheck = batchToCheck.getCursor();
 
-            return batch.getEvents().equals(batchTocheck.getEvents()) &&
+            return sameBatchEvents(batchToCheck.getEvents()) &&
                     cursor.getPartition().equals(cursorToCheck.getPartition()) &&
                     cursor.getOffset().equals(cursorToCheck.getOffset()) &&
                     cursor.getEventType().equals(cursorToCheck.getEventType()) &&
                     Optional.ofNullable(batch.getMetadata())
-                            .map(b -> b.equals(batchTocheck.getMetadata()))
-                            .orElse(batchTocheck.getMetadata() == null);
+                            .map(b -> b.equals(batchToCheck.getMetadata()))
+                            .orElse(batchToCheck.getMetadata() == null);
+        }
+
+        private boolean sameBatchEvents(final List<JSONObject> eventsToCheck) {
+            final List<JSONObject> events = batch.getEvents();
+            return events.size() == eventsToCheck.size() &&
+                    IntStream.range(0, events.size())
+                    .allMatch(i ->
+                            events.get(i).toMap().equals(
+                                    eventsToCheck.get(i).toMap()));
         }
 
         @Override

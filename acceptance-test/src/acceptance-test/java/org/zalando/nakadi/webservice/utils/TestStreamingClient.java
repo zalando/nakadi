@@ -281,6 +281,8 @@ public class TestStreamingClient {
                     if (line == null) {
                         return;
                     }
+                    LOG.info("Batch line: {}", line);
+
                     final StreamBatch streamBatch = MAPPER.readValue(line, StreamBatch.class);
                     synchronized (jsonBatches) {
                         jsonBatches.add(streamBatch);
