@@ -30,7 +30,6 @@ import org.zalando.nakadi.webservice.utils.TestStreamingClient;
 
 import java.io.IOException;
 import java.util.List;
-import java.util.Map;
 import java.util.stream.Collectors;
 
 import static java.util.stream.LongStream.rangeClosed;
@@ -447,8 +446,9 @@ public class UserJourneyAT extends RealEnvironmentAT {
 
         // validate the events metadata
         for (final StreamBatch batch : batches) {
-            final Map<String, String> metadata = (Map<String, String>) batch.getEvents().get(0).get("metadata");
-            assertThat(metadata.get("version"), equalTo(validatedWithJsonSchemaVersion));
+            assertThat(
+                    batch.getEvents().get(0).getJSONObject("metadata").getString("version"),
+                    equalTo(validatedWithJsonSchemaVersion));
         }
 
         // delete subscription

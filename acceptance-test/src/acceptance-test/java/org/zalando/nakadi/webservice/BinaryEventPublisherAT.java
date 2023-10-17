@@ -56,7 +56,7 @@ public class BinaryEventPublisherAT extends BaseAT {
         Assert.assertNotNull(event.get("content_encoding"));
         Assert.assertNotNull(event.get("request_length"));
         Assert.assertNotNull(event.get("response_length"));
-        Assert.assertNull(event.get("random_key"));
+        Assert.assertFalse(event.has("random_key"));
     }
 
     @Test
