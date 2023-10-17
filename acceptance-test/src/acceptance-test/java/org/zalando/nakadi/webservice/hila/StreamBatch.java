@@ -19,9 +19,6 @@ import java.util.Optional;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 
-import static org.hamcrest.core.Is.is;
-import static uk.co.datumedge.hamcrest.json.SameJSONAs.sameJSONObjectAs;
-
 @Immutable
 public class StreamBatch {
 
@@ -132,10 +129,6 @@ public class StreamBatch {
                 ", metadata=" + metadata +
                 '}';
     }
-
-    // public static Matcher<StreamBatch> equalToBatchIgnoringToken(final StreamBatch batch) {
-    //     return equalTo(batch.getCursor());
-    // }
 
     public static class MatcherIgnoringToken extends BaseMatcher<StreamBatch> {
 
