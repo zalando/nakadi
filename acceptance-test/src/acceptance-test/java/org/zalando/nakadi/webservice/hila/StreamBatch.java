@@ -28,6 +28,7 @@ public class StreamBatch {
     private final List<JSONObject> events;
     private final StreamMetadata metadata;
 
+    // used for reading from string with object mapper
     public StreamBatch(@JsonProperty("cursor") final SubscriptionCursor cursor,
                        @Nullable @JsonProperty("events") final List<Map<String, Object>> events,
                        @Nullable @JsonProperty("info") final StreamMetadata metadata) {
