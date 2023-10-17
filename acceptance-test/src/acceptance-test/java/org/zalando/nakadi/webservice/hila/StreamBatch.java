@@ -2,8 +2,7 @@ package org.zalando.nakadi.webservice.hila;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
 import org.apache.commons.lang3.StringUtils;
-import org.hamcrest.BaseMatcher;
-import org.hamcrest.Description;
+import org.hamcrest.Matcher;
 import org.json.JSONArray;
 import org.json.JSONObject;
 import org.zalando.nakadi.domain.StreamMetadata;
@@ -18,6 +17,16 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
+
+import static org.hamcrest.CoreMatchers.allOf;
+import static org.hamcrest.CoreMatchers.anyOf;
+import static org.hamcrest.CoreMatchers.equalTo;
+import static org.hamcrest.CoreMatchers.isA;
+import static org.hamcrest.beans.HasPropertyWithValue.hasProperty;
+import static org.hamcrest.collection.IsCollectionWithSize.hasSize;
+import static org.hamcrest.collection.IsEmptyIterable.emptyIterable;
+import static org.hamcrest.collection.IsIterableContainingInOrder.contains;
+import static uk.co.datumedge.hamcrest.json.SameJSONAs.sameJSONObjectAs;
 
 @Immutable
 public class StreamBatch {
@@ -131,47 +140,22 @@ public class StreamBatch {
                 '}';
     }
 
-    public static class MatcherIgnoringToken extends BaseMatcher<StreamBatch> {
-
-        private final StreamBatch batch;
-
-        public MatcherIgnoringToken(final StreamBatch batch) {
-            this.batch = batch;
-        }
-
-        @Override
-        public boolean matches(final Object item) {
-            if (!(item instanceof StreamBatch)) {
-                return false;
-            }
-            final StreamBatch batchToCheck = (StreamBatch) item;
-            final SubscriptionCursor cursor = batch.getCursor();
-            final SubscriptionCursor cursorToCheck = batchToCheck.getCursor();
-
-            return sameBatchEvents(batchToCheck.getEvents()) &&
-                    cursor.getPartition().equals(cursorToCheck.getPartition()) &&
-                    cursor.getOffset().equals(cursorToCheck.getOffset()) &&
-                    cursor.getEventType().equals(cursorToCheck.getEventType()) &&
-                    Optional.ofNullable(batch.getMetadata())
-                            .map(b -> b.equals(batchToCheck.getMetadata()))
-                            .orElse(batchToCheck.getMetadata() == null);
-        }
-
-        private boolean sameBatchEvents(final List<JSONObject> eventsToCheck) {
-            final List<JSONObject> events = batch.getEvents();
-            return events.size() == eventsToCheck.size() &&
-                    IntStream.range(0, events.size())
-                    .allMatch(i ->
-                            events.get(i).toMap().equals(
-                                    eventsToCheck.get(i).toMap()));
-        }
-
-        @Override
-        public void describeTo(final Description description) {
-        }
-
-        public static MatcherIgnoringToken equalToBatchIgnoringToken(final StreamBatch batch) {
-            return new MatcherIgnoringToken(batch);
-        }
+    public static Matcher<StreamBatch> equalToBatchIgnoringToken(final StreamBatch batch) {
+        final SubscriptionCursor cursor = batch.getCursor();
+        final List<JSONObject> events = batch.getEvents();
+        final StreamMetadata metadata = batch.getMetadata();
+        return allOf(
+                isA(StreamBatch.class),
+                hasProperty("cursor", allOf(
+                                hasProperty("partition", equalTo(cursor.getPartition())),
+                                hasProperty("offset",    equalTo(cursor.getOffset())),
+                                hasProperty("eventType", equalTo(cursor.getEventType())))),
+                hasProperty("events", hasSize(events.size())),
+                hasProperty("events", anyOf(
+                                emptyIterable(), // otherwise it fails if `events` is empty
+                                contains(events.stream()
+                                        .map(e -> sameJSONObjectAs(e))
+                                        .collect(Collectors.toList())))),
+                hasProperty("metadata", equalTo(metadata)));
     }
 }

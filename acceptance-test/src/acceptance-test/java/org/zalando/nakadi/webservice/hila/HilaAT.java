@@ -64,7 +64,7 @@ import static org.zalando.nakadi.domain.SubscriptionBase.InitialPosition.END;
 import static org.zalando.nakadi.domain.SubscriptionEventTypeStats.Partition.AssignmentType.AUTO;
 import static org.zalando.nakadi.domain.SubscriptionEventTypeStats.Partition.AssignmentType.DIRECT;
 import static org.zalando.nakadi.utils.TestUtils.waitFor;
-import static org.zalando.nakadi.webservice.hila.StreamBatch.MatcherIgnoringToken.equalToBatchIgnoringToken;
+import static org.zalando.nakadi.webservice.hila.StreamBatch.equalToBatchIgnoringToken;
 import static org.zalando.nakadi.webservice.hila.StreamBatch.emptyBatch;
 import static org.zalando.nakadi.webservice.hila.StreamBatch.singleEventBatch;
 import static org.zalando.nakadi.webservice.utils.NakadiTestUtils.commitCursors;
