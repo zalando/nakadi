@@ -81,8 +81,8 @@ public class StreamBatch {
         return metadata;
     }
 
-    public static StreamBatch emptyEventBatch(final String partition, final String offset, final String eventType,
-                                              final String debugInfo) {
+    public static StreamBatch emptyBatch(final String partition, final String offset, final String eventType,
+                                         final String debugInfo) {
 
         final String paddedOffset = StringUtils.leftPad(offset, KafkaTestHelper.CURSOR_OFFSET_LENGTH, '0');
         return new StreamBatch(

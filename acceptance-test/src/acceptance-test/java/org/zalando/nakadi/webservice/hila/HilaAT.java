@@ -65,9 +65,8 @@ import static org.zalando.nakadi.domain.SubscriptionEventTypeStats.Partition.Ass
 import static org.zalando.nakadi.domain.SubscriptionEventTypeStats.Partition.AssignmentType.DIRECT;
 import static org.zalando.nakadi.utils.TestUtils.waitFor;
 import static org.zalando.nakadi.webservice.hila.StreamBatch.MatcherIgnoringToken.equalToBatchIgnoringToken;
-import static org.zalando.nakadi.webservice.hila.StreamBatch.emptyEventBatch;
+import static org.zalando.nakadi.webservice.hila.StreamBatch.emptyBatch;
 import static org.zalando.nakadi.webservice.hila.StreamBatch.singleEventBatch;
-// FIXME: stop this
 import static org.zalando.nakadi.webservice.utils.NakadiTestUtils.commitCursors;
 import static org.zalando.nakadi.webservice.utils.NakadiTestUtils.buildSimpleEventType;
 import static org.zalando.nakadi.webservice.utils.NakadiTestUtils.createEventType;
@@ -316,7 +315,7 @@ public class HilaAT extends BaseAT {
         waitFor(() -> assertThat(client.isRunning(), is(false)), 10000);
         assertThat(
                 client.getJsonBatches().get(1),
-                equalToBatchIgnoringToken(emptyEventBatch("0", "001-0001-000000000000000000", eventType.getName(),
+                equalToBatchIgnoringToken(emptyBatch("0", "001-0001-000000000000000000", eventType.getName(),
                                 "Commit timeout reached")));
     }
 
@@ -818,7 +817,9 @@ public class HilaAT extends BaseAT {
     }
 
     @Test(timeout = 20_000)
-    public void shouldSkipDeadLetterdAndConsumptionToBeContinued() throws IOException, InterruptedException {
+    public void shouldSkipDeadLetterAndConsumptionToBeContinuedAndDeadLetterFoundInTheQueueLater()
+            throws IOException, InterruptedException {
+
         final EventType eventType = NakadiTestUtils.createBusinessEventTypeWithPartitions(4);
 
         publishBusinessEventWithUserDefinedPartition(eventType.getName(),
