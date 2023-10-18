@@ -5,7 +5,7 @@ import org.zalando.nakadi.domain.EventCategory;
 import org.zalando.nakadi.domain.EventType;
 import org.zalando.nakadi.utils.EventTypeTestBuilder;
 
-import static org.junit.Assert.assertThat;
+import static org.hamcrest.MatcherAssert.assertThat;
 import static org.zalando.nakadi.utils.IsOptional.isPresent;
 
 public class CategoryChangeConstraintTest {
