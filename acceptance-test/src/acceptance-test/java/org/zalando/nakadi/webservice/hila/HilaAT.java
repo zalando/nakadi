@@ -6,8 +6,6 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.Lists;
 import org.apache.http.HttpStatus;
-import org.hamcrest.Matchers;
-import org.hamcrest.core.StringContains;
 import org.json.JSONArray;
 import org.json.JSONObject;
 import org.junit.AfterClass;
@@ -56,6 +54,12 @@ import static com.jayway.restassured.http.ContentType.JSON;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.equalTo;
 import static org.hamcrest.Matchers.is;
+import static org.hamcrest.Matchers.containsString;
+import static org.hamcrest.Matchers.empty;
+import static org.hamcrest.Matchers.equalTo;
+import static org.hamcrest.Matchers.hasSize;
+import static org.hamcrest.Matchers.is;
+import static org.hamcrest.Matchers.not;
 import static org.zalando.nakadi.annotations.validation.DeadLetterAnnotationValidator.SUBSCRIPTION_MAX_EVENT_SEND_COUNT;
 import static org.zalando.nakadi.annotations.validation.DeadLetterAnnotationValidator.
     SUBSCRIPTION_UNPROCESSABLE_EVENT_POLICY;
@@ -142,7 +146,7 @@ public class HilaAT extends BaseAT {
         final TestStreamingClient client = TestStreamingClient
                 .create(URL, subscription.getId(), "batch_limit=1&stream_limit=2&stream_timeout=1")
                 .start();
-        waitFor(() -> assertThat(client.getSessionId(), Matchers.not(equalTo(SESSION_ID_UNKNOWN))));
+        waitFor(() -> assertThat(client.getSessionId(), not(equalTo(SESSION_ID_UNKNOWN))));
 
         publishEvent(eventType.getName(), "{\"foo\":\"bar\"}");
         waitFor(() -> Assert.assertFalse(client.getJsonBatches().isEmpty()), TimeUnit.SECONDS.toMillis(2), 100);
@@ -172,7 +176,7 @@ public class HilaAT extends BaseAT {
                 .start();
         publishBusinessEventWithUserDefinedPartition(
                 eventType.getName(), 1, x -> "{\"foo\":\"bar" + x + "\"}", p -> "1");
-        waitFor(() -> assertThat(clientAfterRepartitioning.getJsonBatches(), Matchers.hasSize(2)));
+        waitFor(() -> assertThat(clientAfterRepartitioning.getJsonBatches(), hasSize(2)));
         Assert.assertTrue(clientAfterRepartitioning.getJsonBatches().stream()
                 .anyMatch(event -> event.getCursor().getPartition().equals("1")));
     }
@@ -183,15 +187,15 @@ public class HilaAT extends BaseAT {
                 .create(URL, subscription.getId(),
                         "batch_flush_timeout=600&batch_limit=1000&stream_timeout=2&max_uncommitted_events=1000")
                 .start();
-        waitFor(() -> assertThat(client.getSessionId(), Matchers.not(equalTo(SESSION_ID_UNKNOWN))));
+        waitFor(() -> assertThat(client.getSessionId(), not(equalTo(SESSION_ID_UNKNOWN))));
 
         publishEvents(eventType.getName(), 4, x -> "{\"foo\":\"bar\"}");
 
         // when stream_timeout is reached we should get 2 batches:
         // first one containing 4 events, second one with debug message
-        waitFor(() -> assertThat(client.getJsonBatches(), Matchers.hasSize(2)));
-        assertThat(client.getJsonBatches().get(0).getEvents(), Matchers.hasSize(4));
-        assertThat(client.getJsonBatches().get(1).getEvents(), Matchers.hasSize(0));
+        waitFor(() -> assertThat(client.getJsonBatches(), hasSize(2)));
+        assertThat(client.getJsonBatches().get(0).getEvents(), hasSize(4));
+        assertThat(client.getJsonBatches().get(1).getEvents(), hasSize(0));
         System.out.println(client.getJsonBatches());
     }
 
@@ -204,7 +208,7 @@ public class HilaAT extends BaseAT {
         final TestStreamingClient client = TestStreamingClient
                 .create(URL, subscription.getId(), "stream_limit=2")
                 .start();
-        waitFor(() -> assertThat(client.getJsonBatches(), Matchers.hasSize(2)));
+        waitFor(() -> assertThat(client.getJsonBatches(), hasSize(2)));
         assertThat(
                 client.getJsonBatches().get(0),
                 StreamBatch.equalToBatchIgnoringToken(
@@ -223,7 +227,7 @@ public class HilaAT extends BaseAT {
 
         // create new session and read from subscription again
         client.start();
-        waitFor(() -> assertThat(client.getJsonBatches(), Matchers.hasSize(2)));
+        waitFor(() -> assertThat(client.getJsonBatches(), hasSize(2)));
 
         // check that we have read the next two events with correct offsets
         assertThat(
@@ -243,7 +247,7 @@ public class HilaAT extends BaseAT {
         final TestStreamingClient client = TestStreamingClient
                 .create(URL, subscription.getId(), "batch_flush_timeout=1")
                 .start();
-        waitFor(() -> assertThat(client.getJsonBatches(), Matchers.not(Matchers.empty())));
+        waitFor(() -> assertThat(client.getJsonBatches(), not(empty())));
         assertThat(client.getJsonBatches().get(0).getCursor().getOffset(), equalTo("001-0001--1"));
     }
 
@@ -252,7 +256,7 @@ public class HilaAT extends BaseAT {
         final TestStreamingClient client = TestStreamingClient
                 .create(subscription.getId())
                 .start();
-        waitFor(() -> assertThat(client.getSessionId(), Matchers.not(equalTo(SESSION_ID_UNKNOWN))));
+        waitFor(() -> assertThat(client.getSessionId(), not(equalTo(SESSION_ID_UNKNOWN))));
 
         when().get("/subscriptions/{sid}/cursors", subscription.getId())
                 .then()
@@ -272,7 +276,7 @@ public class HilaAT extends BaseAT {
         final TestStreamingClient client = TestStreamingClient
                 .create(subscription.getId())
                 .start();
-        waitFor(() -> assertThat(client.getJsonBatches(), Matchers.not(Matchers.empty())));
+        waitFor(() -> assertThat(client.getJsonBatches(), not(empty())));
 
         // commit and check that status is 204
         final int commitResult = commitCursors(subscription.getId(),
@@ -290,17 +294,17 @@ public class HilaAT extends BaseAT {
                 .create(URL, subscription.getId(), "max_uncommitted_events=5")
                 .start();
 
-        waitFor(() -> assertThat(client.getJsonBatches(), Matchers.hasSize(5)));
+        waitFor(() -> assertThat(client.getJsonBatches(), hasSize(5)));
 
         SubscriptionCursor cursorToCommit = client.getJsonBatches().get(4).getCursor();
         commitCursors(subscription.getId(), ImmutableList.of(cursorToCommit), client.getSessionId());
 
-        waitFor(() -> assertThat(client.getJsonBatches(), Matchers.hasSize(10)));
+        waitFor(() -> assertThat(client.getJsonBatches(), hasSize(10)));
 
         cursorToCommit = client.getJsonBatches().get(6).getCursor();
         commitCursors(subscription.getId(), ImmutableList.of(cursorToCommit), client.getSessionId());
 
-        waitFor(() -> assertThat(client.getJsonBatches(), Matchers.hasSize(12)));
+        waitFor(() -> assertThat(client.getJsonBatches(), hasSize(12)));
     }
 
     @Test(timeout = 15000)
@@ -312,7 +316,7 @@ public class HilaAT extends BaseAT {
                 .create(subscription.getId()) // commit_timeout is 5 seconds for test
                 .start();
 
-        waitFor(() -> assertThat(client.getJsonBatches(), Matchers.hasSize(2)), 10000);
+        waitFor(() -> assertThat(client.getJsonBatches(), hasSize(2)), 10000);
         waitFor(() -> assertThat(client.isRunning(), is(false)), 10000);
         assertThat(
                 client.getJsonBatches().get(1),
@@ -330,7 +334,7 @@ public class HilaAT extends BaseAT {
                 .create(URL, subscription.getId(), "stream_timeout=3")
                 .start();
 
-        waitFor(() -> assertThat(client.getJsonBatches(), Matchers.hasSize(1)));
+        waitFor(() -> assertThat(client.getJsonBatches(), hasSize(1)));
 
         // to check that stream_timeout works we need to commit everything we consumed, in other case
         // Nakadi will first wait till commit_timeout exceeds
@@ -350,15 +354,15 @@ public class HilaAT extends BaseAT {
                 .create(URL, subscription.getId(), "batch_limit=5&batch_flush_timeout=1&max_uncommitted_events=20")
                 .start();
 
-        waitFor(() -> assertThat(client.getJsonBatches(), Matchers.hasSize(3)));
+        waitFor(() -> assertThat(client.getJsonBatches(), hasSize(3)));
 
-        assertThat(client.getJsonBatches().get(0).getEvents(), Matchers.hasSize(5));
+        assertThat(client.getJsonBatches().get(0).getEvents(), hasSize(5));
         assertThat(client.getJsonBatches().get(0).getCursor().getOffset(), is("001-0001-000000000000000004"));
 
-        assertThat(client.getJsonBatches().get(1).getEvents(), Matchers.hasSize(5));
+        assertThat(client.getJsonBatches().get(1).getEvents(), hasSize(5));
         assertThat(client.getJsonBatches().get(1).getCursor().getOffset(), is("001-0001-000000000000000009"));
 
-        assertThat(client.getJsonBatches().get(2).getEvents(), Matchers.hasSize(2));
+        assertThat(client.getJsonBatches().get(2).getEvents(), hasSize(2));
         assertThat(client.getJsonBatches().get(2).getCursor().getOffset(), is("001-0001-000000000000000011"));
     }
 
@@ -368,7 +372,7 @@ public class HilaAT extends BaseAT {
         final TestStreamingClient client = TestStreamingClient
                 .create(URL, subscription.getId(), "batch_flush_timeout=1");
         client.start();
-        waitFor(() -> assertThat(client.getJsonBatches(), Matchers.hasSize(1)));
+        waitFor(() -> assertThat(client.getJsonBatches(), hasSize(1)));
 
         given()
                 .get("/subscriptions/{id}/events", subscription.getId())
@@ -382,7 +386,7 @@ public class HilaAT extends BaseAT {
         final TestStreamingClient client = TestStreamingClient
                 .create(URL, subscription.getId(), "batch_flush_timeout=1");
         client.start();
-        waitFor(() -> assertThat(client.getJsonBatches(), Matchers.hasSize(1)));
+        waitFor(() -> assertThat(client.getJsonBatches(), hasSize(1)));
 
         client.close();
         ThreadUtils.sleep(10000);
@@ -392,7 +396,7 @@ public class HilaAT extends BaseAT {
         anotherClient.start();
         // if we start to get data for another client it means that Nakadi recognized that first client closed
         // connection (in other case it would not allow second client to connect because of lack of slots)
-        waitFor(() -> assertThat(anotherClient.getJsonBatches(), Matchers.hasSize(1)));
+        waitFor(() -> assertThat(anotherClient.getJsonBatches(), hasSize(1)));
     }
 
     @Test(timeout = 10000)
@@ -402,7 +406,7 @@ public class HilaAT extends BaseAT {
         final TestStreamingClient client = TestStreamingClient
                 .create(URL, subscription.getId(), "max_uncommitted_events=20")
                 .start();
-        waitFor(() -> assertThat(client.getJsonBatches(), Matchers.hasSize(15)));
+        waitFor(() -> assertThat(client.getJsonBatches(), hasSize(15)));
 
         List<SubscriptionEventTypeStats> subscriptionStats =
                 Collections.singletonList(new SubscriptionEventTypeStats(
@@ -417,7 +421,7 @@ public class HilaAT extends BaseAT {
                 );
         NakadiTestUtils.getSubscriptionStat(subscription)
                 .then()
-                .content(new StringContains(JSON_TEST_HELPER.asJsonString(new ItemsWrapper<>(subscriptionStats))));
+                .content(containsString(JSON_TEST_HELPER.asJsonString(new ItemsWrapper<>(subscriptionStats))));
 
         final String partition = client.getJsonBatches().get(0).getCursor().getPartition();
         final SubscriptionCursor cursor = new SubscriptionCursor(partition, "9", eventType.getName(), "token");
@@ -436,7 +440,7 @@ public class HilaAT extends BaseAT {
                 );
         NakadiTestUtils.getSubscriptionStat(subscription)
                 .then()
-                .content(new StringContains(JSON_TEST_HELPER.asJsonString(new ItemsWrapper<>(subscriptionStats))));
+                .content(containsString(JSON_TEST_HELPER.asJsonString(new ItemsWrapper<>(subscriptionStats))));
     }
 
     @Test(timeout = 10000)
@@ -448,11 +452,11 @@ public class HilaAT extends BaseAT {
                         "{\"event_type\":\"" + eventType.getName() + "\",\"partition\":\"0\"}]}"));
         client.start();
         // wait for rebalance to finish
-        waitFor(() -> assertThat(getNumberOfAssignedStreams(subscription.getId()), Matchers.is(1)));
+        waitFor(() -> assertThat(getNumberOfAssignedStreams(subscription.getId()), is(1)));
 
         NakadiTestUtils.getSubscriptionStat(subscription)
                 .then()
-                .content(new StringContains(JSON_TEST_HELPER.asJsonString(new SubscriptionEventTypeStats(
+                .content(containsString(JSON_TEST_HELPER.asJsonString(new SubscriptionEventTypeStats(
                         eventType.getName(),
                         Collections.singletonList(new SubscriptionEventTypeStats.Partition(
                                 "0",
@@ -486,7 +490,7 @@ public class HilaAT extends BaseAT {
 
         NakadiTestUtils.getSubscriptionStat(subscription)
                 .then()
-                .content(new StringContains(JSON_TEST_HELPER.asJsonString(new SubscriptionEventTypeStats(
+                .content(containsString(JSON_TEST_HELPER.asJsonString(new SubscriptionEventTypeStats(
                         eventTypes.get(0).getName(),
                         Collections.singletonList(new SubscriptionEventTypeStats.Partition(
                                 "0",
@@ -496,7 +500,7 @@ public class HilaAT extends BaseAT {
                                 client.getSessionId(),
                                 AUTO
                         ))))))
-                .content(new StringContains(JSON_TEST_HELPER.asJsonString(new SubscriptionEventTypeStats(
+                .content(containsString(JSON_TEST_HELPER.asJsonString(new SubscriptionEventTypeStats(
                         eventTypes.get(1).getName(),
                         Collections.singletonList(new SubscriptionEventTypeStats.Partition(
                                 "0",
@@ -532,10 +536,10 @@ public class HilaAT extends BaseAT {
         final TestStreamingClient client = TestStreamingClient
                 .create(subscription.getId())
                 .start();
-        waitFor(() -> assertThat(client.getJsonBatches(), Matchers.hasSize(5)));
+        waitFor(() -> assertThat(client.getJsonBatches(), hasSize(5)));
         SettingsControllerAT.blacklist(eventType.getName(), BlacklistService.Type.CONSUMER_ET);
 
-        waitFor(() -> assertThat(client.getJsonBatches(), Matchers.hasSize(6)));
+        waitFor(() -> assertThat(client.getJsonBatches(), hasSize(6)));
 
         Assert.assertEquals("Consumption is blocked",
                 client.getJsonBatches().get(client.getJsonBatches().size() - 1).getMetadata().getDebug());
@@ -549,7 +553,7 @@ public class HilaAT extends BaseAT {
                 .create(URL, subscription.getId(), "stream_timeout=0")
                 .start();
 
-        waitFor(() -> assertThat(client.getJsonBatches(), Matchers.hasSize(5)));
+        waitFor(() -> assertThat(client.getJsonBatches(), hasSize(5)));
         Assert.assertFalse(client.getJsonBatches().stream()
                 .anyMatch(streamBatch -> streamBatch.getMetadata() != null
                         && streamBatch.getMetadata().getDebug().equals("Stream timeout reached")));
@@ -561,7 +565,7 @@ public class HilaAT extends BaseAT {
         final TestStreamingClient client1 = TestStreamingClient
                 .create(subscription.getId())
                 .start();
-        waitFor(() -> assertThat(client1.getJsonBatches(), Matchers.hasSize(10)));
+        waitFor(() -> assertThat(client1.getJsonBatches(), hasSize(10)));
 
         int statusCode = commitCursors(
                 subscription.getId(),
@@ -586,7 +590,7 @@ public class HilaAT extends BaseAT {
         final TestStreamingClient client2 = TestStreamingClient
                 .create(subscription.getId())
                 .start();
-        waitFor(() -> assertThat(client2.getJsonBatches(), Matchers.hasSize(10)));
+        waitFor(() -> assertThat(client2.getJsonBatches(), hasSize(10)));
 
         Assert.assertEquals("001-0001-000000000000000005", client2.getJsonBatches().get(0).getCursor().getOffset());
     }
