@@ -141,6 +141,9 @@ nakadi:
   hasher.salt: "salt"
   dlq:
     storeEventTypeName: "nakadi.dead.letter.queue"
+    owningApplication: "stups_nakadi"
+    authDataType: "*"
+    authValue: "*"
 
 twintip:
   mapping: /api
@@ -171,8 +174,6 @@ nakadi:
     AUDIT_LOG_COLLECTION: true
     EVENT_OWNER_SELECTOR_AUTHZ: false
     ACCESS_LOG_ENABLED: true
-  dlq:
-    storeEventTypeName: "test.nakadi.dlq.store"
 kpi:
   config:
     stream-data-collection-frequency-ms: 100

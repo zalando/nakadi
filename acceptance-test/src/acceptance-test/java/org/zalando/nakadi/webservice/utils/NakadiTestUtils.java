@@ -322,35 +322,6 @@ public class NakadiTestUtils {
         return MAPPER.readValue(response.print(), Subscription.class);
     }
 
-    public static void deleteEventType(final String eventType) {
-        given()
-                .delete(format("/event-types/{0}", eventType))
-                .print();
-    }
-
-    public static void deleteSubscription(final String subscriptionId) {
-        given()
-                .delete(format("/subscriptions/{0}", subscriptionId))
-                .print();
-    }
-
-    public static void deleteEventTypeSubscriptions(final String eventType) throws JsonProcessingException {
-        final Response response = given()
-                .accept(JSON)
-                .get(format("/subscriptions?event_type={0}", eventType));
-        final String data = response.print();
-        final TypeReference<ItemsWrapper<Subscription>> typeReference = new TypeReference<>() {};
-        final ItemsWrapper<Subscription> subscriptions = MAPPER.readValue(data, typeReference);
-        subscriptions.getItems().forEach(s -> deleteSubscription(s.getId()));
-    }
-
-    public static void deleteEventTypeWithSubscriptions(final String eventType) throws JsonProcessingException {
-        deleteEventTypeSubscriptions(eventType);
-        given()
-                .delete(format("/event-types/{0}", eventType))
-                .print();
-    }
-
     public static int commitCursors(final String subscriptionId, final List<SubscriptionCursor> cursors,
                                     final String streamId) throws JsonProcessingException {
         return commitCursors(given(), subscriptionId, cursors, streamId);

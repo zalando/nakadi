@@ -6,20 +6,12 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.Lists;
 import org.apache.http.HttpStatus;
-import org.json.JSONArray;
 import org.json.JSONObject;
-import org.junit.AfterClass;
 import org.junit.Assert;
 import org.junit.Before;
-import org.junit.BeforeClass;
 import org.junit.Test;
 import org.zalando.nakadi.config.JsonConfig;
-import org.zalando.nakadi.domain.CompatibilityMode;
-import org.zalando.nakadi.domain.EnrichmentStrategyDescriptor;
-import org.zalando.nakadi.domain.EventCategory;
 import org.zalando.nakadi.domain.EventType;
-import org.zalando.nakadi.domain.EventTypeSchema;
-import org.zalando.nakadi.domain.EventTypeSchemaBase;
 import org.zalando.nakadi.domain.ItemsWrapper;
 import org.zalando.nakadi.domain.Subscription;
 import org.zalando.nakadi.domain.SubscriptionBase;
@@ -27,7 +19,6 @@ import org.zalando.nakadi.domain.SubscriptionEventTypeStats;
 import org.zalando.nakadi.domain.UnprocessableEventPolicy;
 import org.zalando.nakadi.service.BlacklistService;
 import org.zalando.nakadi.util.ThreadUtils;
-import org.zalando.nakadi.utils.TestUtils;
 import org.zalando.nakadi.utils.JsonTestHelper;
 import org.zalando.nakadi.utils.RandomSubscriptionBuilder;
 import org.zalando.nakadi.view.Cursor;
@@ -67,12 +58,9 @@ import static org.zalando.nakadi.domain.SubscriptionEventTypeStats.Partition.Ass
 import static org.zalando.nakadi.domain.SubscriptionEventTypeStats.Partition.AssignmentType.DIRECT;
 import static org.zalando.nakadi.utils.TestUtils.waitFor;
 import static org.zalando.nakadi.webservice.utils.NakadiTestUtils.commitCursors;
-import static org.zalando.nakadi.webservice.utils.NakadiTestUtils.buildSimpleEventType;
 import static org.zalando.nakadi.webservice.utils.NakadiTestUtils.createEventType;
-import static org.zalando.nakadi.webservice.utils.NakadiTestUtils.createEventTypeInNakadi;
 import static org.zalando.nakadi.webservice.utils.NakadiTestUtils.createSubscription;
 import static org.zalando.nakadi.webservice.utils.NakadiTestUtils.createSubscriptionForEventType;
-import static org.zalando.nakadi.webservice.utils.NakadiTestUtils.deleteEventTypeWithSubscriptions;
 import static org.zalando.nakadi.webservice.utils.NakadiTestUtils.getNumberOfAssignedStreams;
 import static org.zalando.nakadi.webservice.utils.NakadiTestUtils.publishBusinessEventWithUserDefinedPartition;
 import static org.zalando.nakadi.webservice.utils.NakadiTestUtils.publishEvent;
@@ -95,48 +83,6 @@ public class HilaAT extends BaseAT {
                 .withStartFrom(BEGIN)
                 .buildSubscriptionBase();
         this.subscription = createSubscription(subscription);
-    }
-
-    @BeforeClass
-    public static void createDlqStoreEventType() throws JsonProcessingException {
-        // cleanup any state from earlier unfinished runs
-        deleteDlqStoreEventType();
-
-        final JSONObject typeString = new JSONObject()
-                .put("type", "string");
-
-        final JSONObject dlqStoreEventTypeSchema = new JSONObject()
-                .put("type", "object")
-                .put("additionalProperties", false)
-                .put("properties", new JSONObject()
-                        .put("subscription_id", typeString)
-                        .put("event_type", typeString)
-                        .put("partition", typeString)
-                        .put("offset", typeString)
-                        .put("error", new JSONObject().put("type", "object"))
-                        .put("event", new JSONObject().put("type", "object").put("additionalProperties", true)))
-                .put("required", new JSONArray(new String[]{
-                                    "subscription_id", "event_type", "partition", "offset", "error", "event"}));
-
-        final String dlqStoreEventTypeSchemaString = dlqStoreEventTypeSchema.toString();
-
-        final EventType dlqStoreEventType = buildSimpleEventType();
-        dlqStoreEventType.setName("test.nakadi.dlq.store");
-        dlqStoreEventType.setCategory(EventCategory.BUSINESS);
-        dlqStoreEventType.setSchema(
-                new EventTypeSchema(
-                        new EventTypeSchemaBase(EventTypeSchemaBase.Type.JSON_SCHEMA, dlqStoreEventTypeSchemaString),
-                        "1.0.0",
-                        TestUtils.randomDate()));
-        dlqStoreEventType.setCompatibilityMode(CompatibilityMode.FORWARD);
-        dlqStoreEventType.setEnrichmentStrategies(List.of(EnrichmentStrategyDescriptor.METADATA_ENRICHMENT));
-
-        createEventTypeInNakadi(dlqStoreEventType);
-    }
-
-    @AfterClass
-    public static void deleteDlqStoreEventType() throws JsonProcessingException {
-        deleteEventTypeWithSubscriptions("test.nakadi.dlq.store");
     }
 
     @Test(timeout = 10000)
@@ -834,7 +780,7 @@ public class HilaAT extends BaseAT {
                 createAutoDLQSubscription(eventType, UnprocessableEventPolicy.DEAD_LETTER_QUEUE);
 
         // start looking for events in the DLQ store event type already (reading from END)
-        final Subscription dlqStoreEventTypeSub = createSubscriptionForEventType("test.nakadi.dlq.store");
+        final Subscription dlqStoreEventTypeSub = createSubscriptionForEventType("nakadi.dead.letter.queue");
         final TestStreamingClient dlqStoreClient = TestStreamingClient.create(URL,
                 dlqStoreEventTypeSub.getId(), "batch_limit=1&stream_timeout=15");
         dlqStoreClient.startWithAutocommit(batches ->
