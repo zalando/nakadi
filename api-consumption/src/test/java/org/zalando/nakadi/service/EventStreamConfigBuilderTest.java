@@ -3,10 +3,10 @@ package org.zalando.nakadi.service;
 import org.junit.Test;
 import org.zalando.nakadi.exceptions.runtime.InvalidLimitException;
 
+import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.greaterThan;
+import static org.hamcrest.Matchers.is;
 import static org.hamcrest.Matchers.lessThanOrEqualTo;
-import static org.hamcrest.core.Is.is;
-import static org.junit.Assert.assertThat;
 import static org.zalando.nakadi.service.EventStreamConfig.MAX_STREAM_TIMEOUT;
 
 public class EventStreamConfigBuilderTest {
