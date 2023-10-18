@@ -838,7 +838,8 @@ public class HilaAT extends BaseAT {
         final TestStreamingClient dlqStoreClient = TestStreamingClient.create(URL,
                 dlqStoreEventTypeSub.getId(), "batch_limit=1&stream_timeout=15");
         dlqStoreClient.startWithAutocommit(batches ->
-                Assert.assertTrue(batches.stream()
+                Assert.assertTrue("failed event should be found in the dead letter queue",
+                        batches.stream()
                         .flatMap(b -> b.getEvents().stream())
                         .anyMatch(e ->
                                 subscription.getId().equals(e.get("subscription_id")) &&
