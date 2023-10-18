@@ -821,8 +821,7 @@ public class HilaAT extends BaseAT {
     }
 
     @Test(timeout = 20_000)
-    public void shouldSkipDeadLetterAndConsumptionToBeContinuedAndDeadLetterFoundInTheQueueLater()
-            throws IOException, InterruptedException {
+    public void shouldSkipPoisonPillAndDeadLetterFoundInTheQueueLater() throws IOException, InterruptedException {
 
         final EventType eventType = NakadiTestUtils.createBusinessEventTypeWithPartitions(4);
 
