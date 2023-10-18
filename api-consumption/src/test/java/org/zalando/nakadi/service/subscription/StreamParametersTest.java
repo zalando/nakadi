@@ -10,11 +10,11 @@ import org.zalando.nakadi.view.UserStreamParameters;
 import java.util.concurrent.TimeUnit;
 import java.util.stream.IntStream;
 
-import static org.hamcrest.CoreMatchers.equalTo;
 import static org.hamcrest.MatcherAssert.assertThat;
+import static org.hamcrest.Matchers.equalTo;
+import static org.hamcrest.Matchers.greaterThanOrEqualTo;
 import static org.hamcrest.Matchers.is;
 import static org.hamcrest.Matchers.lessThanOrEqualTo;
-import static org.hamcrest.number.OrderingComparison.greaterThanOrEqualTo;
 import static org.mockito.Mockito.mock;
 
 public class StreamParametersTest {

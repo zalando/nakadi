@@ -22,8 +22,8 @@ import org.zalando.nakadi.plugin.api.exceptions.OperationOnResourceNotPermittedE
 import org.zalando.nakadi.plugin.api.exceptions.PluginException;
 import org.zalando.nakadi.utils.EventTypeTestBuilder;
 
-import static org.hamcrest.CoreMatchers.equalTo;
-import static org.junit.Assert.assertThat;
+import static org.hamcrest.MatcherAssert.assertThat;
+import static org.hamcrest.Matchers.equalTo;
 import static org.junit.Assert.fail;
 import static org.mockito.ArgumentMatchers.any;
 
