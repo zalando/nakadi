@@ -13,8 +13,8 @@ import org.zalando.nakadi.utils.EventTypeTestBuilder;
 import java.io.IOException;
 import java.util.UUID;
 
-import static org.hamcrest.core.Is.is;
-import static org.junit.Assert.assertThat;
+import static org.hamcrest.MatcherAssert.assertThat;
+import static org.hamcrest.Matchers.is;
 import static org.zalando.nakadi.utils.TestUtils.readFile;
 import static uk.co.datumedge.hamcrest.json.SameJSONAs.sameJSONObjectAs;
 

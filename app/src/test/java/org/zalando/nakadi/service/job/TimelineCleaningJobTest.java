@@ -14,9 +14,9 @@ import org.zalando.nakadi.service.timeline.TimelineService;
 import java.util.Iterator;
 import java.util.List;
 
-import static org.hamcrest.CoreMatchers.is;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.equalTo;
+import static org.hamcrest.Matchers.is;
 import static org.hamcrest.Matchers.isOneOf;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Matchers.anyLong;
