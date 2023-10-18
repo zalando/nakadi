@@ -18,14 +18,12 @@ import java.util.Optional;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 
-import static org.hamcrest.CoreMatchers.allOf;
-import static org.hamcrest.CoreMatchers.anyOf;
-import static org.hamcrest.CoreMatchers.equalTo;
-import static org.hamcrest.CoreMatchers.isA;
-import static org.hamcrest.beans.HasPropertyWithValue.hasProperty;
-import static org.hamcrest.collection.IsCollectionWithSize.hasSize;
-import static org.hamcrest.collection.IsEmptyIterable.emptyIterable;
-import static org.hamcrest.collection.IsIterableContainingInOrder.contains;
+import static org.hamcrest.Matchers.allOf;
+import static org.hamcrest.Matchers.contains;
+import static org.hamcrest.Matchers.emptyIterable;
+import static org.hamcrest.Matchers.equalTo;
+import static org.hamcrest.Matchers.hasProperty;
+import static org.hamcrest.Matchers.isA;
 import static uk.co.datumedge.hamcrest.json.SameJSONAs.sameJSONObjectAs;
 
 @Immutable
@@ -143,19 +141,17 @@ public class StreamBatch {
     public static Matcher<StreamBatch> equalToBatchIgnoringToken(final StreamBatch batch) {
         final SubscriptionCursor cursor = batch.getCursor();
         final List<JSONObject> events = batch.getEvents();
-        final StreamMetadata metadata = batch.getMetadata();
         return allOf(
                 isA(StreamBatch.class),
                 hasProperty("cursor", allOf(
                                 hasProperty("partition", equalTo(cursor.getPartition())),
                                 hasProperty("offset",    equalTo(cursor.getOffset())),
                                 hasProperty("eventType", equalTo(cursor.getEventType())))),
-                hasProperty("events", hasSize(events.size())),
-                hasProperty("events", anyOf(
-                                emptyIterable(), // otherwise it fails if `events` is empty
-                                contains(events.stream()
-                                        .map(e -> sameJSONObjectAs(e))
-                                        .collect(Collectors.toList())))),
-                hasProperty("metadata", equalTo(metadata)));
+                hasProperty("events", events.isEmpty()
+                        ? emptyIterable()
+                        : contains(events.stream()
+                                .map(e -> sameJSONObjectAs(e))
+                                .collect(Collectors.toList()))),
+                hasProperty("metadata", equalTo(batch.getMetadata())));
     }
 }

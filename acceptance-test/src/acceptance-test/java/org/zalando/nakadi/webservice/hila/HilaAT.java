@@ -53,9 +53,9 @@ import java.util.stream.Collectors;
 import static com.jayway.restassured.RestAssured.given;
 import static com.jayway.restassured.RestAssured.when;
 import static com.jayway.restassured.http.ContentType.JSON;
-import static org.hamcrest.CoreMatchers.equalTo;
-import static org.hamcrest.CoreMatchers.is;
 import static org.hamcrest.MatcherAssert.assertThat;
+import static org.hamcrest.Matchers.equalTo;
+import static org.hamcrest.Matchers.is;
 import static org.zalando.nakadi.annotations.validation.DeadLetterAnnotationValidator.SUBSCRIPTION_MAX_EVENT_SEND_COUNT;
 import static org.zalando.nakadi.annotations.validation.DeadLetterAnnotationValidator.
     SUBSCRIPTION_UNPROCESSABLE_EVENT_POLICY;
@@ -64,9 +64,6 @@ import static org.zalando.nakadi.domain.SubscriptionBase.InitialPosition.END;
 import static org.zalando.nakadi.domain.SubscriptionEventTypeStats.Partition.AssignmentType.AUTO;
 import static org.zalando.nakadi.domain.SubscriptionEventTypeStats.Partition.AssignmentType.DIRECT;
 import static org.zalando.nakadi.utils.TestUtils.waitFor;
-import static org.zalando.nakadi.webservice.hila.StreamBatch.equalToBatchIgnoringToken;
-import static org.zalando.nakadi.webservice.hila.StreamBatch.emptyBatch;
-import static org.zalando.nakadi.webservice.hila.StreamBatch.singleEventBatch;
 import static org.zalando.nakadi.webservice.utils.NakadiTestUtils.commitCursors;
 import static org.zalando.nakadi.webservice.utils.NakadiTestUtils.buildSimpleEventType;
 import static org.zalando.nakadi.webservice.utils.NakadiTestUtils.createEventType;
@@ -210,11 +207,13 @@ public class HilaAT extends BaseAT {
         waitFor(() -> assertThat(client.getJsonBatches(), Matchers.hasSize(2)));
         assertThat(
                 client.getJsonBatches().get(0),
-                equalToBatchIgnoringToken(singleEventBatch("0", "001-0001-000000000000000000", eventType.getName(),
+                StreamBatch.equalToBatchIgnoringToken(
+                        StreamBatch.singleEventBatch("0", "001-0001-000000000000000000", eventType.getName(),
                                 new JSONObject().put("foo", "bar0"), "Stream started")));
         assertThat(
                 client.getJsonBatches().get(1),
-                equalToBatchIgnoringToken(singleEventBatch("0", "001-0001-000000000000000001", eventType.getName(),
+                StreamBatch.equalToBatchIgnoringToken(
+                        StreamBatch.singleEventBatch("0", "001-0001-000000000000000001", eventType.getName(),
                                 new JSONObject().put("foo", "bar1"))));
 
         // commit offset that will also trigger session closing as we reached stream_limit and committed
@@ -229,11 +228,13 @@ public class HilaAT extends BaseAT {
         // check that we have read the next two events with correct offsets
         assertThat(
                 client.getJsonBatches().get(0),
-                equalToBatchIgnoringToken(singleEventBatch("0", "001-0001-000000000000000002", eventType.getName(),
+                StreamBatch.equalToBatchIgnoringToken(
+                        StreamBatch.singleEventBatch("0", "001-0001-000000000000000002", eventType.getName(),
                                 new JSONObject().put("foo", "bar2"), "Stream started")));
         assertThat(
                 client.getJsonBatches().get(1),
-                equalToBatchIgnoringToken(singleEventBatch("0", "001-0001-000000000000000003", eventType.getName(),
+                StreamBatch.equalToBatchIgnoringToken(
+                        StreamBatch.singleEventBatch("0", "001-0001-000000000000000003", eventType.getName(),
                                 new JSONObject().put("foo", "bar3"))));
     }
 
@@ -315,7 +316,8 @@ public class HilaAT extends BaseAT {
         waitFor(() -> assertThat(client.isRunning(), is(false)), 10000);
         assertThat(
                 client.getJsonBatches().get(1),
-                equalToBatchIgnoringToken(emptyBatch("0", "001-0001-000000000000000000", eventType.getName(),
+                StreamBatch.equalToBatchIgnoringToken(
+                        StreamBatch.emptyBatch("0", "001-0001-000000000000000000", eventType.getName(),
                                 "Commit timeout reached")));
     }
 

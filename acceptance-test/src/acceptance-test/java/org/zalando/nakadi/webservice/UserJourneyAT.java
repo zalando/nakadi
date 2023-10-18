@@ -47,7 +47,6 @@ import static org.zalando.nakadi.utils.TestUtils.randomTextString;
 import static org.zalando.nakadi.utils.TestUtils.randomUUID;
 import static org.zalando.nakadi.utils.TestUtils.randomValidEventTypeName;
 import static org.zalando.nakadi.utils.TestUtils.waitFor;
-import static org.zalando.nakadi.webservice.hila.StreamBatch.equalToBatchIgnoringToken;
 import static org.zalando.nakadi.webservice.utils.NakadiTestUtils.commitCursors;
 import static org.zalando.nakadi.webservice.utils.NakadiTestUtils.createSubscription;
 
@@ -351,7 +350,7 @@ public class UserJourneyAT extends RealEnvironmentAT {
                     i == 0 ? new StreamMetadata("Stream started") : null);
 
             final StreamBatch batch = batches.get(i);
-            assertThat(batch, equalToBatchIgnoringToken(expectedBatch));
+            assertThat(batch, StreamBatch.equalToBatchIgnoringToken(expectedBatch));
         }
 
         // as we didn't commit, there should be still 4 unconsumed events
