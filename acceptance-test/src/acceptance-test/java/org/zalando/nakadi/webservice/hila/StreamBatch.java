@@ -20,7 +20,7 @@ import java.util.stream.IntStream;
 
 import static org.hamcrest.Matchers.allOf;
 import static org.hamcrest.Matchers.contains;
-import static org.hamcrest.Matchers.emptyIterable;
+import static org.hamcrest.Matchers.empty;
 import static org.hamcrest.Matchers.equalTo;
 import static org.hamcrest.Matchers.hasProperty;
 import static org.hamcrest.Matchers.isA;
@@ -148,7 +148,7 @@ public class StreamBatch {
                                 hasProperty("offset",    equalTo(cursor.getOffset())),
                                 hasProperty("eventType", equalTo(cursor.getEventType())))),
                 hasProperty("events", events.isEmpty()
-                        ? emptyIterable()
+                        ? empty()
                         : contains(events.stream()
                                 .map(e -> sameJSONObjectAs(e))
                                 .collect(Collectors.toList()))),
