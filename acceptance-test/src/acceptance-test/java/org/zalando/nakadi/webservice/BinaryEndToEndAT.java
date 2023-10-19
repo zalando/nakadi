@@ -8,6 +8,7 @@ import org.apache.avro.generic.GenericRecordBuilder;
 import org.apache.avro.io.DecoderFactory;
 import org.apache.avro.io.EncoderFactory;
 import org.apache.http.HttpStatus;
+import org.json.JSONObject;
 import org.junit.Assert;
 import org.junit.Test;
 import org.springframework.core.io.DefaultResourceLoader;
@@ -33,7 +34,6 @@ import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.time.Instant;
 import java.util.List;
-import java.util.Map;
 
 import static com.jayway.restassured.RestAssured.given;
 import static org.zalando.nakadi.domain.SubscriptionBase.InitialPosition.BEGIN;
@@ -119,10 +119,10 @@ public class BinaryEndToEndAT extends BaseAT {
         final TestStreamingClient client1 = TestStreamingClient.create(subscription1.getId()).start();
 
         TestUtils.waitFor(() -> Assert.assertEquals(1, client1.getJsonBatches().size()));
-        final Map jsonEvent = client1.getJsonBatches().get(0).getEvents().get(0);
+        final JSONObject jsonEvent = client1.getJsonBatches().get(0).getEvents().get(0);
         Assert.assertEquals("bar", jsonEvent.get("foo"));
 
-        final Map<String, Object> metadata = (Map<String, Object>) jsonEvent.get("metadata");
+        final JSONObject metadata = jsonEvent.getJSONObject("metadata");
         Assert.assertEquals("CE8C9EBC-3F19-4B9D-A453-08AD2EDA6028", metadata.get("eid"));
         Assert.assertEquals("2.0.0", metadata.get("version"));
         Assert.assertEquals(testETName, metadata.get("event_type"));

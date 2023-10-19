@@ -4,19 +4,19 @@ import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.google.common.collect.ImmutableList;
-import com.google.common.collect.ImmutableMap;
 import com.google.common.collect.Lists;
 import org.apache.http.HttpStatus;
+import org.json.JSONObject;
 import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
-import org.zalando.nakadi.annotations.validation.DeadLetterAnnotationValidator;
 import org.zalando.nakadi.config.JsonConfig;
 import org.zalando.nakadi.domain.EventType;
 import org.zalando.nakadi.domain.ItemsWrapper;
 import org.zalando.nakadi.domain.Subscription;
 import org.zalando.nakadi.domain.SubscriptionBase;
 import org.zalando.nakadi.domain.SubscriptionEventTypeStats;
+import org.zalando.nakadi.domain.UnprocessableEventPolicy;
 import org.zalando.nakadi.service.BlacklistService;
 import org.zalando.nakadi.util.ThreadUtils;
 import org.zalando.nakadi.utils.JsonTestHelper;
@@ -49,16 +49,18 @@ import static org.hamcrest.Matchers.equalTo;
 import static org.hamcrest.Matchers.hasSize;
 import static org.hamcrest.Matchers.is;
 import static org.hamcrest.Matchers.not;
+import static org.zalando.nakadi.annotations.validation.DeadLetterAnnotationValidator.SUBSCRIPTION_MAX_EVENT_SEND_COUNT;
+import static org.zalando.nakadi.annotations.validation.DeadLetterAnnotationValidator.
+    SUBSCRIPTION_UNPROCESSABLE_EVENT_POLICY;
 import static org.zalando.nakadi.domain.SubscriptionBase.InitialPosition.BEGIN;
 import static org.zalando.nakadi.domain.SubscriptionBase.InitialPosition.END;
 import static org.zalando.nakadi.domain.SubscriptionEventTypeStats.Partition.AssignmentType.AUTO;
 import static org.zalando.nakadi.domain.SubscriptionEventTypeStats.Partition.AssignmentType.DIRECT;
 import static org.zalando.nakadi.utils.TestUtils.waitFor;
-import static org.zalando.nakadi.webservice.hila.StreamBatch.MatcherIgnoringToken.equalToBatchIgnoringToken;
-import static org.zalando.nakadi.webservice.hila.StreamBatch.singleEventBatch;
 import static org.zalando.nakadi.webservice.utils.NakadiTestUtils.commitCursors;
 import static org.zalando.nakadi.webservice.utils.NakadiTestUtils.createEventType;
 import static org.zalando.nakadi.webservice.utils.NakadiTestUtils.createSubscription;
+import static org.zalando.nakadi.webservice.utils.NakadiTestUtils.createSubscriptionForEventType;
 import static org.zalando.nakadi.webservice.utils.NakadiTestUtils.getNumberOfAssignedStreams;
 import static org.zalando.nakadi.webservice.utils.NakadiTestUtils.publishBusinessEventWithUserDefinedPartition;
 import static org.zalando.nakadi.webservice.utils.NakadiTestUtils.publishEvent;
@@ -151,11 +153,16 @@ public class HilaAT extends BaseAT {
                 .create(URL, subscription.getId(), "stream_limit=2")
                 .start();
         waitFor(() -> assertThat(client.getJsonBatches(), hasSize(2)));
-        assertThat(client.getJsonBatches().get(0), equalToBatchIgnoringToken(singleEventBatch("0",
-                "001-0001-000000000000000000", eventType.getName(), ImmutableMap.of("foo", "bar0"),
-                "Stream started")));
-        assertThat(client.getJsonBatches().get(1), equalToBatchIgnoringToken(singleEventBatch("0",
-                "001-0001-000000000000000001", eventType.getName(), ImmutableMap.of("foo", "bar1"))));
+        assertThat(
+                client.getJsonBatches().get(0),
+                StreamBatch.equalToBatchIgnoringToken(
+                        StreamBatch.singleEventBatch("0", "001-0001-000000000000000000", eventType.getName(),
+                                new JSONObject().put("foo", "bar0"), "Stream started")));
+        assertThat(
+                client.getJsonBatches().get(1),
+                StreamBatch.equalToBatchIgnoringToken(
+                        StreamBatch.singleEventBatch("0", "001-0001-000000000000000001", eventType.getName(),
+                                new JSONObject().put("foo", "bar1"))));
 
         // commit offset that will also trigger session closing as we reached stream_limit and committed
         commitCursors(subscription.getId(), ImmutableList.of(client.getJsonBatches().get(1).getCursor()),
@@ -167,13 +174,17 @@ public class HilaAT extends BaseAT {
         waitFor(() -> assertThat(client.getJsonBatches(), hasSize(2)));
 
         // check that we have read the next two events with correct offsets
-        assertThat(client.getJsonBatches().get(0), equalToBatchIgnoringToken(singleEventBatch("0",
-                "001-0001-000000000000000002", eventType.getName(),
-                ImmutableMap.of("foo", "bar2"), "Stream started")));
-        assertThat(client.getJsonBatches().get(1), equalToBatchIgnoringToken(singleEventBatch("0",
-                "001-0001-000000000000000003", eventType.getName(), ImmutableMap.of("foo", "bar3"))));
+        assertThat(
+                client.getJsonBatches().get(0),
+                StreamBatch.equalToBatchIgnoringToken(
+                        StreamBatch.singleEventBatch("0", "001-0001-000000000000000002", eventType.getName(),
+                                new JSONObject().put("foo", "bar2"), "Stream started")));
+        assertThat(
+                client.getJsonBatches().get(1),
+                StreamBatch.equalToBatchIgnoringToken(
+                        StreamBatch.singleEventBatch("0", "001-0001-000000000000000003", eventType.getName(),
+                                new JSONObject().put("foo", "bar3"))));
     }
-
 
     @Test(timeout = 5000)
     public void whenNoEventsThenFirstOffsetIsBEGIN() {
@@ -251,8 +262,11 @@ public class HilaAT extends BaseAT {
 
         waitFor(() -> assertThat(client.getJsonBatches(), hasSize(2)), 10000);
         waitFor(() -> assertThat(client.isRunning(), is(false)), 10000);
-        assertThat(client.getJsonBatches().get(1), equalToBatchIgnoringToken(singleEventBatch("0",
-                "001-0001-000000000000000000", eventType.getName(), ImmutableMap.of(), "Commit timeout reached")));
+        assertThat(
+                client.getJsonBatches().get(1),
+                StreamBatch.equalToBatchIgnoringToken(
+                        StreamBatch.emptyBatch("0", "001-0001-000000000000000000", eventType.getName(),
+                                "Commit timeout reached")));
     }
 
     @Test(timeout = 15000)
@@ -605,7 +619,7 @@ public class HilaAT extends BaseAT {
 
     @Test(timeout = 15000)
     public void whenCommitFailsThreeTimesAndSingleBatchEventFailsThreeTimesThenEventSkipped() throws IOException {
-        final Subscription subscription = createAutoDLQSubscription(eventType);
+        final Subscription subscription = createAutoDLQSubscription(eventType, UnprocessableEventPolicy.SKIP_EVENT);
         final TestStreamingClient client = TestStreamingClient
                 .create(URL, subscription.getId(), "batch_limit=3&commit_timeout=1")
                 .start();
@@ -646,7 +660,7 @@ public class HilaAT extends BaseAT {
 
     @Test(timeout = 15000)
     public void whenIsLookingForDeadLetterAndCommitComesThenContinueLooking() throws IOException {
-        final Subscription subscription = createAutoDLQSubscription(eventType);
+        final Subscription subscription = createAutoDLQSubscription(eventType, UnprocessableEventPolicy.SKIP_EVENT);
         final TestStreamingClient client = TestStreamingClient
                 .create(URL, subscription.getId(), "batch_limit=10&commit_timeout=1")
                 .start();
@@ -712,7 +726,7 @@ public class HilaAT extends BaseAT {
     @Test(timeout = 20_000)
     public void whenIsLookingForDeadLetterAndSendAllEventsOneByOneThenBackToNormalBatchSize()
             throws InterruptedException, IOException {
-        final Subscription subscription = createAutoDLQSubscription(eventType);
+        final Subscription subscription = createAutoDLQSubscription(eventType, UnprocessableEventPolicy.SKIP_EVENT);
         final TestStreamingClient client = TestStreamingClient
                 .create(URL, subscription.getId(), "batch_limit=10&commit_timeout=1&stream_limit=20")
                 .start();
@@ -753,13 +767,29 @@ public class HilaAT extends BaseAT {
     }
 
     @Test(timeout = 20_000)
-    public void shouldSkipDeadLetterdAndConsumptionToBeContinued() throws IOException {
+    public void shouldSkipPoisonPillAndDeadLetterFoundInTheQueueLater() throws IOException, InterruptedException {
+
         final EventType eventType = NakadiTestUtils.createBusinessEventTypeWithPartitions(4);
 
         publishBusinessEventWithUserDefinedPartition(eventType.getName(),
-                50, i -> String.format("{\"foo\":\"bar%d\"}", i), i -> String.valueOf(i % 4));
+                50, i -> String.format("bar%d", i), i -> String.valueOf(i % 4));
 
-        final Subscription subscription = createAutoDLQSubscription(eventType);
+        final String poisonPillValue = "bar10";
+
+        final Subscription subscription =
+                createAutoDLQSubscription(eventType, UnprocessableEventPolicy.DEAD_LETTER_QUEUE);
+
+        // start looking for events in the DLQ store event type already (reading from END)
+        final Subscription dlqStoreEventTypeSub = createSubscriptionForEventType("nakadi.dead.letter.queue");
+        final TestStreamingClient dlqStoreClient = TestStreamingClient.create(URL,
+                dlqStoreEventTypeSub.getId(), "batch_limit=1&stream_timeout=15");
+        dlqStoreClient.startWithAutocommit(batches ->
+                Assert.assertTrue("failed event should be found in the dead letter queue",
+                        batches.stream()
+                        .flatMap(b -> b.getEvents().stream())
+                        .anyMatch(e ->
+                                subscription.getId().equals(e.get("subscription_id")) &&
+                                poisonPillValue.equals(e.getJSONObject("event").getString("foo")))));
 
         final AtomicReference<SubscriptionCursor> cursorWithPoisonPill = new AtomicReference<>();
         while (true) {
@@ -767,8 +797,7 @@ public class HilaAT extends BaseAT {
                     URL, subscription.getId(), "batch_limit=3&commit_timeout=1&stream_timeout=2");
             client.start(streamBatch -> {
                 if (streamBatch.getEvents().stream()
-                        .anyMatch(event -> event.get("foo").equals("{\"foo\":\"bar10\"}"))) {
-                    // skipp commit to introduce poison pill
+                        .anyMatch(event -> poisonPillValue.equals(event.getString("foo")))) {
                     cursorWithPoisonPill.set(streamBatch.getCursor());
                     throw new RuntimeException("poison pill found");
                 } else {
@@ -784,13 +813,15 @@ public class HilaAT extends BaseAT {
             waitFor(() -> Assert.assertFalse(client.isRunning()));
 
             if (client.getJsonBatches().stream()
-                    .filter(streamBatch -> streamBatch.getCursor().getPartition()
-                            .equals(cursorWithPoisonPill.get().getPartition()))
+                    .filter(streamBatch -> cursorWithPoisonPill.get().getPartition()
+                            .equals(streamBatch.getCursor().getPartition()))
                     .anyMatch(streamBatch -> streamBatch.getCursor().getOffset()
                             .compareTo(cursorWithPoisonPill.get().getOffset()) > 0)) {
-                return;
+                break;
             }
         }
+
+        waitFor(() -> Assert.assertFalse(dlqStoreClient.isRunning()));
     }
 
     private static boolean isCommitTimeoutReached(final TestStreamingClient client) {
@@ -799,12 +830,16 @@ public class HilaAT extends BaseAT {
                 .anyMatch(batch -> batch.getMetadata().getDebug().equals("Commit timeout reached"));
     }
 
-    private Subscription createAutoDLQSubscription(final EventType eventType) throws IOException {
+    private Subscription createAutoDLQSubscription(final EventType eventType,
+            final UnprocessableEventPolicy unprocessableEventPolicy) throws IOException {
+
         final SubscriptionBase subscription = RandomSubscriptionBuilder.builder()
                 .withEventType(eventType.getName())
                 .withStartFrom(BEGIN)
                 .buildSubscriptionBase();
-        subscription.setAnnotations(Map.of(DeadLetterAnnotationValidator.SUBSCRIPTION_MAX_EVENT_SEND_COUNT, "3"));
+        subscription.setAnnotations(Map.of(
+                        SUBSCRIPTION_MAX_EVENT_SEND_COUNT, "3",
+                        SUBSCRIPTION_UNPROCESSABLE_EVENT_POLICY, unprocessableEventPolicy.toString()));
         return createSubscription(subscription);
     }
 }
