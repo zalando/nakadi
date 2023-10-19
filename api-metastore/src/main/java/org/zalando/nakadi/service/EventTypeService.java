@@ -73,7 +73,6 @@ import java.util.Objects;
 import java.util.Optional;
 import java.util.Set;
 import java.util.Map;
-import java.util.Arrays;
 import java.util.concurrent.TimeoutException;
 import java.util.concurrent.atomic.AtomicReference;
 
@@ -534,43 +533,8 @@ public class EventTypeService {
     private void updateAnnotationsAndLabels(final EventType original, final EventType eventType)
             throws InvalidEventTypeException {
 
-       /* this is a temporary solution to ensure the backward compatibility and it is here because
-        the DataLakeAnnotationValidator.java does not have access to the event type */
-        final List<String> breakingCompatibilitiesNames = Arrays.asList(
-                "content-visibility.inference-log.v3.test",
-                "zoutlets.wm.article-decision",
-                "merchant-price-service.work-log",
-                "merchant-price-service.work-log-raw",
-                "content.customer-targeting.segments.sqate",
-                "merchant-price-service.price-update-called",
-                "merchant-price-service.price-update-processed",
-                "octopus.analysis-metrics-v2",
-                "wholesale.purchase-order-event",
-                "zoutlets.wm.commodity-group.updated",
-                "connected-retail.article-insights-service.configuration-changed",
-                "merchant-price-service.price-threshold-updates",
-                "product-data-quality.inference-pipeline.spp-updates-lineage",
-                "product-data-quality.inference-pipeline.decision-maker-lineage",
-                "product-data-quality.hitl.human-annotation-ui-lineage");
-
         if (eventType.getAnnotations() == null) {
-            final Map<String, String> originalAnnotations = original.getAnnotations();
-            if (breakingCompatibilitiesNames.contains(original.getName())){
-                if (!originalAnnotations.containsKey("datalake.zalando.org/retention-period")) {
-                    originalAnnotations.put("datalake.zalando.org/retention-period", "unlimited");
-                }
-                eventType.setAnnotations(originalAnnotations);
-            } else {
-                eventType.setAnnotations(originalAnnotations);
-            }
-        } else {
-            final Map<String, String> eventTypeAnnotations = eventType.getAnnotations();
-            if (breakingCompatibilitiesNames.contains(eventType.getName())){
-                if (!eventTypeAnnotations.containsKey("datalake.zalando.org/retention-period")) {
-                    eventTypeAnnotations.put("datalake.zalando.org/retention-period", "unlimited");
-                }
-                eventType.setAnnotations(eventTypeAnnotations);
-            }
+            eventType.setAnnotations(original.getAnnotations());
         }
         if (eventType.getLabels() == null) {
             eventType.setLabels(original.getLabels());
