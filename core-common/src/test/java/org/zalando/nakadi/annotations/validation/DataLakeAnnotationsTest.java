@@ -50,8 +50,7 @@ public class DataLakeAnnotationsTest {
                 DataLakeAnnotationValidator.MATERIALISE_EVENTS_ANNOTATION, "on"
         );
         final Set<ConstraintViolation<TestClass>> result = validator.validate(new TestClass(annotations));
-        assertTrue("Annotation " + DataLakeAnnotationValidator.RETENTION_REASON_ANNOTATION + " is required," +
-                        " when " + DataLakeAnnotationValidator.RETENTION_PERIOD_ANNOTATION + " is specified.",
+        assertTrue(DataLakeAnnotationValidator.RETENTION_PERIOD_ANNOTATION + " is specified.",
                 result.stream().anyMatch(r -> r.getMessage().contains(
                         DataLakeAnnotationValidator.MATERIALISE_EVENTS_ANNOTATION)));
     }

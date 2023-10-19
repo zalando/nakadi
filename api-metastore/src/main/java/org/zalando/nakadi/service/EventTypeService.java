@@ -534,6 +534,8 @@ public class EventTypeService {
     private void updateAnnotationsAndLabels(final EventType original, final EventType eventType)
             throws InvalidEventTypeException {
 
+       /* this is a temporary solution to ensure the backward compatibility and it is here because
+        the DataLakeAnnotationValidator.java does not have access to the event type */
         final List<String> breakingCompatibilitiesNames = Arrays.asList(
                 "content-visibility.inference-log.v3.test",
                 "zoutlets.wm.article-decision",
@@ -546,7 +548,10 @@ public class EventTypeService {
                 "wholesale.purchase-order-event",
                 "zoutlets.wm.commodity-group.updated",
                 "connected-retail.article-insights-service.configuration-changed",
-                "merchant-price-service.price-threshold-updates");
+                "merchant-price-service.price-threshold-updates",
+                "product-data-quality.inference-pipeline.spp-updates-lineage",
+                "product-data-quality.inference-pipeline.decision-maker-lineage",
+                "product-data-quality.hitl.human-annotation-ui-lineage");
 
         if (eventType.getAnnotations() == null) {
             final Map<String, String> originalAnnotations = original.getAnnotations();
