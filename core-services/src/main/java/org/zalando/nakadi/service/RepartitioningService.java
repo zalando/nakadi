@@ -4,6 +4,7 @@ import com.google.common.collect.ImmutableSet;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.zalando.nakadi.cache.EventTypeCache;
 import org.zalando.nakadi.config.NakadiSettings;
@@ -48,6 +49,7 @@ public class RepartitioningService {
     private final NakadiSettings nakadiSettings;
     private final CursorConverter cursorConverter;
     private final TimelineSync timelineSync;
+    private final String dlqRedriveEventTypeName;
 
     @Autowired
     public RepartitioningService(
@@ -58,7 +60,8 @@ public class RepartitioningService {
             final SubscriptionClientFactory subscriptionClientFactory,
             final NakadiSettings nakadiSettings,
             final CursorConverter cursorConverter,
-            final TimelineSync timelineSync) {
+            final TimelineSync timelineSync,
+            @Value("${nakadi.dlq.redriveEventTypeName}") final String dlqRedriveEventTypeName) {
         this.eventTypeRepository = eventTypeRepository;
         this.eventTypeCache = eventTypeCache;
         this.timelineService = timelineService;
@@ -67,10 +70,18 @@ public class RepartitioningService {
         this.nakadiSettings = nakadiSettings;
         this.cursorConverter = cursorConverter;
         this.timelineSync = timelineSync;
+        this.dlqRedriveEventTypeName = dlqRedriveEventTypeName;
     }
 
     public void repartition(final String eventTypeName, final int partitions)
             throws InternalNakadiException, NakadiRuntimeException {
+        // Workaround: don't support repartitioning the DLQ event type, since the event type is consumed by
+        // subscriptions implicitly (not listed in subscriptions' configuration). Current re-partitioning implementation
+        // won't work properly with that event type.
+        if (eventTypeName.equals(dlqRedriveEventTypeName)) {
+            throw new InvalidEventTypeException(
+                    String.format("Repartitioning %s event type is not supported", eventTypeName));
+        }
         if (partitions > nakadiSettings.getMaxTopicPartitionCount()) {
             throw new InvalidEventTypeException("Number of partitions should not be more than "
                     + nakadiSettings.getMaxTopicPartitionCount());
