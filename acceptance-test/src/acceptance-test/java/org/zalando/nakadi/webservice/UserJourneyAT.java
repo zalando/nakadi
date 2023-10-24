@@ -4,6 +4,7 @@ import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.google.common.base.Charsets;
 import com.google.common.collect.ImmutableList;
+import com.google.common.collect.ImmutableMap;
 import com.google.common.collect.Lists;
 import com.google.common.io.Resources;
 import com.jayway.restassured.RestAssured;
@@ -11,7 +12,6 @@ import com.jayway.restassured.http.ContentType;
 import com.jayway.restassured.response.Header;
 import com.jayway.restassured.specification.RequestSpecification;
 import org.echocat.jomon.runtime.concurrent.RetryForSpecifiedTimeStrategy;
-import org.json.JSONArray;
 import org.json.JSONObject;
 import org.junit.Before;
 import org.junit.Test;
@@ -29,6 +29,7 @@ import org.zalando.nakadi.webservice.utils.TestStreamingClient;
 
 import java.io.IOException;
 import java.util.List;
+import java.util.Map;
 import java.util.stream.Collectors;
 
 import static java.util.stream.LongStream.rangeClosed;
@@ -50,6 +51,7 @@ import static org.zalando.nakadi.utils.TestUtils.randomTextString;
 import static org.zalando.nakadi.utils.TestUtils.randomUUID;
 import static org.zalando.nakadi.utils.TestUtils.randomValidEventTypeName;
 import static org.zalando.nakadi.utils.TestUtils.waitFor;
+import static org.zalando.nakadi.webservice.hila.StreamBatch.MatcherIgnoringToken.equalToBatchIgnoringToken;
 import static org.zalando.nakadi.webservice.utils.NakadiTestUtils.commitCursors;
 import static org.zalando.nakadi.webservice.utils.NakadiTestUtils.createSubscription;
 
@@ -349,11 +351,11 @@ public class UserJourneyAT extends RealEnvironmentAT {
             final SubscriptionCursor cursor = new SubscriptionCursor("0", TestUtils.toTimelineOffset(i),
                     eventTypeName, "");
             final StreamBatch expectedBatch = new StreamBatch(cursor,
-                    new JSONArray().put(new JSONObject().put("foo", "bar" + i)),
+                    ImmutableList.of(ImmutableMap.of("foo", "bar" + i)),
                     i == 0 ? new StreamMetadata("Stream started") : null);
 
             final StreamBatch batch = batches.get(i);
-            assertThat(batch, StreamBatch.equalToBatchIgnoringToken(expectedBatch));
+            assertThat(batch, equalToBatchIgnoringToken(expectedBatch));
         }
 
         // as we didn't commit, there should be still 4 unconsumed events
@@ -448,9 +450,8 @@ public class UserJourneyAT extends RealEnvironmentAT {
 
         // validate the events metadata
         for (final StreamBatch batch : batches) {
-            assertThat(
-                    batch.getEvents().get(0).getJSONObject("metadata").getString("version"),
-                    equalTo(validatedWithJsonSchemaVersion));
+            final Map<String, String> metadata = (Map<String, String>) batch.getEvents().get(0).get("metadata");
+            assertThat(metadata.get("version"), equalTo(validatedWithJsonSchemaVersion));
         }
 
         // delete subscription

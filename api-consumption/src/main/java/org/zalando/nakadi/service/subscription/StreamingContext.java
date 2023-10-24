@@ -13,7 +13,6 @@ import org.zalando.nakadi.domain.Feature;
 import org.zalando.nakadi.domain.HeaderTag;
 import org.zalando.nakadi.domain.NakadiCursor;
 import org.zalando.nakadi.domain.Subscription;
-import org.zalando.nakadi.domain.UnprocessableEventPolicy;
 import org.zalando.nakadi.exceptions.runtime.AccessDeniedException;
 import org.zalando.nakadi.exceptions.runtime.NakadiRuntimeException;
 import org.zalando.nakadi.exceptions.runtime.RebalanceConflictException;
@@ -27,7 +26,6 @@ import org.zalando.nakadi.service.EventStreamChecks;
 import org.zalando.nakadi.service.EventStreamWriter;
 import org.zalando.nakadi.service.EventTypeChangeListener;
 import org.zalando.nakadi.service.FeatureToggleService;
-import org.zalando.nakadi.service.publishing.EventPublisher;
 import org.zalando.nakadi.service.subscription.autocommit.AutocommitSupport;
 import org.zalando.nakadi.service.subscription.model.Partition;
 import org.zalando.nakadi.service.subscription.model.Session;
@@ -38,7 +36,6 @@ import org.zalando.nakadi.service.subscription.state.State;
 import org.zalando.nakadi.service.subscription.zk.ZkSubscription;
 import org.zalando.nakadi.service.subscription.zk.ZkSubscriptionClient;
 import org.zalando.nakadi.service.timeline.TimelineService;
-import org.zalando.nakadi.util.UUIDGenerator;
 
 import java.io.Closeable;
 import java.io.IOException;
@@ -93,10 +90,6 @@ public class StreamingContext implements SubscriptionStreamer {
     private final EventTypeCache eventTypeCache;
     private static final Logger LOG = LoggerFactory.getLogger(StreamingContext.class);
     private final Integer maxEventSendCount;
-    private final UnprocessableEventPolicy unprocessableEventPolicy;
-    private final String deadLetterQueueEventTypeName;
-    private final EventPublisher eventPublisher;
-    private final UUIDGenerator uuidGenerator;
 
     private StreamingContext(final Builder builder) {
         this.out = builder.out;
@@ -124,18 +117,10 @@ public class StreamingContext implements SubscriptionStreamer {
         this.kafkaRecordDeserializer = builder.kafkaRecordDeserializer;
         this.eventTypeCache = builder.eventTypeCache;
         this.featureToggleService = builder.featureToggleService;
-        this.deadLetterQueueEventTypeName = builder.deadLetterQueueEventTypeName;
-        this.eventPublisher = builder.eventPublisher;
-        this.uuidGenerator = builder.uuidGenerator;
 
         this.maxEventSendCount = Optional.ofNullable(getSubscription().getAnnotations())
                 .map(ans -> ans.get(DeadLetterAnnotationValidator.SUBSCRIPTION_MAX_EVENT_SEND_COUNT))
                 .map(Integer::valueOf)
-                .orElse(null);
-
-        this.unprocessableEventPolicy = Optional.ofNullable(getSubscription().getAnnotations())
-                .map(ans -> ans.get(DeadLetterAnnotationValidator.SUBSCRIPTION_UNPROCESSABLE_EVENT_POLICY))
-                .map(UnprocessableEventPolicy::valueOf)
                 .orElse(null);
     }
 
@@ -415,22 +400,6 @@ public class StreamingContext implements SubscriptionStreamer {
         return this.maxEventSendCount;
     }
 
-    public UnprocessableEventPolicy getUnprocessableEventPolicy() {
-        return this.unprocessableEventPolicy;
-    }
-
-    public String getDeadLetterQueueEventTypeName() {
-        return this.deadLetterQueueEventTypeName;
-    }
-
-    public EventPublisher getEventPublisher() {
-        return this.eventPublisher;
-    }
-
-    public UUIDGenerator getUuidGenerator() {
-        return this.uuidGenerator;
-    }
-
     public static final class Builder {
         private SubscriptionOutput out;
         private StreamParameters parameters;
@@ -456,9 +425,6 @@ public class StreamingContext implements SubscriptionStreamer {
         private KafkaRecordDeserializer kafkaRecordDeserializer;
         private EventTypeCache eventTypeCache;
         private FeatureToggleService featureToggleService;
-        private String deadLetterQueueEventTypeName;
-        private EventPublisher eventPublisher;
-        private UUIDGenerator uuidGenerator;
 
         public Builder setEventTypeCache(final EventTypeCache eventTypeCache) {
             this.eventTypeCache = eventTypeCache;
@@ -580,23 +546,11 @@ public class StreamingContext implements SubscriptionStreamer {
             return this;
         }
 
-        public Builder setDeadLetterQueueEventTypeName(final String deadLetterQueueEventTypeName) {
-            this.deadLetterQueueEventTypeName = deadLetterQueueEventTypeName;
-            return this;
-        }
-
-        public Builder setEventPublisher(final EventPublisher eventPublisher) {
-            this.eventPublisher = eventPublisher;
-            return this;
-        }
-
-        public Builder setUuidGenerator(final UUIDGenerator uuidGenerator) {
-            this.uuidGenerator = uuidGenerator;
-            return this;
-        }
-
         public StreamingContext build() {
             return new StreamingContext(this);
         }
+
+
     }
+
 }
