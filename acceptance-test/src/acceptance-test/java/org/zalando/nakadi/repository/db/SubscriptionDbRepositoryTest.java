@@ -26,10 +26,10 @@ import java.util.stream.IntStream;
 
 import static java.util.Collections.emptySet;
 import static java.util.stream.Collectors.toList;
+import static org.hamcrest.core.IsEqual.equalTo;
+import static org.hamcrest.CoreMatchers.not;
 import static org.hamcrest.MatcherAssert.assertThat;
-import static org.hamcrest.Matchers.equalTo;
 import static org.hamcrest.Matchers.isEmptyOrNullString;
-import static org.hamcrest.Matchers.not;
 import static org.hamcrest.Matchers.notNullValue;
 import static org.hamcrest.Matchers.nullValue;
 import static org.zalando.nakadi.utils.TestUtils.createRandomSubscriptions;

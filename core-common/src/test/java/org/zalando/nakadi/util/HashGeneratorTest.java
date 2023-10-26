@@ -6,9 +6,9 @@ import org.zalando.nakadi.domain.SubscriptionBase;
 import org.zalando.nakadi.view.SubscriptionCursorWithoutToken;
 
 import static com.google.common.collect.Sets.newHashSet;
+import static org.hamcrest.CoreMatchers.equalTo;
+import static org.hamcrest.CoreMatchers.not;
 import static org.hamcrest.MatcherAssert.assertThat;
-import static org.hamcrest.Matchers.equalTo;
-import static org.hamcrest.Matchers.not;
 
 public class HashGeneratorTest {
 

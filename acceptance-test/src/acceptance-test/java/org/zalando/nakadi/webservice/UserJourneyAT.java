@@ -12,6 +12,7 @@ import com.jayway.restassured.http.ContentType;
 import com.jayway.restassured.response.Header;
 import com.jayway.restassured.specification.RequestSpecification;
 import org.echocat.jomon.runtime.concurrent.RetryForSpecifiedTimeStrategy;
+import org.hamcrest.Matchers;
 import org.json.JSONObject;
 import org.junit.Before;
 import org.junit.Test;
@@ -34,12 +35,8 @@ import java.util.stream.Collectors;
 
 import static java.util.stream.LongStream.rangeClosed;
 import static org.echocat.jomon.runtime.concurrent.Retryer.executeWithRetry;
-import static org.hamcrest.MatcherAssert.assertThat;
-import static org.hamcrest.Matchers.equalTo;
-import static org.hamcrest.Matchers.greaterThan;
-import static org.hamcrest.Matchers.greaterThanOrEqualTo;
-import static org.hamcrest.Matchers.hasSize;
-import static org.hamcrest.Matchers.notNullValue;
+import static org.hamcrest.CoreMatchers.equalTo;
+import static org.junit.Assert.assertThat;
 import static org.springframework.http.HttpStatus.CREATED;
 import static org.springframework.http.HttpStatus.NOT_FOUND;
 import static org.springframework.http.HttpStatus.NO_CONTENT;
@@ -118,12 +115,12 @@ public class UserJourneyAT extends RealEnvironmentAT {
                 .get("/event-types")
                 .then()
                 .statusCode(OK.value())
-                .body("size()", greaterThan(0))
-                .body("name[0]", notNullValue())
-                .body("owning_application[0]", notNullValue())
-                .body("category[0]", notNullValue())
-                .body("schema.type[0]", notNullValue())
-                .body("schema.schema[0]", notNullValue());
+                .body("size()", Matchers.greaterThan(0))
+                .body("name[0]", Matchers.notNullValue())
+                .body("owning_application[0]", Matchers.notNullValue())
+                .body("category[0]", Matchers.notNullValue())
+                .body("schema.type[0]", Matchers.notNullValue())
+                .body("schema.schema[0]", Matchers.notNullValue());
 
         final String updateEventTypeBody = getUpdateEventType();
 
@@ -193,9 +190,9 @@ public class UserJourneyAT extends RealEnvironmentAT {
                 .get("/event-types/" + eventTypeName + "/partitions")
                 .then()
                 .statusCode(OK.value())
-                .body("size()", equalTo(1)).body("partition[0]", notNullValue())
-                .body("oldest_available_offset[0]", notNullValue())
-                .body("newest_available_offset[0]", notNullValue());
+                .body("size()", equalTo(1)).body("partition[0]", Matchers.notNullValue())
+                .body("oldest_available_offset[0]", Matchers.notNullValue())
+                .body("newest_available_offset[0]", Matchers.notNullValue());
 
         // read events
         requestSpec()
@@ -343,7 +340,7 @@ public class UserJourneyAT extends RealEnvironmentAT {
         // create client and wait till we receive all events
         final TestStreamingClient client = new TestStreamingClient(
                 RestAssured.baseURI + ":" + RestAssured.port, subscription.getId(), "", oauthToken).start();
-        waitFor(() -> assertThat(client.getJsonBatches(), hasSize(4)));
+        waitFor(() -> assertThat(client.getJsonBatches(), Matchers.hasSize(4)));
         final List<StreamBatch> batches = client.getJsonBatches();
 
         // validate the content of events
@@ -364,7 +361,7 @@ public class UserJourneyAT extends RealEnvironmentAT {
                 .then()
                 .statusCode(OK.value())
                 .body("items[0].partitions[0].unconsumed_events", equalTo(4))
-                .body("items[0].partitions[0].consumer_lag_seconds", greaterThanOrEqualTo(0));
+                .body("items[0].partitions[0].consumer_lag_seconds", Matchers.greaterThanOrEqualTo(0));
 
         // commit cursor of latest event
         final StreamBatch lastBatch = batches.get(batches.size() - 1);
@@ -445,7 +442,7 @@ public class UserJourneyAT extends RealEnvironmentAT {
         final TestStreamingClient client = new TestStreamingClient(
                 RestAssured.baseURI + ":" + RestAssured.port, subscription.getId(), "", oauthToken).start();
 
-        waitFor(() -> assertThat(client.getJsonBatches(), hasSize(4)));
+        waitFor(() -> assertThat(client.getJsonBatches(), Matchers.hasSize(4)));
         final List<StreamBatch> batches = client.getJsonBatches();
 
         // validate the events metadata

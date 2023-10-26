@@ -3,6 +3,7 @@ package org.zalando.nakadi.controller;
 import com.codahale.metrics.Counter;
 import com.codahale.metrics.MetricRegistry;
 import com.google.common.collect.ImmutableList;
+import org.hamcrest.MatcherAssert;
 import org.junit.Before;
 import org.junit.Test;
 import org.mockito.ArgumentCaptor;
@@ -61,10 +62,10 @@ import java.util.Optional;
 import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
 
-import static org.hamcrest.Matchers.equalTo;
+import static org.hamcrest.CoreMatchers.equalTo;
+import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.greaterThanOrEqualTo;
 import static org.hamcrest.Matchers.lessThanOrEqualTo;
-import static org.hamcrest.MatcherAssert.assertThat;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.doNothing;
@@ -174,11 +175,11 @@ public class EventStreamControllerTest {
     @Test
     public void testCursorsForNulls() throws Exception {
         when(eventTypeCache.getEventType(TEST_EVENT_TYPE_NAME)).thenReturn(EVENT_TYPE);
-        assertThat(
+        MatcherAssert.assertThat(
                 responseToString(createStreamingResponseBody("[{\"partition\":null,\"offset\":\"0\"}]")),
                 JSON_TEST_HELPER.matchesObject(
                         Problem.valueOf(PRECONDITION_FAILED, "partition must not be null")));
-        assertThat(
+        MatcherAssert.assertThat(
                 responseToString(createStreamingResponseBody("[{\"partition\":\"0\",\"offset\":null}]")),
                 JSON_TEST_HELPER.matchesObject(
                         Problem.valueOf(PRECONDITION_FAILED, "offset must not be null")));
@@ -227,7 +228,7 @@ public class EventStreamControllerTest {
         final StreamingResponseBody responseBody = createStreamingResponseBody();
 
         final Problem expectedProblem = Problem.valueOf(NOT_FOUND, "topic not found");
-        assertThat(responseToString(responseBody), JSON_TEST_HELPER.matchesObject(expectedProblem));
+        MatcherAssert.assertThat(responseToString(responseBody), JSON_TEST_HELPER.matchesObject(expectedProblem));
     }
 
     @Test
@@ -238,7 +239,7 @@ public class EventStreamControllerTest {
 
         final Problem expectedProblem = Problem.valueOf(UNPROCESSABLE_ENTITY,
                 "stream_limit can't be lower than batch_limit");
-        assertThat(responseToString(responseBody), JSON_TEST_HELPER.matchesObject(expectedProblem));
+        MatcherAssert.assertThat(responseToString(responseBody), JSON_TEST_HELPER.matchesObject(expectedProblem));
     }
 
     @Test
@@ -249,7 +250,7 @@ public class EventStreamControllerTest {
 
         final Problem expectedProblem = Problem.valueOf(UNPROCESSABLE_ENTITY,
                 "stream_timeout can't be lower than batch_flush_timeout");
-        assertThat(responseToString(responseBody), JSON_TEST_HELPER.matchesObject(expectedProblem));
+        MatcherAssert.assertThat(responseToString(responseBody), JSON_TEST_HELPER.matchesObject(expectedProblem));
     }
 
     @Test
@@ -259,7 +260,7 @@ public class EventStreamControllerTest {
         final StreamingResponseBody responseBody = createStreamingResponseBody(0, 0, 0, 0, 0, null);
 
         final Problem expectedProblem = Problem.valueOf(UNPROCESSABLE_ENTITY, "batch_limit can't be lower than 1");
-        assertThat(responseToString(responseBody), JSON_TEST_HELPER.matchesObject(expectedProblem));
+        MatcherAssert.assertThat(responseToString(responseBody), JSON_TEST_HELPER.matchesObject(expectedProblem));
     }
 
     @Test
@@ -270,7 +271,7 @@ public class EventStreamControllerTest {
                 "cursors_with_wrong_format");
 
         final Problem expectedProblem = Problem.valueOf(BAD_REQUEST, "incorrect syntax of X-nakadi-cursors header");
-        assertThat(responseToString(responseBody), JSON_TEST_HELPER.matchesObject(expectedProblem));
+        MatcherAssert.assertThat(responseToString(responseBody), JSON_TEST_HELPER.matchesObject(expectedProblem));
     }
 
     @Test
@@ -287,7 +288,7 @@ public class EventStreamControllerTest {
                 "offset 000000000000000000 for partition 0 event type " + TEST_EVENT_TYPE_NAME +
                         " is unavailable as retention time of data elapsed. " +
                         "PATCH partition offset with valid and available offset");
-        assertThat(responseToString(responseBody), JSON_TEST_HELPER.matchesObject(expectedProblem));
+        MatcherAssert.assertThat(responseToString(responseBody), JSON_TEST_HELPER.matchesObject(expectedProblem));
     }
 
     @Test
@@ -371,7 +372,7 @@ public class EventStreamControllerTest {
         final StreamingResponseBody responseBody = createStreamingResponseBody();
 
         final Problem expectedProblem = Problem.valueOf(SERVICE_UNAVAILABLE);
-        assertThat(responseToString(responseBody), JSON_TEST_HELPER.matchesObject(expectedProblem));
+        MatcherAssert.assertThat(responseToString(responseBody), JSON_TEST_HELPER.matchesObject(expectedProblem));
     }
 
     @Test
@@ -381,7 +382,7 @@ public class EventStreamControllerTest {
         final StreamingResponseBody responseBody = createStreamingResponseBody();
 
         final Problem expectedProblem = Problem.valueOf(INTERNAL_SERVER_ERROR);
-        assertThat(responseToString(responseBody), JSON_TEST_HELPER.matchesObject(expectedProblem));
+        MatcherAssert.assertThat(responseToString(responseBody), JSON_TEST_HELPER.matchesObject(expectedProblem));
     }
 
     @Test
@@ -460,7 +461,7 @@ public class EventStreamControllerTest {
         final StreamingResponseBody responseBody = createStreamingResponseBody(0, 0, 0, 0, 0, null);
 
         final Problem expectedProblem = Problem.valueOf(FORBIDDEN, "Access on READ some-type:some-name denied");
-        assertThat(responseToString(responseBody), JSON_TEST_HELPER.matchesObject(expectedProblem));
+        MatcherAssert.assertThat(responseToString(responseBody), JSON_TEST_HELPER.matchesObject(expectedProblem));
     }
 
     @Test

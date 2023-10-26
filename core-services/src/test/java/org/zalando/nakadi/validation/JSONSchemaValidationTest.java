@@ -1,5 +1,6 @@
 package org.zalando.nakadi.validation;
 
+import org.hamcrest.CoreMatchers;
 import org.hamcrest.Matchers;
 import org.json.JSONObject;
 import org.junit.Assert;
@@ -41,7 +42,7 @@ public class JSONSchemaValidationTest {
 
         Assert.assertThat(
                 error.get().getMessage(),
-                Matchers.equalTo("#: required key [metadata] not found"));
+                CoreMatchers.equalTo("#: required key [metadata] not found"));
     }
 
     @Test
@@ -78,7 +79,7 @@ public class JSONSchemaValidationTest {
         final Optional<ValidationError> error = eventValidatorBuilder.build(et).validate(invalidEvent);
 
         Assert.assertThat(error.get().getMessage(),
-                Matchers.equalTo("#/metadata/span_ctx/ot-tracer-spanid: expected type: String, found: Integer"));
+                CoreMatchers.equalTo("#/metadata/span_ctx/ot-tracer-spanid: expected type: String, found: Integer"));
     }
 
     @Test
@@ -94,7 +95,7 @@ public class JSONSchemaValidationTest {
 
         Assert.assertThat(
                 error.get().getMessage(),
-                Matchers.equalTo("#: 3 schema violations found\n#: required key [metadata] " +
+                CoreMatchers.equalTo("#: 3 schema violations found\n#: required key [metadata] " +
                         "not found\n#: required key [data_op] not found\n#: required key [data_type] not found"));
     }
 
@@ -111,7 +112,7 @@ public class JSONSchemaValidationTest {
 
         Assert.assertThat(
                 error.get().getMessage(),
-                Matchers.equalTo("#: extraneous key [foo] is not permitted"));
+                CoreMatchers.equalTo("#: extraneous key [foo] is not permitted"));
     }
 
     @Test
@@ -127,7 +128,7 @@ public class JSONSchemaValidationTest {
 
         Assert.assertThat(
                 error.get().getMessage(),
-                Matchers.equalTo(
+                CoreMatchers.equalTo(
                         "#/metadata/event_type: different-from-event-name is not a valid enum value"));
     }
 
@@ -144,7 +145,7 @@ public class JSONSchemaValidationTest {
 
         Assert.assertThat(
                 error.get().getMessage(),
-                Matchers.equalTo("#/metadata: required key [occurred_at] not found"));
+                CoreMatchers.equalTo("#/metadata: required key [occurred_at] not found"));
     }
 
     @Test
@@ -160,7 +161,7 @@ public class JSONSchemaValidationTest {
 
         Assert.assertThat(
                 error.get().getMessage(),
-                Matchers.equalTo("#/metadata/eid: string [x] does not match pattern " +
+                CoreMatchers.equalTo("#/metadata/eid: string [x] does not match pattern " +
                         "^[a-fA-F0-9]{8}-[a-fA-F0-9]{4}-[a-fA-F0-9]{4}-[a-fA-F0-9]{4}-[a-fA-F0-9]{12}$"));
     }
 
