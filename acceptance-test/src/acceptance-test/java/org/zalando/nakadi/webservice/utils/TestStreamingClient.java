@@ -106,15 +106,7 @@ public class TestStreamingClient {
 
     public TestStreamingClient start() {
         try {
-            return startInternal(false, new JsonConsumer((ignore) -> {}));
-        } catch (final InterruptedException ignore) {
-            throw new RuntimeException(ignore);
-        }
-    }
-
-    public TestStreamingClient start(final Consumer<StreamBatch> onBatch) {
-        try {
-            return startInternal(false, new JsonConsumer(onBatch));
+            return startInternal(false, new JsonConsumer());
         } catch (final InterruptedException ignore) {
             throw new RuntimeException(ignore);
         }
@@ -131,7 +123,7 @@ public class TestStreamingClient {
     public TestStreamingClient startWithAutocommit(final Consumer<List<StreamBatch>> batchesListener)
             throws InterruptedException {
         this.batchesListener = batchesListener;
-        final TestStreamingClient client = startInternal(true, new JsonConsumer((ignore)->{}));
+        final TestStreamingClient client = startInternal(true, new JsonConsumer());
         final Thread autocommitThread = new Thread(() -> {
             int oldIdx = 0;
             while (client.isRunning()) {
@@ -260,13 +252,6 @@ public class TestStreamingClient {
 
     private class JsonConsumer extends ConsumerThread {
 
-
-        private final Consumer<StreamBatch> onBatch;
-
-        JsonConsumer(final Consumer<StreamBatch> onBatch) {
-            this.onBatch = onBatch;
-        }
-
         @Override
         void addHeaders() {
         }
@@ -285,7 +270,6 @@ public class TestStreamingClient {
                     synchronized (jsonBatches) {
                         jsonBatches.add(streamBatch);
                     }
-                    onBatch.accept(streamBatch);
                 } catch (final SocketTimeoutException ste) {
                     LOG.info("No data in 10 ms, retrying read data");
                 }
