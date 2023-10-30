@@ -4,6 +4,7 @@ import com.google.common.collect.ArrayListMultimap;
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.Lists;
 import com.google.common.collect.Multimap;
+import org.hamcrest.core.StringContains;
 import org.json.JSONObject;
 import org.junit.Test;
 import org.mockito.ArgumentCaptor;
@@ -44,8 +45,8 @@ import java.util.List;
 import java.util.Optional;
 import java.util.concurrent.TimeoutException;
 
+import static org.hamcrest.core.StringContains.containsString;
 import static org.junit.Assert.assertEquals;
-import static org.hamcrest.Matchers.containsString;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.Matchers.anyLong;
@@ -750,7 +751,7 @@ public class EventTypeControllerTest extends EventTypeControllerTestCase {
 
         getEventType(eventTypeName)
                 .andExpect(status().is2xxSuccessful())
-                .andExpect(content().string(containsString("\"options\":{\"retention_time\":172800000}")));
+                .andExpect(content().string(new StringContains("\"options\":{\"retention_time\":172800000}")));
     }
 
     @Test
@@ -760,7 +761,7 @@ public class EventTypeControllerTest extends EventTypeControllerTestCase {
 
         postEventType(defaultEventType)
                 .andExpect(status().is4xxClientError())
-                .andExpect(content().string(containsString(
+                .andExpect(content().string(new StringContains(
                         "Field \\\"options.retention_time\\\" can not be more than 345600000")));
     }
 
@@ -771,7 +772,7 @@ public class EventTypeControllerTest extends EventTypeControllerTestCase {
 
         postEventType(defaultEventType)
                 .andExpect(status().is4xxClientError())
-                .andExpect(content().string(containsString(
+                .andExpect(content().string(new StringContains(
                         "Field \\\"options.retention_time\\\" can not be less than 10800000")));
     }
 

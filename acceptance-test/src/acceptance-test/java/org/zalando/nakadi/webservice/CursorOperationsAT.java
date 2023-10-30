@@ -9,7 +9,7 @@ import org.zalando.nakadi.domain.EventType;
 import org.zalando.nakadi.utils.EventTypeTestBuilder;
 import org.zalando.nakadi.webservice.utils.NakadiTestUtils;
 
-import static org.hamcrest.Matchers.equalTo;
+import static org.hamcrest.core.IsEqual.equalTo;
 import static org.springframework.http.HttpStatus.OK;
 import static org.springframework.http.HttpStatus.UNPROCESSABLE_ENTITY;
 import static org.zalando.nakadi.utils.TestUtils.randomTextString;

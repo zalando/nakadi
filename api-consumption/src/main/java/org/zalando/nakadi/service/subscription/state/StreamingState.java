@@ -3,19 +3,13 @@ package org.zalando.nakadi.service.subscription.state;
 import com.codahale.metrics.Meter;
 import com.google.common.annotations.VisibleForTesting;
 import com.google.common.base.Preconditions;
-import org.json.JSONArray;
-import org.json.JSONObject;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.zalando.nakadi.domain.ConsumedEvent;
-import org.zalando.nakadi.domain.EventPublishingStatus;
-import org.zalando.nakadi.domain.EventPublishResult;
 import org.zalando.nakadi.domain.EventTypePartition;
 import org.zalando.nakadi.domain.NakadiCursor;
 import org.zalando.nakadi.domain.PartitionStatistics;
 import org.zalando.nakadi.domain.Timeline;
-import org.zalando.nakadi.domain.UnprocessableEventPolicy;
-import org.zalando.nakadi.exceptions.runtime.DeadLetterQueueStoreException;
 import org.zalando.nakadi.exceptions.runtime.InternalNakadiException;
 import org.zalando.nakadi.exceptions.runtime.InvalidCursorException;
 import org.zalando.nakadi.exceptions.runtime.NakadiRuntimeException;
@@ -32,8 +26,6 @@ import org.zalando.nakadi.view.SubscriptionCursorWithoutToken;
 
 import java.io.Closeable;
 import java.io.IOException;
-import java.nio.charset.StandardCharsets;
-import java.time.Instant;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.Comparator;
@@ -49,6 +41,7 @@ import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
 import static java.util.stream.Collectors.groupingBy;
+
 
 class StreamingState extends State {
     private static final Logger LOG = LoggerFactory.getLogger(StreamingState.class);
@@ -241,6 +234,11 @@ class StreamingState extends State {
     }
 
     private long getMessagesAllowedToSend() {
+        if (failedCommitPartitions.values().stream()
+                .anyMatch(Partition::isLookingForDeadLetter)) {
+            return 1;
+        }
+
         final long unconfirmed = offsets.values().stream().mapToLong(PartitionData::getUnconfirmed).sum();
         final long limit = getParameters().maxUncommittedMessages - unconfirmed;
         return getParameters().getMessagesAllowedToSend(limit, this.sentEvents);
@@ -265,8 +263,8 @@ class StreamingState extends State {
 
     private void streamToOutput(final boolean streamTimeoutReached) {
         final long currentTimeMillis = System.currentTimeMillis();
-        final boolean wasCommitted = isEverythingCommitted();
         int messagesAllowedToSend = (int) getMessagesAllowedToSend();
+        final boolean wasCommitted = isEverythingCommitted();
         boolean sentSomething = false;
 
         for (final Map.Entry<EventTypePartition, PartitionData> e : offsets.entrySet()) {
@@ -274,9 +272,6 @@ class StreamingState extends State {
             final PartitionData partitionData = e.getValue();
             Partition partition = failedCommitPartitions.get(etp);
 
-            int messagesAllowedForPartition =
-                    (partition != null && partition.isLookingForDeadLetter()) ? 1 : messagesAllowedToSend;
-            // loop sends all the events from partition, until max uncommitted reached or no more events
             while (true) {
                 if (partition != null && partition.isLookingForDeadLetter()) {
                     final NakadiCursor lastDeadLetterCursor = getContext().getCursorConverter().convert(
@@ -288,14 +283,14 @@ class StreamingState extends State {
                                 .map(p -> p.toLastDeadLetterOffset(null))
                                 .toArray(Partition[]::new));
                         failedCommitPartitions.remove(etp);
+                        messagesAllowedToSend = (int) getMessagesAllowedToSend(); // fixme think
                         partition = null;
-                        messagesAllowedForPartition = messagesAllowedToSend;
                     }
                 }
 
                 final List<ConsumedEvent> toSend = partitionData.takeEventsToStream(
                         currentTimeMillis,
-                        Math.min(getBatchLimitEvents(), messagesAllowedForPartition),
+                        Math.min(getBatchLimitEvents(), messagesAllowedToSend),
                         getParameters().batchTimeoutMillis,
                         streamTimeoutReached);
 
@@ -307,15 +302,10 @@ class StreamingState extends State {
                         partition != null &&
                         partition.isLookingForDeadLetter() &&
                         partition.getFailedCommitsCount() >= getContext().getMaxEventSendCount()) {
-
                     final ConsumedEvent failedEvent = toSend.remove(0);
-
+                    // todo: skip or to dlq
                     LOG.warn("Skipping event {} from partition {} due to failed commits count {}",
                             failedEvent.getPosition(), etp, partition.getFailedCommitsCount());
-
-                    if (getContext().getUnprocessableEventPolicy() == UnprocessableEventPolicy.DEAD_LETTER_QUEUE) {
-                        sendToDeadLetterQueue(failedEvent, partition.getFailedCommitsCount());
-                    }
 
                     getAutocommit().addSkippedEvent(failedEvent.getPosition());
                     this.addTask(() -> getAutocommit().autocommit());
@@ -339,9 +329,7 @@ class StreamingState extends State {
                 if (toSend.isEmpty()) {
                     break;
                 }
-
                 messagesAllowedToSend -= toSend.size();
-                messagesAllowedForPartition -= toSend.size();
             }
         }
 
@@ -379,49 +367,6 @@ class StreamingState extends State {
                 getParameters().isKeepAliveLimitReached(offsets.values().stream()
                         .mapToInt(PartitionData::getKeepAliveInARow))) {
             shutdownGracefully("All partitions reached keepAlive limit");
-        }
-    }
-
-    private void sendToDeadLetterQueue(final ConsumedEvent event, final int failedCommitsCount) {
-        // TODO: how do we handle AVRO here?
-
-        final String failedEventString = new String(event.getEvent(), StandardCharsets.UTF_8);
-        final JSONObject failedEvent = new JSONObject(failedEventString);
-
-        final JSONObject errorMessage =
-                new JSONObject()
-                .put("message", "skipped due to failed commits count: " + failedCommitsCount);
-
-        final SubscriptionCursorWithoutToken cursor =
-                getContext().getCursorConverter().convertToNoToken(event.getPosition());
-
-        final JSONObject deadLetter =
-                new JSONObject()
-                .put("subscription_id", getContext().getSubscription().getId())
-                .put("event_type", cursor.getEventType())
-                .put("partition", cursor.getPartition())
-                .put("offset", cursor.getOffset())
-                .put("error", errorMessage)
-                .put("event", failedEvent)
-                .put("metadata",
-                        new JSONObject()
-                        .put("eid", getContext().getUuidGenerator().randomUUID().toString())
-                        .put("occurred_at", Instant.now().toString()));
-
-        final JSONArray deadLetterBatch =
-                new JSONArray().put(deadLetter);
-
-        final EventPublishResult result;
-        try {
-            result = getContext().getEventPublisher().publishInternal(
-                    deadLetterBatch.toString(), getContext().getDeadLetterQueueEventTypeName(), null);
-        } catch (final Exception e) {
-            throw new DeadLetterQueueStoreException("Failed to store an event to the dead letter queue", e);
-        }
-
-        if (result.getStatus() != EventPublishingStatus.SUBMITTED) {
-            throw new DeadLetterQueueStoreException("Failed to store an event to the dead letter queue: " +
-                    result.getResponses().get(0).getDetail());
         }
     }
 
@@ -569,7 +514,7 @@ class StreamingState extends State {
         trackIdleness(topology);
 
         if (getContext().getMaxEventSendCount() != null) {
-            failedCommitPartitions = Arrays.stream(assignedPartitions)
+            failedCommitPartitions = Arrays.stream(topology.getPartitions())
                     .filter(p -> p.getFailedCommitsCount() > 0 || p.isLookingForDeadLetter())
                     .collect(Collectors.toMap(
                             p -> new EventTypePartition(p.getEventType(), p.getPartition()),
@@ -893,4 +838,5 @@ class StreamingState extends State {
             }
         }
     }
+
 }

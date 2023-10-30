@@ -16,7 +16,7 @@ import java.time.Duration;
 
 import static java.time.temporal.ChronoUnit.DAYS;
 import static java.time.temporal.ChronoUnit.MINUTES;
-import static org.hamcrest.Matchers.nullValue;
+import static org.hamcrest.CoreMatchers.nullValue;
 import static org.zalando.nakadi.util.DateWithinMatcher.dateWithin;
 
 public class TimelinesControllerAT extends BaseAT {
