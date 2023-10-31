@@ -638,12 +638,13 @@ public class HilaAT extends BaseAT {
 
         client.start();
         waitFor(() -> Assert.assertFalse(client.isRunning()));
-        Assert.assertEquals(3, client.getJsonBatches().get(0).getEvents().size());
-        Assert.assertEquals("001-0001-000000000000000003", client.getJsonBatches().get(0).getCursor().getOffset());
+
+        // check that we skipped over offset 0
+        Assert.assertEquals("001-0001-000000000000000001", client.getJsonBatches().get(0).getCursor().getOffset());
     }
 
-    @Test(timeout = 15000)
-    public void whenIsLookingForDeadLetterAndCommitComesThenContinueLooking() throws IOException {
+    @Test(timeout = 30_000)
+    public void whenIsLookingForDeadLetterAndCommitComesThenContinueLooking() throws IOException, InterruptedException {
         final Subscription subscription = createAutoDLQSubscription(eventType);
         final TestStreamingClient client = TestStreamingClient
                 .create(URL, subscription.getId(), "batch_limit=10&commit_timeout=1")
@@ -700,11 +701,30 @@ public class HilaAT extends BaseAT {
         Assert.assertEquals(1, client.getJsonBatches().get(0).getEvents().size());
         Assert.assertEquals("001-0001-000000000000000001", client.getJsonBatches().get(0).getCursor().getOffset());
 
+        // now a single event should be skipped, but we continue getting them one by one until the failing batch end
+        final TestStreamingClient client2 = TestStreamingClient
+                .create(URL, subscription.getId(), "batch_limit=10&commit_timeout=1&stream_limit=20");
+
+        client2.startWithAutocommit(batches -> {
+                    // 8×1 + 1×10 + 1×2 + 1×"stream closed"
+                    Assert.assertEquals(11, batches.size());
+
+                    final List<StreamBatch> singleEventBatches = batches.subList(0, 8);
+                    for (int i = 0; i < singleEventBatches.size(); ++i)  {
+                        final StreamBatch batch = singleEventBatches.get(i);
+                        Assert.assertEquals(1, batch.getEvents().size());
+                    }
+
+                    final StreamBatch theLast = batches.get(8);
+                    Assert.assertEquals(10, theLast.getEvents().size());
+                });
+        waitFor(() -> Assert.assertFalse(client2.isRunning()), 15_000);
+
+        // continue with normal batch size after skipping over the failing batch
         client.start();
         waitFor(() -> Assert.assertFalse(client.isRunning()));
         Assert.assertTrue(isCommitTimeoutReached(client));
         Assert.assertEquals(10, client.getJsonBatches().get(0).getEvents().size());
-        Assert.assertEquals("001-0001-000000000000000011", client.getJsonBatches().get(0).getCursor().getOffset());
     }
 
     @Test(timeout = 20_000)
