@@ -1,0 +1,49 @@
+[
+  {
+    "name": "store_event_type_name_placeholder",
+    "owning_application": "owning_application_placeholder",
+    "category": "business",
+    "enrichment_strategies": [
+      "metadata_enrichment"
+    ],
+    "partition_strategy": "random",
+    "cleanup_policy": "delete",
+    "ordering_key_fields": [],
+    "ordering_instance_ids": [],
+    "schema": {
+      "type": "json_schema",
+      "schema": "{\"type\": \"object\", \"additionalProperties\": false, \"properties\": {\"subscription_id\": {\"type\": \"string\"}, \"event_type\": {\"type\": \"string\"}, \"partition\": {\"type\": \"string\"}, \"offset\": {\"type\": \"string\"}, \"error\": {\"type\": \"object\", \"properties\": {\"message\": {\"type\": \"string\"}}, \"required\": [\"message\"]}, \"event\": {\"type\": \"object\", \"additionalProperties\": true}}, \"required\": [\"subscription_id\", \"event_type\", \"partition\", \"offset\", \"error\", \"event\"]}"
+    },
+    "default_statistic": {
+      "messages_per_minute": 1,
+      "message_size": 1000,
+      "read_parallelism": 1,
+      "write_parallelism": 1
+    },
+    "options": {
+      "retention_time": 86400000
+    },
+    "compatibility_mode": "forward",
+    "audience": "component-internal",
+    "authorization": {
+      "admins": [
+        {
+          "data_type": "auth_data_type_placeholder",
+          "value": "auth_value_placeholder"
+        }
+      ],
+      "readers": [
+        {
+          "data_type": "auth_data_type_placeholder",
+          "value": "auth_value_placeholder"
+        }
+      ],
+      "writers": [
+        {
+          "data_type": "auth_data_type_placeholder",
+          "value": "auth_value_placeholder"
+        }
+      ]
+    }
+  }
+]
