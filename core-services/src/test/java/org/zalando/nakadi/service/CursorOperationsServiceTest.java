@@ -1,7 +1,7 @@
 package org.zalando.nakadi.service;
 
 import com.google.common.collect.Lists;
-import org.hamcrest.CoreMatchers;
+import org.hamcrest.Matchers;
 import org.junit.Test;
 import org.mockito.Mockito;
 import org.zalando.nakadi.config.NakadiSettings;
@@ -23,8 +23,8 @@ import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
 
+import static org.hamcrest.MatcherAssert.assertThat;
 import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertThat;
 import static org.junit.Assert.fail;
 import static org.mockito.ArgumentMatchers.any;
 import static org.zalando.nakadi.exceptions.runtime.InvalidCursorOperation.Reason.CURSORS_WITH_DIFFERENT_PARTITION;
@@ -43,7 +43,7 @@ public class CursorOperationsServiceTest {
 
         final Long distance = service.calculateDistance(initialCursor, finalCursor);
 
-        assertThat(distance, CoreMatchers.equalTo(1L));
+        assertThat(distance, Matchers.equalTo(1L));
     }
 
     @Test
@@ -53,7 +53,7 @@ public class CursorOperationsServiceTest {
 
         final Long distance = service.calculateDistance(initialCursor, finalCursor);
 
-        assertThat(distance, CoreMatchers.equalTo(-1L));
+        assertThat(distance, Matchers.equalTo(-1L));
     }
 
     @Test
@@ -69,7 +69,7 @@ public class CursorOperationsServiceTest {
 
         final Long distance = service.calculateDistance(finalCursor, initialCursor);
 
-        assertThat(distance, CoreMatchers.equalTo(-20L)); // Carefully calculated value
+        assertThat(distance, Matchers.equalTo(-20L)); // Carefully calculated value
     }
 
     @Test
@@ -91,7 +91,7 @@ public class CursorOperationsServiceTest {
         final NakadiCursor finalCursor = NakadiCursor.of(finalTimeline, "0", "0000000000000001");
 
         final Long distance = service.calculateDistance(initialCursor, finalCursor);
-        assertThat(distance, CoreMatchers.equalTo(9L));
+        assertThat(distance, Matchers.equalTo(9L));
     }
 
 
@@ -106,7 +106,7 @@ public class CursorOperationsServiceTest {
         final NakadiCursor initialCursor = NakadiCursor.of(initialTimeline, "0", "0000000000000003");
         final NakadiCursor finalCursor = NakadiCursor.of(finalTimeline, "0", "0000000000000001");
 
-        assertThat(service.calculateDistance(initialCursor, finalCursor), CoreMatchers.equalTo(7L + 10L + 2L));
+        assertThat(service.calculateDistance(initialCursor, finalCursor), Matchers.equalTo(7L + 10L + 2L));
     }
 
     @Test(expected = InvalidCursorOperation.class)
@@ -157,7 +157,7 @@ public class CursorOperationsServiceTest {
         final NakadiCursor cursor = service.shiftCursor(
                 NakadiCursor.of(initialTimeline, "0", "000000000000000003"), -3L);
 
-        assertThat(cursor.getOffset(), CoreMatchers.equalTo("000000000000000000"));
+        assertThat(cursor.getOffset(), Matchers.equalTo("000000000000000000"));
     }
 
     @Test
@@ -172,8 +172,8 @@ public class CursorOperationsServiceTest {
 
         final NakadiCursor cursor = service.shiftCursor(shiftedCursor, -15L);
 
-        assertThat(cursor.getTimeline().getOrder(), CoreMatchers.equalTo(0));
-        assertThat(cursor.getOffset(), CoreMatchers.equalTo("000000000000000009"));
+        assertThat(cursor.getTimeline().getOrder(), Matchers.equalTo(0));
+        assertThat(cursor.getOffset(), Matchers.equalTo("000000000000000009"));
     }
 
     @Test
@@ -190,7 +190,7 @@ public class CursorOperationsServiceTest {
             service.shiftCursor(shiftedCursor, -15L);
             fail();
         } catch (final InvalidCursorOperation e) {
-            assertThat(e.getReason(), CoreMatchers.equalTo(TIMELINE_NOT_FOUND));
+            assertThat(e.getReason(), Matchers.equalTo(TIMELINE_NOT_FOUND));
         } catch (final Exception e) {
             fail();
         }
@@ -205,7 +205,7 @@ public class CursorOperationsServiceTest {
 
         final NakadiCursor cursor = service.shiftCursor(shiftedCursor, 2L);
 
-        assertThat(cursor.getOffset(), CoreMatchers.equalTo("000000000000000005"));
+        assertThat(cursor.getOffset(), Matchers.equalTo("000000000000000005"));
     }
 
     @Test
@@ -218,8 +218,8 @@ public class CursorOperationsServiceTest {
 
         final NakadiCursor cursor = service.shiftCursor(shiftedCursor, 9L);
 
-        assertThat(cursor.getTimeline().getOrder(), CoreMatchers.equalTo(2));
-        assertThat(cursor.getOffset(), CoreMatchers.equalTo("000000000000000001"));
+        assertThat(cursor.getTimeline().getOrder(), Matchers.equalTo(2));
+        assertThat(cursor.getOffset(), Matchers.equalTo("000000000000000001"));
     }
 
     @Test
@@ -229,7 +229,7 @@ public class CursorOperationsServiceTest {
 
         final NakadiCursor cursor = service.shiftCursor(shiftedCursor, 3L);
 
-        assertThat(cursor.getOffset(), CoreMatchers.equalTo("000000000000000006"));
+        assertThat(cursor.getOffset(), Matchers.equalTo("000000000000000006"));
     }
 
     @Test
@@ -280,7 +280,7 @@ public class CursorOperationsServiceTest {
             service.calculateDistance(initialCursor, finalCursor);
             fail();
         } catch (final InvalidCursorOperation e) {
-            assertThat(e.getReason(), CoreMatchers.equalTo(invertedOffsetOrder));
+            assertThat(e.getReason(), Matchers.equalTo(invertedOffsetOrder));
         } catch (final Throwable e) {
             e.printStackTrace();
             fail();

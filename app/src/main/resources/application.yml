@@ -142,6 +142,10 @@ nakadi:
   hasher.salt: "salt"
   dlq:
     redriveEventTypeName: "nakadi.dead.letter.redrive"
+    storeEventTypeName: "nakadi.dead.letter.queue"
+    owningApplication: "stups_nakadi"
+    authDataType: "*"
+    authValue: "*"
 
 twintip:
   mapping: /api

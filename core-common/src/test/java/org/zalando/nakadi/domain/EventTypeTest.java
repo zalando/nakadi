@@ -5,10 +5,9 @@ import org.zalando.nakadi.utils.TestUtils;
 
 import java.util.Map;
 
+import static org.hamcrest.MatcherAssert.assertThat;
+import static org.hamcrest.Matchers.is;
 import static org.hamcrest.Matchers.notNullValue;
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertNotNull;
-import static org.junit.Assert.assertThat;
 
 public class EventTypeTest {
 
@@ -34,10 +33,10 @@ public class EventTypeTest {
         final EventType eventType = TestUtils.OBJECT_MAPPER.readValue(json, EventType.class);
         final Map<String, String> annotations = eventType.getAnnotations();
         final Map<String, String> labels = eventType.getLabels();
-        assertNotNull(annotations);
-        assertNotNull(labels);
-        assertEquals(2, annotations.size());
-        assertEquals(2, labels.size());
+        assertThat(annotations, notNullValue());
+        assertThat(labels, notNullValue());
+        assertThat(annotations.size(), is(2));
+        assertThat(labels.size(), is(2));
     }
 
 
