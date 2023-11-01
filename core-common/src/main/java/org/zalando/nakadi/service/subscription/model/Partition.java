@@ -177,8 +177,9 @@ public class Partition {
                 session + "->" + nextSession + ":" + failedCommitsCount + ":" + lastDeadLetterOffset;
     }
 
-    public String toFailedCommitString() {
-        return eventType + ":" + partition + ":" + failedCommitsCount + ":" + lastDeadLetterOffset;
+    public String toFailedCommitsTrackingString() {
+        return String.format("{%s:%s failedCommitsCount=%d lastDeadLetterOffset=%s}",
+                eventType, partition, failedCommitsCount, lastDeadLetterOffset);
     }
 
     @Override

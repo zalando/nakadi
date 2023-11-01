@@ -332,7 +332,7 @@ class StreamingState extends State {
 
                 sentSomething |= !toSend.isEmpty();
 
-                flushData(etp, toSend, getDebugMessage(e));
+                flushData(etp, toSend, Optional.of(makeStreamStartDebugMessage(partitionData)));
                 if (toSend.isEmpty()) {
                     break;
                 }
@@ -426,33 +426,29 @@ class StreamingState extends State {
         return getParameters().batchLimitEvents;
     }
 
-    private Optional<String> getDebugMessage(final Map.Entry<EventTypePartition, PartitionData> entry) {
-        final PartitionData partitionData = entry.getValue();
+    private String makeStreamStartDebugMessage(final PartitionData partitionData) {
+        final StringBuilder sb = new StringBuilder("Stream started");
+
         final long skippedEventsCount = partitionData.getSkippedEventsCount();
         if (skippedEventsCount > 0) {
             partitionData.resetSkippedEventsCount();
-            return Optional.of(String.format(
-                    "Skipped events due to retention time passed, count: %d", skippedEventsCount));
+            sb.append(String.format("; skipped events due to retention time passed, count: %d", skippedEventsCount));
         }
 
         if (batchesSent == 0) {
-            final StringBuilder sb = new StringBuilder();
-            sb.append("Stream started");
-
-            final String failedCommitsPartitions = Arrays.stream(getZk().getTopology().getPartitions())
+            final String failedCommitsTracking = Arrays.stream(getZk().getTopology().getPartitions())
                     .filter(p -> p.getFailedCommitsCount() > 0 || p.isLookingForDeadLetter())
-                    .map(Partition::toFailedCommitString)
+                    .map(Partition::toFailedCommitsTrackingString)
                     .collect(Collectors.joining(", "));
 
-            if (failedCommitsPartitions != null && !failedCommitsPartitions.isEmpty()) {
-                sb.append(". Failed commits: ").append(failedCommitsPartitions);
-                LOG.info("Failed commits: {}", failedCommitsPartitions);
+            if (failedCommitsTracking != null && !failedCommitsTracking.isEmpty()) {
+                sb.append("; failed commits tracking: ")
+                        .append(failedCommitsTracking);
+                LOG.info("Failed commits tracking: {}", failedCommitsTracking);
             }
-
-            return Optional.of(sb.toString());
         }
 
-        return Optional.empty();
+        return sb.toString();
     }
 
     private void flushData(final EventTypePartition pk, final List<ConsumedEvent> data,
