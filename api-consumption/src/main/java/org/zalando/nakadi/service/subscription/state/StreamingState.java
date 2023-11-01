@@ -322,14 +322,11 @@ class StreamingState extends State {
                     getAutocommit().addSkippedEvent(failedEvent.getPosition());
                     this.addTask(() -> getAutocommit().autocommit());
 
-                    // reset looking dead letter flag in zookeeper
+                    // reset failed commits, but keep looking until last dead letter offset
                     getZk().updateTopology(topology -> Arrays.stream(topology.getPartitions())
                             .filter(p -> p.getPartition().equals(etp.getPartition()))
-                            .map(p -> p.toLastDeadLetterOffset(null))
+                            .map(p -> p.toZeroFailedCommits())
                             .toArray(Partition[]::new));
-
-                    // clean local copy of failed commits just in case that update from zookeeper is later or lost
-                    failedCommitPartitions.remove(etp);
 
                     // we are sure the batch is empty
                     break;
