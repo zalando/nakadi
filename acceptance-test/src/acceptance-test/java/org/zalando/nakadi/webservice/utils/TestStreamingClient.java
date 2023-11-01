@@ -140,11 +140,12 @@ public class TestStreamingClient {
                     if (batch.getEvents() != null && !batch.getEvents().isEmpty()) {
                         try {
                             final SubscriptionCursor cursor = batch.getCursor();
+                            LOG.debug("Committing: {}", cursor);
                             final int responseCode = NakadiTestUtils.commitCursors(
                                     client.subscriptionId,
                                     Collections.singletonList(batch.getCursor()),
                                     client.getSessionId());
-                            LOG.info("Committing " + responseCode + ": " + cursor);
+                            LOG.info("Commit response code: {}", responseCode);
                         } catch (JsonProcessingException e) {
                             throw new RuntimeException(e);
                         }
@@ -164,11 +165,14 @@ public class TestStreamingClient {
     }
 
     public boolean close() {
+        LOG.debug("Closing...");
         if (running) {
+            LOG.debug("Set not running!");
             running = false;
             connection.disconnect();
             return true;
         } else {
+            LOG.debug("Already closed!");
             return false;
         }
     }
@@ -277,10 +281,13 @@ public class TestStreamingClient {
             final BufferedReader reader = new BufferedReader(new InputStreamReader(inputStream, Charsets.UTF_8));
             while (running) {
                 try {
+                    LOG.debug("Reading next line...");
                     final String line = reader.readLine();
                     if (line == null) {
+                        LOG.debug("Got null line, stopping.");
                         return;
                     }
+                    LOG.trace("Got line: {}", line);
                     final StreamBatch streamBatch = MAPPER.readValue(line, StreamBatch.class);
                     synchronized (jsonBatches) {
                         jsonBatches.add(streamBatch);
