@@ -436,7 +436,8 @@ class StreamingState extends State {
             final long skippedEventsCount = partitionData.getSkippedEventsCount();
             if (skippedEventsCount > 0) {
                 partitionData.resetSkippedEventsCount();
-                sb.append(String.format("; skipped events due to retention time passed, count: %d", skippedEventsCount));
+                sb.append("; skipped events due to retention time passed, count: ")
+                        .append(skippedEventsCount);
             }
         }
 
