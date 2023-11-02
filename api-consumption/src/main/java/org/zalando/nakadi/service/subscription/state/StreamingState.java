@@ -59,6 +59,7 @@ class StreamingState extends State {
     // correctly, and p0 is not receiving any updates - reassignment won't complete.
     private final Map<EventTypePartition, Long> releasingPartitions = new HashMap<>();
     private Map<EventTypePartition, Partition> failedCommitPartitions = new HashMap<>();
+    private String failedCommitsDebugStringToFlush;
     private ZkSubscription<ZkSubscriptionClient.Topology> topologyChangeSubscription;
     private HighLevelConsumer eventConsumer;
     private boolean pollPaused;
@@ -332,7 +333,7 @@ class StreamingState extends State {
 
                 sentSomething |= !toSend.isEmpty();
 
-                flushData(etp, toSend, getDebugMessage(e));
+                flushData(etp, toSend, makeDebugMessage(partitionData));
                 if (toSend.isEmpty()) {
                     break;
                 }
@@ -426,33 +427,34 @@ class StreamingState extends State {
         return getParameters().batchLimitEvents;
     }
 
-    private Optional<String> getDebugMessage(final Map.Entry<EventTypePartition, PartitionData> entry) {
-        final PartitionData partitionData = entry.getValue();
-        final long skippedEventsCount = partitionData.getSkippedEventsCount();
-        if (skippedEventsCount > 0) {
-            partitionData.resetSkippedEventsCount();
-            return Optional.of(String.format(
-                    "Skipped events due to retention time passed, count: %d", skippedEventsCount));
-        }
+    private Optional<String> makeDebugMessage(final PartitionData partitionData) {
+        final StringBuilder sb = new StringBuilder();
 
         if (batchesSent == 0) {
-            final StringBuilder sb = new StringBuilder();
             sb.append("Stream started");
 
-            final String failedCommitsPartitions = Arrays.stream(getZk().getTopology().getPartitions())
-                    .filter(p -> p.getFailedCommitsCount() > 0 || p.isLookingForDeadLetter())
-                    .map(Partition::toFailedCommitString)
-                    .collect(Collectors.joining(", "));
-
-            if (failedCommitsPartitions != null && !failedCommitsPartitions.isEmpty()) {
-                sb.append(". Failed commits: ").append(failedCommitsPartitions);
-                LOG.info("Failed commits: {}", failedCommitsPartitions);
+            final long skippedEventsCount = partitionData.getSkippedEventsCount();
+            if (skippedEventsCount > 0) {
+                partitionData.resetSkippedEventsCount();
+                sb.append("; skipped events due to retention time passed, count: ")
+                        .append(skippedEventsCount);
             }
-
-            return Optional.of(sb.toString());
         }
 
-        return Optional.empty();
+        if (failedCommitsDebugStringToFlush != null && !failedCommitsDebugStringToFlush.isEmpty()) {
+            if (sb.length() != 0) {
+                sb.append("; ");
+            }
+            sb.append("Auto DLQ failed commits tracking: ")
+                    .append(failedCommitsDebugStringToFlush);
+
+            // reset after sending it once
+            failedCommitsDebugStringToFlush = null;
+        }
+
+        return sb.length() == 0
+                ? Optional.empty()
+                : Optional.of(sb.toString());
     }
 
     private void flushData(final EventTypePartition pk, final List<ConsumedEvent> data,
@@ -571,6 +573,11 @@ class StreamingState extends State {
                     .collect(Collectors.toMap(
                             p -> new EventTypePartition(p.getEventType(), p.getPartition()),
                             p -> p));
+
+            failedCommitsDebugStringToFlush = failedCommitPartitions.values().stream()
+                    .map(Partition::toFailedCommitsTrackingString)
+                    .collect(Collectors.joining(", "));
+            LOG.debug("Failed commits tracking: {}", failedCommitsDebugStringToFlush);
         }
     }
 
