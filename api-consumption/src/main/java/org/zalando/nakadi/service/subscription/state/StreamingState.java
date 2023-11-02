@@ -445,7 +445,7 @@ class StreamingState extends State {
             if (sb.length() != 0) {
                 sb.append("; ");
             }
-            sb.append("failed commits tracking: ")
+            sb.append("Auto DLQ failed commits tracking: ")
                     .append(failedCommitsDebugStringToFlush);
 
             // reset after sending it once
