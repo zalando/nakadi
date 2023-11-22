@@ -348,6 +348,11 @@ class StreamingState extends State {
                 messagesAllowedForPartition -= toSend.size();
                 LOG.error("messagesAllowedToSend after reduction is: {}", messagesAllowedToSend);
                 LOG.error("messagesAllowedForPartition after reduction is: {}", messagesAllowedForPartition);
+
+                //break after sending 1 event, as there is nothing more to send until commit arrives
+                if(partition!=null && partition.isLookingForDeadLetter()) {
+                    break;
+                }
             }
         }
 
