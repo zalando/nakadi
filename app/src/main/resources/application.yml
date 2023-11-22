@@ -104,12 +104,12 @@ nakadi:
     maxPartitions: 100
     maxStreamMemoryBytes: 50000000 # ~50 MB
   jobs:
-    checkRunMs: 600000 # 10 min
+    checkRunMs: 30000
     timelineCleanup:
       runPeriodMs: 3600000 # 1 hour
       deletionDelayMs: 2000 # 2 seconds, to be on the safe side
     dlqRedriveEventTypeAttach:
-      runPeriodMs: 600000 # 10 min, same as checkRunMs
+      runPeriodMs: 30000 # same as checkRunMs
   http.pool.connection:
     max.total: 20
     max.per.route: 10
