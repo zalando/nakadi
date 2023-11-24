@@ -32,10 +32,12 @@ import org.zalando.nakadi.util.UUIDGenerator;
 import org.zalando.nakadi.view.SubscriptionCursorWithoutToken;
 
 import java.io.IOException;
+import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.concurrent.TimeUnit;
+import java.util.function.Predicate;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
@@ -223,8 +225,19 @@ public class CursorsService {
                 final List<SubscriptionCursorWithoutToken> newCursors = cursors.stream()
                         .map(cursorConverter::convertToNoToken)
                         .collect(Collectors.toList());
+                Predicate<Partition> isUpdatedPartition = p -> cursors.stream().anyMatch(c -> p.getKey().equals(c.getEventTypePartition()));
 
-                zkClient.closeSubscriptionStreams(() -> zkClient.forceCommitOffsets(newCursors), timeout);
+                zkClient.closeSubscriptionStreams(() -> {
+                    zkClient.forceCommitOffsets(newCursors);
+                    // reset the DLQ state of any partition that got updated
+                    zkClient.updateTopology(topology ->
+                        Arrays
+                            .stream(topology.getPartitions())
+                            .filter(isUpdatedPartition)
+                            .map(p -> p.toZeroFailedCommits().toLastDeadLetterOffset(null))
+                            .toArray(Partition[]::new)
+                    );
+                }, timeout);
 
                 auditLogPublisher.publish(
                         Optional.of(new ItemsWrapper<>(oldCursors)),
