@@ -59,10 +59,10 @@ class PartitionData {
                                            final boolean dlqModeOn) {
         final boolean countReached = (nakadiEvents.size() >= batchSize) && batchSize > 0;
         final boolean timeReached = (currentTimeMillis - lastSendMillis) >= batchTimeoutMillis;
-        final boolean dlqBatchSent = dlqModeOn && !isCommitted();
+        final boolean dlqEventUnconfirmed = dlqModeOn && !isCommitted();
 
-        if (dlqBatchSent) {
-            this.keepAliveInARow +=1;
+        if (dlqEventUnconfirmed) {
+            this.keepAliveInARow += 1;
             lastSendMillis = currentTimeMillis;
             return Collections.emptyList();
         } else if (batchTimespanMillis > 0 && lastRecordTimestamp() >= batchWindowEndTimestamp()) {

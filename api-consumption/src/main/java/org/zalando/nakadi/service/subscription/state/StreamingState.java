@@ -276,10 +276,10 @@ class StreamingState extends State {
             Partition partition = failedCommitPartitions.get(etp);
 
             int messagesAllowedForPartition =
-                    (partition != null && partition.isLookingForDeadLetter()) ? 1 : messagesAllowedToSend;
+                    inDlqMode(partition) ? 1 : messagesAllowedToSend;
             // loop sends all the events from partition, until max uncommitted reached or no more events
             while (true) {
-                if (partition != null && partition.isLookingForDeadLetter()) {
+                if (inDlqMode(partition)) {
                     final NakadiCursor lastDeadLetterCursor = getContext().getCursorConverter().convert(
                             partition.getEventType(),
                             new Cursor(partition.getPartition(), partition.getLastDeadLetterOffset()));
@@ -299,17 +299,19 @@ class StreamingState extends State {
                         Math.min(getBatchLimitEvents(), messagesAllowedForPartition),
                         getParameters().batchTimeoutMillis,
                         streamTimeoutReached,
-                        partition!=null && partition.isLookingForDeadLetter());
+                        inDlqMode(partition));
                 if (toSend == null) {
                     break;
                 }
 
                 if (!toSend.isEmpty() &&
-                        partition != null &&
-                        partition.isLookingForDeadLetter() &&
+                        inDlqMode(partition) &&
                         partition.getFailedCommitsCount() >= getContext().getMaxEventSendCount()) {
 
                     final ConsumedEvent failedEvent = toSend.remove(0);
+
+                    LOG.warn("Skipping event {} from partition {} due to failed commits count {}",
+                            failedEvent.getPosition(), etp, partition.getFailedCommitsCount());
 
                     if (getContext().getUnprocessableEventPolicy() == UnprocessableEventPolicy.DEAD_LETTER_QUEUE) {
                         sendToDeadLetterQueue(failedEvent, partition.getFailedCommitsCount());
@@ -339,7 +341,7 @@ class StreamingState extends State {
                 messagesAllowedForPartition -= toSend.size();
 
                 //break after sending 1 event, as there is nothing more to send until commit arrives
-                if(partition!=null && partition.isLookingForDeadLetter()) {
+                if(inDlqMode(partition)) {
                     break;
                 }
             }
@@ -380,6 +382,10 @@ class StreamingState extends State {
                         .mapToInt(PartitionData::getKeepAliveInARow))) {
             shutdownGracefully("All partitions reached keepAlive limit");
         }
+    }
+
+    private static boolean inDlqMode(final Partition partition) {
+        return partition != null && partition.isLookingForDeadLetter();
     }
 
     private void sendToDeadLetterQueue(final ConsumedEvent event, final int failedCommitsCount) {
@@ -802,7 +808,6 @@ class StreamingState extends State {
                 final Partition lookingDeadLetter = partition.toLastDeadLetterOffset(lastDeadLetterOffset);
                 failedCommitPartitions.put(partition.getKey(), lookingDeadLetter);
                 getZk().updateTopology(topology -> new Partition[]{lookingDeadLetter});
-                LOG.error("SWITCHING TO DLQ MODE WITH DEAD LETTER OFFSET {}", lookingDeadLetter.getLastDeadLetterOffset());
             }
         }
     }

@@ -281,20 +281,20 @@ public class TestStreamingClient {
             final BufferedReader reader = new BufferedReader(new InputStreamReader(inputStream, Charsets.UTF_8));
             while (running) {
                 try {
-                    LOG.error("Reading next line...");
+                    LOG.debug("Reading next line...");
                     final String line = reader.readLine();
                     if (line == null) {
-                        LOG.error("Got null line, stopping.");
+                        LOG.debug("Got null line, stopping.");
                         return;
                     }
-                    LOG.error("Got line: {}", line);
+                    LOG.trace("Got line: {}", line);
                     final StreamBatch streamBatch = MAPPER.readValue(line, StreamBatch.class);
                     synchronized (jsonBatches) {
                         jsonBatches.add(streamBatch);
                     }
                     onBatch.accept(streamBatch);
                 } catch (final SocketTimeoutException ste) {
-                    LOG.error("No data in 10 ms, retrying read data");
+                    LOG.info("No data in 10 ms, retrying read data");
                 }
             }
         }
