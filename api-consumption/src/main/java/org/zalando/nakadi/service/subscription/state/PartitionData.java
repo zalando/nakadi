@@ -62,7 +62,6 @@ class PartitionData {
         final boolean dlqBatchSent = dlqModeOn && !isCommitted();
 
         if (dlqBatchSent) {
-            LOG.error("WAITING FOR COMMIT FOR OFFSET: {}", this.getSentOffset());
             this.keepAliveInARow +=1;
             lastSendMillis = currentTimeMillis;
             return Collections.emptyList();

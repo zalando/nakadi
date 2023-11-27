@@ -31,6 +31,7 @@ import org.zalando.nakadi.webservice.utils.NakadiTestUtils;
 import org.zalando.nakadi.webservice.utils.TestStreamingClient;
 
 import java.io.IOException;
+import java.time.Instant;
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
@@ -619,13 +620,13 @@ public class HilaAT extends BaseAT {
 
     @Test(timeout = 15000)
     public void whenCommitFailsThreeTimesAndSingleBatchEventFailsThreeTimesThenEventSkipped() throws IOException {
-        final Subscription subscription = createAutoDLQSubscription(eventType, UnprocessableEventPolicy.SKIP_EVENT);
-        final TestStreamingClient client = TestStreamingClient
-                .create(URL, subscription.getId(), "batch_limit=3&commit_timeout=1")
-                .start();
-
         publishEvents(eventType.getName(), 50, i -> "{\"foo\":\"bar\"}");
 
+        final Subscription subscription = createAutoDLQSubscription(eventType, UnprocessableEventPolicy.SKIP_EVENT);
+        final TestStreamingClient client = TestStreamingClient
+                .create(URL, subscription.getId(), "batch_limit=3&commit_timeout=1");
+
+        client.start();
         waitFor(() -> Assert.assertFalse(client.isRunning()));
         Assert.assertTrue(isCommitTimeoutReached(client));
 

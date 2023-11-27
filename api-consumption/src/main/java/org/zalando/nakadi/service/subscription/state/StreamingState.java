@@ -265,11 +265,9 @@ class StreamingState extends State {
     }
 
     private void streamToOutput(final boolean streamTimeoutReached) {
-        LOG.error("Entered streamToOutput with timeout {} ", streamTimeoutReached);
         final long currentTimeMillis = System.currentTimeMillis();
         final boolean wasCommitted = isEverythingCommitted();
         int messagesAllowedToSend = (int) getMessagesAllowedToSend();
-        LOG.error("currentTime: {}, everythingCommited: {}, messagesAllowedToSend: {}", currentTimeMillis, wasCommitted, messagesAllowedToSend);
         boolean sentSomething = false;
 
         for (final Map.Entry<EventTypePartition, PartitionData> e : offsets.entrySet()) {
@@ -279,14 +277,12 @@ class StreamingState extends State {
 
             int messagesAllowedForPartition =
                     (partition != null && partition.isLookingForDeadLetter()) ? 1 : messagesAllowedToSend;
-            LOG.error("starting value for messagesAllowedForPartition: {}", messagesAllowedForPartition);
             // loop sends all the events from partition, until max uncommitted reached or no more events
             while (true) {
                 if (partition != null && partition.isLookingForDeadLetter()) {
                     final NakadiCursor lastDeadLetterCursor = getContext().getCursorConverter().convert(
                             partition.getEventType(),
                             new Cursor(partition.getPartition(), partition.getLastDeadLetterOffset()));
-                    LOG.error("LAST COMMITTED OFFSET: {}", partitionData.getCommitOffset());
                     if (getComparator().compare(partitionData.getCommitOffset(), lastDeadLetterCursor) >= 0) {
                         getZk().updateTopology(topology -> Arrays.stream(topology.getPartitions())
                                 .filter(p -> p.getPartition().equals(etp.getPartition()))
@@ -295,7 +291,6 @@ class StreamingState extends State {
                         failedCommitPartitions.remove(etp);
                         partition = null;
                         messagesAllowedForPartition = messagesAllowedToSend;
-                        LOG.error("DEAD LETTER OFFSET REACHED, SO RESET messagesAllowedForPartition: {}", messagesAllowedForPartition);
                     }
                 }
 
@@ -305,20 +300,16 @@ class StreamingState extends State {
                         getParameters().batchTimeoutMillis,
                         streamTimeoutReached,
                         partition!=null && partition.isLookingForDeadLetter());
-                LOG.error("Size of toSend: {}", (toSend == null? null: toSend.size()));
                 if (toSend == null) {
                     break;
                 }
 
                 if (!toSend.isEmpty() &&
                         partition != null &&
-                        partition.isLookingForDeadLetter() && //dead letter mode on already
+                        partition.isLookingForDeadLetter() &&
                         partition.getFailedCommitsCount() >= getContext().getMaxEventSendCount()) {
 
                     final ConsumedEvent failedEvent = toSend.remove(0);
-
-                    LOG.error("SKIPPING EVENT {} from partition {} due to failed commits COUNT REACHED {}",
-                            failedEvent.getPosition(), etp, partition.getFailedCommitsCount());
 
                     if (getContext().getUnprocessableEventPolicy() == UnprocessableEventPolicy.DEAD_LETTER_QUEUE) {
                         sendToDeadLetterQueue(failedEvent, partition.getFailedCommitsCount());
@@ -346,8 +337,6 @@ class StreamingState extends State {
 
                 messagesAllowedToSend -= toSend.size();
                 messagesAllowedForPartition -= toSend.size();
-                LOG.error("messagesAllowedToSend after reduction is: {}", messagesAllowedToSend);
-                LOG.error("messagesAllowedForPartition after reduction is: {}", messagesAllowedForPartition);
 
                 //break after sending 1 event, as there is nothing more to send until commit arrives
                 if(partition!=null && partition.isLookingForDeadLetter()) {
@@ -832,14 +821,12 @@ class StreamingState extends State {
     }
 
     void offsetChanged(final EventTypePartition etp) {
-        LOG.error("offsetChanged TRIGGERED");
         if (offsets.containsKey(etp)) {
             final PartitionData data = offsets.get(etp);
 
             final NakadiCursor cursor = createNakadiCursor(data.getSubscription().getData());
 
             final PartitionData.CommitResult commitResult = data.onCommitOffset(cursor);
-            LOG.error("COMMIT CURSOR: {}, RESULT: {}", cursor.getOffset(), commitResult.committedCount);
             getAutocommit().onCommit(cursor);
 
             final Partition partition = failedCommitPartitions.get(etp);
@@ -850,7 +837,6 @@ class StreamingState extends State {
                         .map(p -> p.toZeroFailedCommits())
                         .toArray(Partition[]::new));
                 failedCommitPartitions.computeIfPresent(etp, (ignore, p) -> p.toZeroFailedCommits());
-                LOG.error("CHANGED TO ZERO FAILED COMMITS");
             }
 
             if (commitResult.seekOnKafka) {
