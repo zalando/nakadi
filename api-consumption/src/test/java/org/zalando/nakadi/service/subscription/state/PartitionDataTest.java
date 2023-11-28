@@ -140,8 +140,7 @@ public class PartitionDataTest {
             pd.addEvent(new ConsumedEvent("test".getBytes(), createCursor(i + 100L + 1), 0, null, null));
         }
         assertNull(pd.takeEventsToStream(currentTimeMillis(), 1000, timeout, false));
-        final List<ConsumedEvent> eventsToStream =
-                pd.takeEventsToStream(currentTimeMillis(), 99, timeout, false);
+        final List<ConsumedEvent> eventsToStream = pd.takeEventsToStream(currentTimeMillis(), 99, timeout, false);
         assertNotNull(eventsToStream);
         assertEquals(99, eventsToStream.size());
     }
