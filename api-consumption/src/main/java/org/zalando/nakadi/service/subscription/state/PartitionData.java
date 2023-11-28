@@ -10,7 +10,6 @@ import org.zalando.nakadi.view.SubscriptionCursorWithoutToken;
 
 import javax.annotation.Nullable;
 import java.util.ArrayList;
-import java.util.Collections;
 import java.util.Comparator;
 import java.util.LinkedList;
 import java.util.List;
@@ -55,17 +54,11 @@ class PartitionData {
     @Nullable
     List<ConsumedEvent> takeEventsToStream(final long currentTimeMillis,
                                            final int batchSize, final long batchTimeoutMillis,
-                                           final boolean streamTimeoutReached,
-                                           final boolean dlqModeOn) {
+                                           final boolean streamTimeoutReached) {
         final boolean countReached = (nakadiEvents.size() >= batchSize) && batchSize > 0;
         final boolean timeReached = (currentTimeMillis - lastSendMillis) >= batchTimeoutMillis;
-        final boolean dlqEventUnconfirmed = dlqModeOn && !isCommitted();
 
-        if (dlqEventUnconfirmed) {
-            this.keepAliveInARow += 1;
-            lastSendMillis = currentTimeMillis;
-            return Collections.emptyList();
-        } else if (batchTimespanMillis > 0 && lastRecordTimestamp() >= batchWindowEndTimestamp()) {
+        if (batchTimespanMillis > 0 && lastRecordTimestamp() >= batchWindowEndTimestamp()) {
             lastSendMillis = currentTimeMillis;
             return extractTimespan(batchWindowEndTimestamp());
         } else if (countReached || timeReached) {
