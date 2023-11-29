@@ -234,7 +234,7 @@ public class CursorsService {
                         Arrays
                             .stream(topology.getPartitions())
                             .filter(isUpdatedPartition)
-                            .map(p -> p.toZeroFailedCommits().toLastDeadLetterOffset(null))
+                            .map(p -> p.resetDLQState())
                             .toArray(Partition[]::new)
                     );
                 }, timeout);
