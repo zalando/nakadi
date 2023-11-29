@@ -5,6 +5,7 @@ import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.Lists;
+import com.jayway.restassured.response.Response;
 import org.apache.http.HttpStatus;
 import org.json.JSONObject;
 import org.junit.Assert;
@@ -882,7 +883,7 @@ public class HilaAT extends BaseAT {
     }
 
     List<SubscriptionCursor> getSubscriptionCursors(String sid) throws IOException {
-        var response = given()
+        Response response = given()
                 .get("/subscriptions/{id}/cursors", sid);
         Assert.assertEquals(HttpStatus.SC_OK, response.getStatusCode());
         return MAPPER.readValue(response.asInputStream(), new TypeReference<ItemsWrapper<SubscriptionCursor>>() {}).getItems();
@@ -897,7 +898,7 @@ public class HilaAT extends BaseAT {
     }
 
     void resetCursors(String sid, List<SubscriptionCursorWithoutToken> cursors) throws JsonProcessingException {
-        var response = given()
+        Response response = given()
                 .body(MAPPER.writeValueAsString(new ItemsWrapper<>(cursors)))
                 .contentType(JSON)
                 .patch("/subscriptions/{id}/cursors", sid);
