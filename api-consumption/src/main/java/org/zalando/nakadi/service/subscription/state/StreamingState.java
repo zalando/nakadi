@@ -797,7 +797,9 @@ class StreamingState extends State {
 
             // check failed commits and indicate that streaming should switch in looking for dead letters mode
             if (partition.getFailedCommitsCount() >= getContext().getMaxEventSendCount()) {
-                final Partition lookingDeadLetter = partition.toLastDeadLetterOffset(lastDeadLetterOffset).toZeroFailedCommits();
+                final Partition lookingDeadLetter = partition
+                            .toLastDeadLetterOffset(lastDeadLetterOffset)
+                            .toZeroFailedCommits();
                 failedCommitPartitions.put(partition.getKey(), lookingDeadLetter);
                 getZk().updateTopology(topology -> new Partition[]{lookingDeadLetter});
             }
