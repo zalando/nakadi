@@ -512,7 +512,7 @@ public class HilaAT extends BaseAT {
                 .start();
         waitFor(() -> assertThat(client1.getJsonBatches(), hasSize(10)));
 
-        int statusCode = commitCursors(
+        final int statusCode = commitCursors(
                 subscription.getId(),
                 Collections.singletonList(client1.getJsonBatches().get(9).getCursor()),
                 client1.getSessionId());
@@ -625,7 +625,8 @@ public class HilaAT extends BaseAT {
 
         client.start();
         waitFor(() -> Assert.assertFalse(client.isRunning()));
-        Assert.assertEquals(2, client.getJsonBatches().size()); // second batch is sent by Nakadi when a stream is closed
+        // second batch is sent by Nakadi when a stream is closed
+        Assert.assertEquals(2, client.getJsonBatches().size());
         Assert.assertEquals(1, client.getJsonBatches().get(0).getEvents().size());
 
         client.start();
@@ -657,7 +658,7 @@ public class HilaAT extends BaseAT {
         waitFor(() -> Assert.assertFalse(client.isRunning()));
         Assert.assertTrue(isCommitTimeoutReached(client));
 
-        List<SubscriptionCursor> cursorSnapshot = getSubscriptionCursors(subscription.getId());
+        final List<SubscriptionCursor> cursorSnapshot = getSubscriptionCursors(subscription.getId());
 
         client.start();
         waitFor(() -> Assert.assertFalse(client.isRunning()));
@@ -883,23 +884,30 @@ public class HilaAT extends BaseAT {
         return createSubscription(subscription);
     }
 
-    List<SubscriptionCursor> getSubscriptionCursors(String sid) throws IOException {
-        Response response = given()
+    List<SubscriptionCursor> getSubscriptionCursors(final String sid) throws IOException {
+        final Response response = given()
                 .get("/subscriptions/{id}/cursors", sid);
         Assert.assertEquals(HttpStatus.SC_OK, response.getStatusCode());
-        return MAPPER.readValue(response.asInputStream(), new TypeReference<ItemsWrapper<SubscriptionCursor>>() {}).getItems();
+        return MAPPER.readValue(
+                    response.asInputStream(),
+                    new TypeReference<ItemsWrapper<SubscriptionCursor>>() {})
+                .getItems();
     }
 
-    void resetCursorsWithToken(String sid, List<SubscriptionCursor> cursors) throws JsonProcessingException {
-        List<SubscriptionCursorWithoutToken> cursorsWithoutToken = cursors
+    void resetCursorsWithToken(
+            final String sid,
+            final List<SubscriptionCursor> cursors) throws JsonProcessingException {
+        final List<SubscriptionCursorWithoutToken> cursorsWithoutToken = cursors
                 .stream()
                 .map(c -> new SubscriptionCursorWithoutToken(c.getEventType(), c.getPartition(), c.getOffset()))
                 .collect(Collectors.toList());
         resetCursors(sid, cursorsWithoutToken);
     }
 
-    void resetCursors(String sid, List<SubscriptionCursorWithoutToken> cursors) throws JsonProcessingException {
-        Response response = given()
+    void resetCursors(
+            final String sid,
+            final List<SubscriptionCursorWithoutToken> cursors) throws JsonProcessingException {
+        final Response response = given()
                 .body(MAPPER.writeValueAsString(new ItemsWrapper<>(cursors)))
                 .contentType(JSON)
                 .patch("/subscriptions/{id}/cursors", sid);

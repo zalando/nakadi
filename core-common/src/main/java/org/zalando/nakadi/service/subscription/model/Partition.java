@@ -87,11 +87,25 @@ public class Partition {
     }
 
     public Partition toLastDeadLetterOffset(final String lastDeadLetterOffset) {
-        return new Partition(eventType, partition, session, nextSession, state, failedCommitsCount, lastDeadLetterOffset);
+        return new Partition(
+                eventType,
+                partition,
+                session,
+                nextSession,
+                state,
+                failedCommitsCount,
+                lastDeadLetterOffset);
     }
 
     public Partition resetDLQState() {
-        return new Partition(eventType, partition, session, nextSession, state, 0, null);
+        return new Partition(
+                eventType,
+                partition,
+                session,
+                nextSession,
+                state,
+                0,
+                null);
     }
 
 

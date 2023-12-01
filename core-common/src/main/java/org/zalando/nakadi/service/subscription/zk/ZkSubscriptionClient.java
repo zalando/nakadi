@@ -180,13 +180,16 @@ public interface ZkSubscriptionClient extends Closeable {
      *
      * Specifically the steps taken are:
      *
-     *   1. It creates a /subscriptions/{SID}/cursor_reset znode - thus signaling to all the consumers that they should terminate
+     *   1. It creates a /subscriptions/{SID}/cursor_reset znode - thus signaling to all the
+     *      consumers that they should terminate
      *   2. waits for the session count on this subscription to go down to zero
      *   3. executes the action
-     *   4. deletes the /subscriptions/{SID}/cursor_reset znode - thus making the subscription available to the consumers again
+     *   4. deletes the /subscriptions/{SID}/cursor_reset znode - thus making the subscription available
+     *      to the consumers again
      *
      * @param action  perform action once streams are closed
-     * @param timeout maximum amount of time it will wait for the session count to go down to 0. If exceeded an OperationTimeoutException is thrown.
+     * @param timeout maximum amount of time it will wait for the session count to go down to 0.
+     *                If exceeded an OperationTimeoutException is thrown.
      * @throws OperationTimeoutException
      * @throws ZookeeperException
      */

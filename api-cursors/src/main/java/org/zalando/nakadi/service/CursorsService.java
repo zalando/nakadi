@@ -225,7 +225,8 @@ public class CursorsService {
                 final List<SubscriptionCursorWithoutToken> newCursors = cursors.stream()
                         .map(cursorConverter::convertToNoToken)
                         .collect(Collectors.toList());
-                Predicate<Partition> isUpdatedPartition = p -> cursors.stream().anyMatch(c -> p.getKey().equals(c.getEventTypePartition()));
+                final Predicate<Partition> isUpdatedPartition =
+                        p -> cursors.stream().anyMatch(c -> p.getKey().equals(c.getEventTypePartition()));
 
                 zkClient.closeSubscriptionStreams(() -> {
                     zkClient.forceCommitOffsets(newCursors);
