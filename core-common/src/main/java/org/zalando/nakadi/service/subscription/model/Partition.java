@@ -87,28 +87,13 @@ public class Partition {
     }
 
     public Partition toLastDeadLetterOffset(final String lastDeadLetterOffset) {
-        return new Partition(
-                eventType,
-                partition,
-                session,
-                nextSession,
-                state,
-                failedCommitsCount,
-                lastDeadLetterOffset);
+        if ((lastDeadLetterOffset != null && this.lastDeadLetterOffset == null) ||
+                (lastDeadLetterOffset == null && this.lastDeadLetterOffset != null)) {
+            return new Partition(eventType, partition, session, nextSession, state, 0, lastDeadLetterOffset);
+        }
+
+        return this;
     }
-
-    public Partition resetDLQState() {
-        return new Partition(
-                eventType,
-                partition,
-                session,
-                nextSession,
-                state,
-                0,
-                null);
-    }
-
-
 
     /**
      * Creates new Partition object that must be moved to session with id {@code sessionId}.

@@ -286,7 +286,7 @@ class StreamingState extends State {
                     if (getComparator().compare(partitionData.getCommitOffset(), lastDeadLetterCursor) >= 0) {
                         getZk().updateTopology(topology -> Arrays.stream(topology.getPartitions())
                                 .filter(p -> p.getPartition().equals(etp.getPartition()))
-                                .map(p -> p.resetDLQState())
+                                .map(p -> p.toLastDeadLetterOffset(null))
                                 .toArray(Partition[]::new));
                         failedCommitPartitions.remove(etp);
                         partition = null;
@@ -797,9 +797,7 @@ class StreamingState extends State {
 
             // check failed commits and indicate that streaming should switch in looking for dead letters mode
             if (partition.getFailedCommitsCount() >= getContext().getMaxEventSendCount()) {
-                final Partition lookingDeadLetter = partition
-                            .toLastDeadLetterOffset(lastDeadLetterOffset)
-                            .toZeroFailedCommits();
+                final Partition lookingDeadLetter = partition.toLastDeadLetterOffset(lastDeadLetterOffset);
                 failedCommitPartitions.put(partition.getKey(), lookingDeadLetter);
                 getZk().updateTopology(topology -> new Partition[]{lookingDeadLetter});
             }

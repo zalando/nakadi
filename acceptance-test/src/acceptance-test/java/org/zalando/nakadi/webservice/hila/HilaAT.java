@@ -580,7 +580,7 @@ public class HilaAT extends BaseAT {
                 .withEventType(et.getName())
                 .withStartFrom(END)
                 .buildSubscriptionBase());
-        resetCursors(subscription.getId(), Collections.singletonList(
+        resetCursors(s.getId(), Collections.singletonList(
                 new SubscriptionCursorWithoutToken(
                         et.getName(), begin.getPartitionId(), begin.getOldestAvailableOffset())
         ));
