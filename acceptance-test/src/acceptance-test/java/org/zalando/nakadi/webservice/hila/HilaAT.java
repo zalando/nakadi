@@ -648,7 +648,7 @@ public class HilaAT extends BaseAT {
 
     @Test(timeout = 15000)
     public void whenCursorsAreResetTheDLQStateIsResetAsWell() throws IOException {
-        final Subscription subscription = createAutoDLQSubscription(eventType, UnprocessableEventPolicy.SKIP_EVENT);
+        final Subscription subscription = createAutoDLQSubscription(eventType, UnprocessableEventPolicy.SKIP_EVENT, 3);
         final TestStreamingClient client = TestStreamingClient
                 .create(URL, subscription.getId(), "batch_limit=3&commit_timeout=1")
                 .start();
