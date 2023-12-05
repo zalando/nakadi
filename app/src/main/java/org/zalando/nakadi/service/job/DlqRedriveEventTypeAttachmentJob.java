@@ -7,6 +7,7 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 import org.zalando.nakadi.cache.EventTypeCache;
+import org.zalando.nakadi.config.NakadiSettings;
 import org.zalando.nakadi.domain.ConsumedEvent;
 import org.zalando.nakadi.domain.EventTypePartition;
 import org.zalando.nakadi.domain.Feature;
@@ -29,6 +30,7 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
 
 @Service
@@ -44,6 +46,7 @@ public class DlqRedriveEventTypeAttachmentJob {
     private final SubscriptionDbRepository subscriptionRepository;
     private final SubscriptionClientFactory subscriptionClientFactory;
     private final CursorConverter cursorConverter;
+    private final NakadiSettings nakadiSettings;
     private final String dlqRedriveEventTypeName;
     private final ExclusiveJobWrapper jobWrapper;
 
@@ -55,6 +58,7 @@ public class DlqRedriveEventTypeAttachmentJob {
             final SubscriptionDbRepository subscriptionRepository,
             final SubscriptionClientFactory subscriptionClientFactory,
             final CursorConverter cursorConverter,
+            final NakadiSettings nakadiSettings,
             @Value("${nakadi.dlq.redriveEventTypeName}") final String dlqRedriveEventTypeName,
             @Value("${nakadi.jobs.dlqRedriveEventTypeAttach.runPeriodMs}") final int periodMs,
             final JobWrapperFactory jobWrapperFactory) {
@@ -64,6 +68,7 @@ public class DlqRedriveEventTypeAttachmentJob {
         this.subscriptionRepository = subscriptionRepository;
         this.subscriptionClientFactory = subscriptionClientFactory;
         this.cursorConverter = cursorConverter;
+        this.nakadiSettings = nakadiSettings;
         this.dlqRedriveEventTypeName = dlqRedriveEventTypeName;
         this.jobWrapper = jobWrapperFactory.createExclusiveJobWrapper(JOB_NAME, periodMs);
     }
@@ -153,7 +158,19 @@ public class DlqRedriveEventTypeAttachmentJob {
                 .map(nc -> cursorConverter.convertToNoToken(nc))
                 .collect(Collectors.toList()));
 
-        client.updateTopology(topology -> selectMissingPartitions(topology.getPartitions(), unassignedDlqPartitions));
+        final boolean[] hasNewPartitions = {false};
+        client.updateTopology(topology -> {
+                final var newPartitions = selectMissingPartitions(topology.getPartitions(), unassignedDlqPartitions);
+                if (!hasNewPartitions[0] && newPartitions.length != 0) {
+                    hasNewPartitions[0] = true;
+                }
+                return newPartitions;
+        });
+        if (hasNewPartitions[0]) {
+            client.closeSubscriptionStreams(
+                    () -> LOG.info("subscription streams were closed, after repartitioning"),
+                    TimeUnit.SECONDS.toMillis(nakadiSettings.getMaxCommitTimeout()));
+        }
     }
 
     static Partition[] selectMissingPartitions(
