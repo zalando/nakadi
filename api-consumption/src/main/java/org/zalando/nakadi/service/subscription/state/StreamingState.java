@@ -286,7 +286,7 @@ class StreamingState extends State {
                     if (getComparator().compare(partitionData.getCommitOffset(), lastDeadLetterCursor) >= 0) {
                         getZk().updateTopology(topology -> Arrays.stream(topology.getPartitions())
                                 .filter(p -> p.getPartition().equals(etp.getPartition()))
-                                .map(p -> p.resetDLQState())
+                                .map(p -> p.toCleanDeadLetterState())
                                 .toArray(Partition[]::new));
                         failedCommitPartitions.remove(etp);
                         partition = null;

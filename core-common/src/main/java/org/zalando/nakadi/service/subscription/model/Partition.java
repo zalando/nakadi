@@ -91,7 +91,7 @@ public class Partition {
                 lastDeadLetterOffset);
     }
 
-    public Partition resetDLQState() {
+    public Partition toCleanDeadLetterState() {
         return new Partition(eventType, partition, session, nextSession, state, 0, null);
     }
 
