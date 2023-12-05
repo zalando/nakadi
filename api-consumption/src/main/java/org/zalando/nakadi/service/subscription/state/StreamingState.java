@@ -789,20 +789,23 @@ class StreamingState extends State {
         offsets.put(partition.getKey(), pd);
         getAutocommit().addPartition(cursor);
 
-        if (getContext().getMaxEventSendCount() != null) {
+        // check failed commits and indicate that we should switch in looking for dead letters mode, unless already
+        if (getContext().getMaxEventSendCount() != null &&
+                partition.getFailedCommitsCount() >= getContext().getMaxEventSendCount() &&
+                !partition.isLookingForDeadLetter()) {
+
             final NakadiCursor lastDeadLetterCursor = getContext().getCursorOperationsService()
                     .shiftCursor(cursor, getBatchLimitEvents());
+
             final String lastDeadLetterOffset = getContext().getCursorConverter()
                     .convert(lastDeadLetterCursor).getOffset();
 
-            // check failed commits and indicate that streaming should switch in looking for dead letters mode
-            if (partition.getFailedCommitsCount() >= getContext().getMaxEventSendCount()) {
-                final Partition lookingDeadLetter = partition
-                            .toLastDeadLetterOffset(lastDeadLetterOffset)
-                            .toZeroFailedCommits();
-                failedCommitPartitions.put(partition.getKey(), lookingDeadLetter);
-                getZk().updateTopology(topology -> new Partition[]{lookingDeadLetter});
-            }
+            final Partition lookingDeadLetter = partition
+                    .toLastDeadLetterOffset(lastDeadLetterOffset)
+                    .toZeroFailedCommits();
+            failedCommitPartitions.put(partition.getKey(), lookingDeadLetter);
+
+            getZk().updateTopology(topology -> new Partition[]{lookingDeadLetter});
         }
     }
 
