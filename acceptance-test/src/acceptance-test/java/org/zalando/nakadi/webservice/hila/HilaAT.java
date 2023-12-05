@@ -605,13 +605,13 @@ public class HilaAT extends BaseAT {
 
     @Test(timeout = 15000)
     public void whenCommitFailsThreeTimesAndSingleBatchEventFailsThreeTimesThenEventSkipped() throws IOException {
-        final Subscription subscription = createAutoDLQSubscription(eventType, UnprocessableEventPolicy.SKIP_EVENT);
-        final TestStreamingClient client = TestStreamingClient
-                .create(URL, subscription.getId(), "batch_limit=3&commit_timeout=1")
-                .start();
-
         publishEvents(eventType.getName(), 50, i -> "{\"foo\":\"bar\"}");
 
+        final Subscription subscription = createAutoDLQSubscription(eventType, UnprocessableEventPolicy.SKIP_EVENT, 3);
+        final TestStreamingClient client = TestStreamingClient
+                .create(URL, subscription.getId(), "batch_limit=3&commit_timeout=1");
+
+        client.start();
         waitFor(() -> Assert.assertFalse(client.isRunning()));
         Assert.assertTrue(isCommitTimeoutReached(client));
 
@@ -682,7 +682,7 @@ public class HilaAT extends BaseAT {
 
     @Test(timeout = 30_000)
     public void whenIsLookingForDeadLetterAndCommitComesThenContinueLooking() throws IOException, InterruptedException {
-        final Subscription subscription = createAutoDLQSubscription(eventType, UnprocessableEventPolicy.SKIP_EVENT);
+        final Subscription subscription = createAutoDLQSubscription(eventType, UnprocessableEventPolicy.SKIP_EVENT, 3);
         final TestStreamingClient client = TestStreamingClient
                 .create(URL, subscription.getId(), "batch_limit=10&commit_timeout=1")
                 .start();
@@ -767,7 +767,7 @@ public class HilaAT extends BaseAT {
     @Test(timeout = 20_000)
     public void whenIsLookingForDeadLetterAndSendAllEventsOneByOneThenBackToNormalBatchSize()
             throws InterruptedException, IOException {
-        final Subscription subscription = createAutoDLQSubscription(eventType, UnprocessableEventPolicy.SKIP_EVENT);
+        final Subscription subscription = createAutoDLQSubscription(eventType, UnprocessableEventPolicy.SKIP_EVENT, 3);
         final TestStreamingClient client = TestStreamingClient
                 .create(URL, subscription.getId(), "batch_limit=10&commit_timeout=1&stream_limit=20")
                 .start();
@@ -818,7 +818,7 @@ public class HilaAT extends BaseAT {
         final String poisonPillValue = "bar10";
 
         final Subscription subscription =
-                createAutoDLQSubscription(eventType, UnprocessableEventPolicy.DEAD_LETTER_QUEUE);
+                createAutoDLQSubscription(eventType, UnprocessableEventPolicy.DEAD_LETTER_QUEUE, 3);
 
         // start looking for events in the DLQ store event type already (reading from END)
         final Subscription dlqStoreEventTypeSub = createSubscriptionForEventType("nakadi.dead.letter.queue");
@@ -865,6 +865,46 @@ public class HilaAT extends BaseAT {
         waitFor(() -> Assert.assertFalse(dlqStoreClient.isRunning()));
     }
 
+    @Test(timeout = 35_000)
+    public void testDlqModeOnlySendsSingleEventAndNotMore() throws IOException {
+        publishEvents(eventType.getName(), 50, i -> "{\"foo\":\"bar" + i + "\"}");
+        final int maxEventSendCount = 2;
+        final Subscription subscription = createAutoDLQSubscription(eventType, UnprocessableEventPolicy.SKIP_EVENT,
+                maxEventSendCount);
+        final TestStreamingClient client = TestStreamingClient
+                .create(URL, subscription.getId(), "batch_limit=3&commit_timeout=5&batch_flush_timeout=2");
+
+        client.start();
+        waitFor(() -> Assert.assertFalse(client.isRunning()));
+        Assert.assertTrue(isCommitTimeoutReached(client));
+
+        client.start();
+        waitFor(() -> Assert.assertFalse(client.isRunning()));
+        Assert.assertTrue(isCommitTimeoutReached(client));
+
+        //DLQ MODE
+        client.start();
+        waitFor(() -> Assert.assertFalse(client.isRunning()));
+        Assert.assertEquals(4, client.getJsonBatches().size()); // event batch, keepalive *2, commit timeout
+        Assert.assertEquals(1, client.getJsonBatches().get(0).getEvents().size());
+        Assert.assertThat(client.getJsonBatches().get(1).getEvents(), empty());
+        Assert.assertThat(client.getJsonBatches().get(2).getEvents(), empty());
+        Assert.assertTrue(isCommitTimeoutReached(client));
+
+        client.start();
+        waitFor(() -> Assert.assertFalse(client.isRunning()));
+        Assert.assertEquals(4, client.getJsonBatches().size()); // event batch, keepalive *2, commit timeout
+        Assert.assertEquals(1, client.getJsonBatches().get(0).getEvents().size());
+        Assert.assertThat(client.getJsonBatches().get(1).getEvents(), empty());
+        Assert.assertThat(client.getJsonBatches().get(2).getEvents(), empty());
+        Assert.assertTrue(isCommitTimeoutReached(client));
+
+        client.start();
+        waitFor(() -> Assert.assertFalse(client.isRunning()));
+        // check that we skipped over offset 0
+        Assert.assertEquals("001-0001-000000000000000001", client.getJsonBatches().get(0).getCursor().getOffset());
+    }
+
     private static boolean isCommitTimeoutReached(final TestStreamingClient client) {
         return client.getJsonBatches().stream()
                 .filter(batch -> batch.getMetadata() != null)
@@ -872,14 +912,15 @@ public class HilaAT extends BaseAT {
     }
 
     private Subscription createAutoDLQSubscription(final EventType eventType,
-            final UnprocessableEventPolicy unprocessableEventPolicy) throws IOException {
+                                                   final UnprocessableEventPolicy unprocessableEventPolicy,
+                                                   final int maxEventSendCount) throws IOException {
 
         final SubscriptionBase subscription = RandomSubscriptionBuilder.builder()
                 .withEventType(eventType.getName())
                 .withStartFrom(BEGIN)
                 .buildSubscriptionBase();
         subscription.setAnnotations(Map.of(
-                        SUBSCRIPTION_MAX_EVENT_SEND_COUNT, "3",
+                        SUBSCRIPTION_MAX_EVENT_SEND_COUNT, Integer.toString(maxEventSendCount),
                         SUBSCRIPTION_UNPROCESSABLE_EVENT_POLICY, unprocessableEventPolicy.toString()));
         return createSubscription(subscription);
     }

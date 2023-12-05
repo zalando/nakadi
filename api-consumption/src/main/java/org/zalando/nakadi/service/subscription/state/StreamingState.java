@@ -276,10 +276,11 @@ class StreamingState extends State {
             Partition partition = failedCommitPartitions.get(etp);
 
             int messagesAllowedForPartition =
-                    (partition != null && partition.isLookingForDeadLetter()) ? 1 : messagesAllowedToSend;
+                    getMessagesAllowedForPartition(partition, partitionData, messagesAllowedToSend);
+
             // loop sends all the events from partition, until max uncommitted reached or no more events
             while (true) {
-                if (partition != null && partition.isLookingForDeadLetter()) {
+                if (inDlqMode(partition)) {
                     final NakadiCursor lastDeadLetterCursor = getContext().getCursorConverter().convert(
                             partition.getEventType(),
                             new Cursor(partition.getPartition(), partition.getLastDeadLetterOffset()));
@@ -305,8 +306,7 @@ class StreamingState extends State {
                 }
 
                 if (!toSend.isEmpty() &&
-                        partition != null &&
-                        partition.isLookingForDeadLetter() &&
+                        inDlqMode(partition) &&
                         partition.getFailedCommitsCount() >= getContext().getMaxEventSendCount()) {
 
                     final ConsumedEvent failedEvent = toSend.remove(0);
@@ -340,7 +340,7 @@ class StreamingState extends State {
 
                 messagesAllowedToSend -= toSend.size();
                 messagesAllowedForPartition -= toSend.size();
-            }
+          }
         }
 
         long memoryConsumed = offsets.values().stream().mapToLong(PartitionData::getBytesInMemory).sum();
@@ -378,6 +378,19 @@ class StreamingState extends State {
                         .mapToInt(PartitionData::getKeepAliveInARow))) {
             shutdownGracefully("All partitions reached keepAlive limit");
         }
+    }
+
+    private static int getMessagesAllowedForPartition(final Partition partition,
+                                                      final PartitionData partitionData,
+                                                      final int messagesAllowedToSend) {
+        if (inDlqMode(partition)) {
+            return partitionData.isCommitted() ? 1 : 0;
+        }
+        return messagesAllowedToSend;
+    }
+
+    private static boolean inDlqMode(final Partition partition) {
+        return partition != null && partition.isLookingForDeadLetter();
     }
 
     private void sendToDeadLetterQueue(final ConsumedEvent event, final int failedCommitsCount) {
