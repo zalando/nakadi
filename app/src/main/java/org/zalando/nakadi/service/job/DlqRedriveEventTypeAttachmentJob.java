@@ -166,9 +166,13 @@ public class DlqRedriveEventTypeAttachmentJob {
                 }
                 return newPartitions;
         });
+
+        // shortcut to enable new partitions for streaming, otherwise they will stay unassigned. 
+        // the better way is to rebalance them.
         if (hasNewPartitions[0]) {
             client.closeSubscriptionStreams(
-                    () -> LOG.info("subscription streams were closed, after repartitioning"),
+                    () -> LOG.info("Subscription `{}` streams were closed due to addition of " +
+                                   "Nakadi DLQ Event Type", subscription.getId()),
                     TimeUnit.SECONDS.toMillis(nakadiSettings.getMaxCommitTimeout()));
         }
     }
