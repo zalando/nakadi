@@ -104,11 +104,12 @@ nakadi:
     maxPartitions: 100
     maxStreamMemoryBytes: 50000000 # ~50 MB
   jobs:
-    checkRunMs: 600000 # 10 min
+    checkRunMs: 30000
     timelineCleanup:
       runPeriodMs: 3600000 # 1 hour
       deletionDelayMs: 2000 # 2 seconds, to be on the safe side
-    consumerNodesCleanup.runPeriodMs: 21600000 # 6 hours
+    dlqRedriveEventTypeAttach:
+      runPeriodMs: 30000 # same as checkRunMs
   http.pool.connection:
     max.total: 20
     max.per.route: 10
@@ -139,6 +140,12 @@ nakadi:
       nakadiDataStreamed: "nakadi.data.streamed"
       owning_application: "stups_nakadi"
   hasher.salt: "salt"
+  dlq:
+    redriveEventTypeName: "nakadi.dead.letter.redrive"
+    storeEventTypeName: "nakadi.dead.letter.queue"
+    owningApplication: "stups_nakadi"
+    authDataType: "*"
+    authValue: "*"
 
 twintip:
   mapping: /api

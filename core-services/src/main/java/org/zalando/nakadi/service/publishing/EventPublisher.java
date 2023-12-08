@@ -114,6 +114,21 @@ public class EventPublisher {
         return processInternal(events, eventTypeName, consumerTags, true, false);
     }
 
+    // no auth checks
+    public EventPublishResult publishInternal(final String events,
+                                              final String eventTypeName,
+                                              final Map<HeaderTag, String> consumerTags)
+            throws NoSuchEventTypeException,
+            InternalNakadiException,
+            EnrichmentException,
+            EventTypeTimeoutException,
+            AccessDeniedException,
+            PublishEventOwnershipException,
+            ServiceTemporarilyUnavailableException,
+            PartitioningException {
+        return processInternal(events, eventTypeName, consumerTags, false, false);
+    }
+
     public EventPublishResult delete(final String events, final String eventTypeName)
             throws NoSuchEventTypeException,
             InternalNakadiException,

@@ -87,12 +87,12 @@ public class Partition {
     }
 
     public Partition toLastDeadLetterOffset(final String lastDeadLetterOffset) {
-        if ((lastDeadLetterOffset != null && this.lastDeadLetterOffset == null) ||
-                (lastDeadLetterOffset == null && this.lastDeadLetterOffset != null)) {
-            return new Partition(eventType, partition, session, nextSession, state, 0, lastDeadLetterOffset);
-        }
+        return new Partition(eventType, partition, session, nextSession, state, failedCommitsCount,
+                lastDeadLetterOffset);
+    }
 
-        return this;
+    public Partition toCleanDeadLetterState() {
+        return new Partition(eventType, partition, session, nextSession, state, 0, null);
     }
 
     /**
@@ -177,8 +177,9 @@ public class Partition {
                 session + "->" + nextSession + ":" + failedCommitsCount + ":" + lastDeadLetterOffset;
     }
 
-    public String toFailedCommitString() {
-        return eventType + ":" + partition + ":" + failedCommitsCount + ":" + lastDeadLetterOffset;
+    public String toFailedCommitsTrackingString() {
+        return String.format("{%s:%s failedCommitsCount=%d lastDeadLetterOffset=%s}",
+                eventType, partition, failedCommitsCount, lastDeadLetterOffset);
     }
 
     @Override

@@ -12,6 +12,55 @@ import java.util.stream.Stream;
 public class ZkSubscriptionClientTest {
 
     @Test
+    public void testUpdatePartitionsOverridesExistingPartitions() {
+        final var topology = new ZkSubscriptionClient.Topology(
+                new Partition[] {
+                        new Partition("event-type-1", "0", null, null, Partition.State.ASSIGNED),
+                        new Partition("event-type-1", "1", null, null, Partition.State.ASSIGNED),
+                },
+                0);
+
+        final var updatedTopology = topology.withUpdatedPartitions(
+                new Partition[] {
+                        new Partition("event-type-1", "0", null, null, Partition.State.UNASSIGNED),
+                });
+
+        Assert.assertNotEquals(topology, updatedTopology);
+        Assert.assertArrayEquals(
+                new Partition[] {
+                        new Partition("event-type-1", "0", null, null, Partition.State.UNASSIGNED),
+                        new Partition("event-type-1", "1", null, null, Partition.State.ASSIGNED),
+                },
+                updatedTopology.getPartitions()
+        );
+    }
+
+    @Test
+    public void testUpdatePartitionsExtendsPartitionsList() {
+        final var topology = new ZkSubscriptionClient.Topology(
+                new Partition[] {
+                        new Partition("event-type-1", "0", null, null, Partition.State.ASSIGNED),
+                        new Partition("event-type-1", "1", null, null, Partition.State.ASSIGNED),
+                },
+                0);
+
+        final var updatedTopology = topology.withUpdatedPartitions(
+                new Partition[] {
+                        new Partition("event-type-2", "0", null, null, Partition.State.UNASSIGNED),
+                });
+
+        Assert.assertNotEquals(topology, updatedTopology);
+        Assert.assertArrayEquals(
+                new Partition[] {
+                        new Partition("event-type-1", "0", null, null, Partition.State.ASSIGNED),
+                        new Partition("event-type-1", "1", null, null, Partition.State.ASSIGNED),
+                        new Partition("event-type-2", "0", null, null, Partition.State.UNASSIGNED),
+                },
+                updatedTopology.getPartitions()
+        );
+    }
+
+    @Test
     public void testHashCalculationOrder() {
         Assert.assertEquals(
                 ZkSubscriptionClient.Topology.calculateSessionsHash(Stream.of("1", "2").collect(Collectors.toList())),

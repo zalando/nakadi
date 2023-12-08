@@ -106,7 +106,15 @@ public class TestStreamingClient {
 
     public TestStreamingClient start() {
         try {
-            return startInternal(false, new JsonConsumer());
+            return startInternal(false, new JsonConsumer((ignore) -> {}));
+        } catch (final InterruptedException ignore) {
+            throw new RuntimeException(ignore);
+        }
+    }
+
+    public TestStreamingClient start(final Consumer<StreamBatch> onBatch) {
+        try {
+            return startInternal(false, new JsonConsumer(onBatch));
         } catch (final InterruptedException ignore) {
             throw new RuntimeException(ignore);
         }
@@ -123,7 +131,7 @@ public class TestStreamingClient {
     public TestStreamingClient startWithAutocommit(final Consumer<List<StreamBatch>> batchesListener)
             throws InterruptedException {
         this.batchesListener = batchesListener;
-        final TestStreamingClient client = startInternal(true, new JsonConsumer());
+        final TestStreamingClient client = startInternal(true, new JsonConsumer((ignore)->{}));
         final Thread autocommitThread = new Thread(() -> {
             int oldIdx = 0;
             while (client.isRunning()) {
@@ -132,11 +140,12 @@ public class TestStreamingClient {
                     if (batch.getEvents() != null && !batch.getEvents().isEmpty()) {
                         try {
                             final SubscriptionCursor cursor = batch.getCursor();
+                            LOG.debug("Committing: {}", cursor);
                             final int responseCode = NakadiTestUtils.commitCursors(
                                     client.subscriptionId,
                                     Collections.singletonList(batch.getCursor()),
                                     client.getSessionId());
-                            LOG.info("Committing " + responseCode + ": " + cursor);
+                            LOG.info("Commit response code: {}", responseCode);
                         } catch (JsonProcessingException e) {
                             throw new RuntimeException(e);
                         }
@@ -156,11 +165,14 @@ public class TestStreamingClient {
     }
 
     public boolean close() {
+        LOG.debug("Closing...");
         if (running) {
+            LOG.debug("Set not running!");
             running = false;
             connection.disconnect();
             return true;
         } else {
+            LOG.debug("Already closed!");
             return false;
         }
     }
@@ -252,6 +264,13 @@ public class TestStreamingClient {
 
     private class JsonConsumer extends ConsumerThread {
 
+
+        private final Consumer<StreamBatch> onBatch;
+
+        JsonConsumer(final Consumer<StreamBatch> onBatch) {
+            this.onBatch = onBatch;
+        }
+
         @Override
         void addHeaders() {
         }
@@ -262,14 +281,18 @@ public class TestStreamingClient {
             final BufferedReader reader = new BufferedReader(new InputStreamReader(inputStream, Charsets.UTF_8));
             while (running) {
                 try {
+                    LOG.debug("Reading next line...");
                     final String line = reader.readLine();
                     if (line == null) {
+                        LOG.debug("Got null line, stopping.");
                         return;
                     }
+                    LOG.trace("Got line: {}", line);
                     final StreamBatch streamBatch = MAPPER.readValue(line, StreamBatch.class);
                     synchronized (jsonBatches) {
                         jsonBatches.add(streamBatch);
                     }
+                    onBatch.accept(streamBatch);
                 } catch (final SocketTimeoutException ste) {
                     LOG.info("No data in 10 ms, retrying read data");
                 }
