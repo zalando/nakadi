@@ -53,7 +53,7 @@ public class SubscriptionStreamerFactory {
     private final KafkaRecordDeserializer kafkaRecordDeserializer;
     private final FeatureToggleService featureToggleService;
     private final EventPublisher eventPublisher;
-    private final UUIDGenerator uuidGenerator ;
+    private final UUIDGenerator uuidGenerator;
     private final String deadLetterQueueEventTypeName;
 
     @Autowired

@@ -401,7 +401,7 @@ class StreamingState extends State {
 
         final JSONObject errorMessage =
                 new JSONObject()
-                .put("message", "skipped due to failed commits count: " + failedCommitsCount);
+                .put("message", "Nakadi Auto DLQ: skipped due to failed commits count: " + failedCommitsCount);
 
         final SubscriptionCursorWithoutToken cursor =
                 getContext().getCursorConverter().convertToNoToken(event.getPosition());
