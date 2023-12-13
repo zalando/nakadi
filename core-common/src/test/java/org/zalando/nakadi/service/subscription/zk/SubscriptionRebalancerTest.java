@@ -1,4 +1,4 @@
-package org.zalando.nakadi.service.subscription;
+package org.zalando.nakadi.service.subscription.zk;
 
 import com.google.common.collect.ImmutableList;
 import org.junit.Test;

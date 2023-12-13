@@ -72,6 +72,11 @@ public interface ZkSubscriptionClient extends Closeable {
     boolean isActiveSession(String streamId) throws ServiceTemporarilyUnavailableException;
 
     /**
+     * Re-assigns topology's partitions among sessions and updates the topology with new assignment.
+     */
+    void rebalanceSessions();
+
+    /**
      * Returns subscription {@link Topology} object from Zookeeper
      *
      * @return topology {@link Topology}

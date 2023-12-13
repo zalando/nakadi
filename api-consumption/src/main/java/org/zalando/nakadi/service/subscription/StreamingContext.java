@@ -16,7 +16,6 @@ import org.zalando.nakadi.domain.Subscription;
 import org.zalando.nakadi.domain.UnprocessableEventPolicy;
 import org.zalando.nakadi.exceptions.runtime.AccessDeniedException;
 import org.zalando.nakadi.exceptions.runtime.NakadiRuntimeException;
-import org.zalando.nakadi.exceptions.runtime.RebalanceConflictException;
 import org.zalando.nakadi.repository.kafka.KafkaRecordDeserializer;
 import org.zalando.nakadi.service.AuthorizationValidator;
 import org.zalando.nakadi.service.ConsumptionKpiCollector;
@@ -29,7 +28,6 @@ import org.zalando.nakadi.service.EventTypeChangeListener;
 import org.zalando.nakadi.service.FeatureToggleService;
 import org.zalando.nakadi.service.publishing.EventPublisher;
 import org.zalando.nakadi.service.subscription.autocommit.AutocommitSupport;
-import org.zalando.nakadi.service.subscription.model.Partition;
 import org.zalando.nakadi.service.subscription.model.Session;
 import org.zalando.nakadi.service.subscription.state.CleanupState;
 import org.zalando.nakadi.service.subscription.state.DummyState;
@@ -42,7 +40,6 @@ import org.zalando.nakadi.util.UUIDGenerator;
 
 import java.io.Closeable;
 import java.io.IOException;
-import java.util.Collection;
 import java.util.Comparator;
 import java.util.List;
 import java.util.Optional;
@@ -50,7 +47,6 @@ import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
-import java.util.function.BiFunction;
 
 public class StreamingContext implements SubscriptionStreamer {
 
@@ -67,7 +63,6 @@ public class StreamingContext implements SubscriptionStreamer {
     private final EventStreamChecks eventStreamChecks;
     private final ScheduledExecutorService timer;
     private final BlockingQueue<Runnable> taskQueue = new LinkedBlockingQueue<>();
-    private final BiFunction<Collection<Session>, Partition[], Partition[]> rebalancer;
     private final CursorConverter cursorConverter;
     private final Subscription subscription;
     private final MetricRegistry metricRegistry;
@@ -102,7 +97,6 @@ public class StreamingContext implements SubscriptionStreamer {
         this.out = builder.out;
         this.parameters = builder.parameters;
         this.session = builder.session;
-        this.rebalancer = builder.rebalancer;
         this.timer = builder.timer;
         this.zkClient = builder.zkClient;
         this.kafkaPollTimeout = builder.kafkaPollTimeout;
@@ -363,16 +357,7 @@ public class StreamingContext implements SubscriptionStreamer {
         if (null != sessionListSubscription) {
             // This call is needed to renew subscription for session list changes.
             sessionListSubscription.getData();
-            zkClient.updateTopology(topology -> {
-                try {
-                    return rebalancer.apply(
-                            zkClient.listSessions(),
-                            topology.getPartitions());
-                } catch (final RebalanceConflictException e) {
-                    LOG.warn("failed to rebalance partitions: {}", e.getMessage(), e);
-                    return new Partition[0];
-                }
-            });
+            zkClient.rebalanceSessions();
         }
     }
 
@@ -437,7 +422,6 @@ public class StreamingContext implements SubscriptionStreamer {
         private Session session;
         private ScheduledExecutorService timer;
         private ZkSubscriptionClient zkClient;
-        private BiFunction<Collection<Session>, Partition[], Partition[]> rebalancer;
         private long kafkaPollTimeout;
         private CursorTokenService cursorTokenService;
         private ObjectMapper objectMapper;
@@ -502,11 +486,6 @@ public class StreamingContext implements SubscriptionStreamer {
 
         public Builder setZkClient(final ZkSubscriptionClient zkClient) {
             this.zkClient = zkClient;
-            return this;
-        }
-
-        public Builder setRebalancer(final BiFunction<Collection<Session>, Partition[], Partition[]> rebalancer) {
-            this.rebalancer = rebalancer;
             return this;
         }
 
