@@ -30,7 +30,6 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
-import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
 
 @Service
@@ -167,13 +166,10 @@ public class DlqRedriveEventTypeAttachmentJob {
                 return newPartitions;
         });
 
-        // shortcut to enable new partitions for streaming, otherwise they will stay unassigned. 
-        // the better way is to rebalance them.
         if (hasNewPartitions[0]) {
-            client.closeSubscriptionStreams(
-                    () -> LOG.info("Subscription `{}` streams were closed due to addition of " +
-                                   "Nakadi DLQ Event Type", subscription.getId()),
-                    TimeUnit.SECONDS.toMillis(nakadiSettings.getMaxCommitTimeout()));
+            LOG.info("Rebalancing `{}` subscription's sessions due to addition of " +
+                    "Nakadi DLQ Event Type", subscription.getId());
+            client.rebalanceSessions();
         }
     }
 
