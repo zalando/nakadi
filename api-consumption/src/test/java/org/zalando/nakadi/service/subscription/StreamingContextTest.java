@@ -87,7 +87,6 @@ public class StreamingContextTest {
                 .setSubscription(new Subscription())
                 .setTimer(null)
                 .setZkClient(zkClient)
-                .setRebalancer(null)
                 .setKafkaPollTimeout(0)
                 .setCursorTokenService(null)
                 .setObjectMapper(null)

@@ -115,7 +115,6 @@ public class SubscriptionStreamerFactory {
                 .setSession(session)
                 .setTimer(executorService)
                 .setZkClient(zkClient)
-                .setRebalancer(new SubscriptionRebalancer())
                 .setKafkaPollTimeout(kafkaPollTimeout)
                 .setCursorTokenService(cursorTokenService)
                 .setObjectMapper(objectMapper)

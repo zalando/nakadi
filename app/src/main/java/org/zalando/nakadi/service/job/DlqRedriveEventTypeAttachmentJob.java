@@ -30,7 +30,6 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
-import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
 
 @Service
@@ -147,33 +146,31 @@ public class DlqRedriveEventTypeAttachmentJob {
             final Subscription subscription,
             final List<Partition> unassignedDlqPartitions) throws Exception {
 
-        final ZkSubscriptionClient client = subscriptionClientFactory.createClient(subscription);
+        try (ZkSubscriptionClient client = subscriptionClientFactory.createClient(subscription)) {
 
-        // idempotent, does not overwrite existing offsets
-        client.createOffsetZNodes(
-                unassignedDlqPartitions.stream()
-                .map(p -> p.getPartition())
-                .map(p -> new Cursor(p, Cursor.BEFORE_OLDEST_OFFSET))
-                .map(c -> cursorConverter.convert(dlqRedriveEventTypeName, c))
-                .map(nc -> cursorConverter.convertToNoToken(nc))
-                .collect(Collectors.toList()));
+            // idempotent, does not overwrite existing offsets
+            client.createOffsetZNodes(
+                    unassignedDlqPartitions.stream()
+                            .map(p -> p.getPartition())
+                            .map(p -> new Cursor(p, Cursor.BEFORE_OLDEST_OFFSET))
+                            .map(c -> cursorConverter.convert(dlqRedriveEventTypeName, c))
+                            .map(nc -> cursorConverter.convertToNoToken(nc))
+                            .collect(Collectors.toList()));
 
-        final boolean[] hasNewPartitions = {false};
-        client.updateTopology(topology -> {
+            final boolean[] hasNewPartitions = {false};
+            client.updateTopology(topology -> {
                 final var newPartitions = selectMissingPartitions(topology.getPartitions(), unassignedDlqPartitions);
                 if (!hasNewPartitions[0] && newPartitions.length != 0) {
                     hasNewPartitions[0] = true;
                 }
                 return newPartitions;
-        });
+            });
 
-        // shortcut to enable new partitions for streaming, otherwise they will stay unassigned. 
-        // the better way is to rebalance them.
-        if (hasNewPartitions[0]) {
-            client.closeSubscriptionStreams(
-                    () -> LOG.info("Subscription `{}` streams were closed due to addition of " +
-                                   "Nakadi DLQ Event Type", subscription.getId()),
-                    TimeUnit.SECONDS.toMillis(nakadiSettings.getMaxCommitTimeout()));
+            if (hasNewPartitions[0]) {
+                LOG.info("Rebalancing `{}` subscription's sessions due to addition of " +
+                        "Nakadi DLQ Event Type", subscription.getId());
+                client.rebalanceSessions();
+            }
         }
     }
 

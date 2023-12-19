@@ -13,6 +13,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.zalando.nakadi.domain.EventTypePartition;
 import org.zalando.nakadi.exceptions.runtime.NakadiRuntimeException;
+import org.zalando.nakadi.exceptions.runtime.RebalanceConflictException;
 import org.zalando.nakadi.exceptions.runtime.ServiceTemporarilyUnavailableException;
 import org.zalando.nakadi.exceptions.runtime.ZookeeperException;
 import org.zalando.nakadi.repository.zookeeper.ZooKeeperHolder;
@@ -140,6 +141,21 @@ public class NewZkSubscriptionClient extends AbstractZkSubscriptionClient {
                 new RetryForSpecifiedCountStrategy()
                         .withMaxNumberOfRetries(10)
                         .withExceptionsThatForceRetry(KeeperException.BadVersionException.class));
+    }
+
+    @Override
+    public void rebalanceSessions() {
+        updateTopology(topology -> {
+            final var rebalancer = new SubscriptionRebalancer();
+            try {
+                return rebalancer.apply(
+                        listSessions(),
+                        topology.getPartitions());
+            } catch (final RebalanceConflictException e) {
+                LOG.warn("failed to rebalance partitions: {}", e.getMessage(), e);
+                return new Partition[0];
+            }
+        });
     }
 
     @Override
