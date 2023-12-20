@@ -48,7 +48,7 @@ services:
     - "2181:2181"
 
   kafka:
-    image: bitnami/kafka:3.3
+    image: bitnami/kafka:3.6
     ports:
     - "29092:29092"
     - "9092:9092"
