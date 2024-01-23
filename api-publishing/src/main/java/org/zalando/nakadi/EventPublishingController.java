@@ -8,6 +8,7 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestHeader;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 import org.zalando.nakadi.cache.EventTypeCache;
@@ -93,11 +94,13 @@ public class EventPublishingController {
     public ResponseEntity postJsonEvents(@PathVariable final String eventTypeName,
                                          @RequestBody final String eventsAsString,
                                          final HttpServletRequest request,
-                                         final Client client)
+                                         final Client client,
+                                         final @RequestHeader(value = "X-TIMEOUT", required = false, defaultValue = "0")
+                                             int publishTimeout)
             throws AccessDeniedException, BlockedException, ServiceTemporarilyUnavailableException,
             InternalNakadiException, EventTypeTimeoutException, NoSuchEventTypeException {
-        return postEventsWithMetrics(eventTypeName, eventsAsString,
-                toHeaderTagMap(request.getHeader(X_CONSUMER_TAG)), request, client, false);
+        return postEventsWithMetrics(PublishRequest.asPublish(eventTypeName, eventsAsString,
+                client, toHeaderTagMap(request.getHeader(X_CONSUMER_TAG)), publishTimeout));
     }
 
     @RequestMapping(
@@ -108,15 +111,18 @@ public class EventPublishingController {
     )
     public ResponseEntity postBinaryEvents(@PathVariable final String eventTypeName,
                                            final HttpServletRequest request,
-                                           final Client client)
+                                           final Client client,
+                                           final @RequestHeader(value = "X-TIMEOUT",
+                                                   required = false, defaultValue = "0")
+                                               int publishTimeout)
             throws AccessDeniedException, BlockedException, ServiceTemporarilyUnavailableException,
             InternalNakadiException, EventTypeTimeoutException, NoSuchEventTypeException {
 
         // TODO: check that event type schema type is AVRO!
 
         try {
-            return postBinaryEvents(eventTypeName, request.getInputStream(),
-                    toHeaderTagMap(request.getHeader(X_CONSUMER_TAG)), client, false);
+            return postBinaryEvents(PublishRequest.asPublish(eventTypeName, request.getInputStream(),
+                    client, toHeaderTagMap(request.getHeader(X_CONSUMER_TAG)), publishTimeout));
         } catch (IOException e) {
             throw new InternalNakadiException("failed to parse batch", e);
         }
@@ -134,46 +140,46 @@ public class EventPublishingController {
             throws AccessDeniedException, BlockedException, ServiceTemporarilyUnavailableException,
             InternalNakadiException, EventTypeTimeoutException, NoSuchEventTypeException {
         try {
-            return postBinaryEvents(eventTypeName, request.getInputStream(), null, client, true);
+            return postBinaryEvents(PublishRequest.asDelete(eventTypeName, request.getInputStream(),
+                    client));
         } catch (IOException e) {
             throw new InternalNakadiException("failed to parse batch", e);
         }
     }
 
 
-    private ResponseEntity postBinaryEvents(final String eventTypeName,
-                                            final InputStream batch,
-                                            final Map<HeaderTag, String> consumerTags,
-                                            final Client client,
-                                            final boolean delete) {
+    private ResponseEntity postBinaryEvents(final PublishRequest<? extends InputStream> request) {
         TracingService.setOperationName("publish_events")
-                .setTag("event_type", eventTypeName)
+                .setTag("event_type", request.getEventTypeName())
                 .setTag("сontent-type", "application/avro-binary")
-                .setTag(Tags.SPAN_KIND_PRODUCER, client.getClientId());
+                .setTag(Tags.SPAN_KIND_PRODUCER, request.getClient().getClientId());
 
-        if (blacklistService.isProductionBlocked(eventTypeName, client.getClientId())) {
+        if (blacklistService.isProductionBlocked(request.getEventTypeName(),
+                request.getClient().getClientId())) {
             throw new BlockedException("Application or event type is blocked");
         }
 
-        final EventType eventType = eventTypeCache.getEventType(eventTypeName);
+        final EventType eventType = eventTypeCache.getEventType(request.getEventTypeName());
 
-        if (delete && eventType.getCleanupPolicy() == CleanupPolicy.DELETE) {
+        if (request.isDeleteRequest() &&
+                eventType.getCleanupPolicy() == CleanupPolicy.DELETE) {
             throw new InvalidEventTypeException("It is not allowed to delete events from non compacted event type");
         }
 
         authValidator.authorizeEventTypeWrite(eventType);
 
-        final EventTypeMetrics eventTypeMetrics = eventTypeMetricRegistry.metricsFor(eventTypeName);
+        final EventTypeMetrics eventTypeMetrics = eventTypeMetricRegistry.metricsFor(request.getEventTypeName());
         try {
             final long startingNanos = System.nanoTime();
             try {
-                final CountingInputStream countingInputStream = new CountingInputStream(batch);
+                final CountingInputStream countingInputStream = new CountingInputStream(request.getEventsRaw());
                 final List<NakadiRecord> nakadiRecords = nakadiRecordMapper.fromBytesBatch(countingInputStream);
                 final List<NakadiRecordResult> recordResults;
-                if (delete) {
+                if (request.isDeleteRequest()) {
                     recordResults = binaryPublisher.delete(nakadiRecords, eventType);
                 } else {
-                    recordResults = binaryPublisher.publish(eventType, nakadiRecords, consumerTags);
+                    recordResults = binaryPublisher.publish(eventType, nakadiRecords,
+                            request.getConsumerTags(), request.getDesiredPublishingTimeout());
                 }
                 if (recordResults.isEmpty()) {
                     throw new InternalNakadiException("unexpected empty record result list, " +
@@ -188,7 +194,8 @@ public class EventPublishingController {
                 TracingService.setTag("slo_bucket", TracingService.getSLOBucketName(totalSizeBytes));
 
                 reportMetrics(eventTypeMetrics, result, totalSizeBytes, eventCount);
-                reportSLOs(startingNanos, totalSizeBytes, eventCount, result, eventTypeName, client);
+                reportSLOs(startingNanos, totalSizeBytes, eventCount, result,
+                        request.getEventTypeName(), request.getClient());
 
                 if (result.getStatus() == EventPublishingStatus.FAILED) {
                     TracingService.setErrorFlag();
@@ -214,26 +221,22 @@ public class EventPublishingController {
                                        @RequestBody final String eventsAsString,
                                        final HttpServletRequest request,
                                        final Client client) {
-        return postEventsWithMetrics(eventTypeName, eventsAsString, null, request, client, true);
+        return postEventsWithMetrics(PublishRequest.asDelete(eventTypeName, eventsAsString,
+                client));
     }
 
-    private ResponseEntity postEventsWithMetrics(final String eventTypeName,
-                                                 final String eventsAsString,
-                                                 final Map<HeaderTag, String> consumerTags,
-                                                 final HttpServletRequest request,
-                                                 final Client client,
-                                                 final boolean delete) {
+    private ResponseEntity postEventsWithMetrics(final PublishRequest<String> request) {
         TracingService.setOperationName("publish_events")
-                .setTag("event_type", eventTypeName)
-                .setTag(Tags.SPAN_KIND_PRODUCER, client.getClientId());
+                .setTag("event_type", request.getEventTypeName())
+                .setTag(Tags.SPAN_KIND_PRODUCER, request.getClient().getClientId());
 
-        if (blacklistService.isProductionBlocked(eventTypeName, client.getClientId())) {
+        if (blacklistService.
+                isProductionBlocked(request.getEventTypeName(), request.getClient().getClientId())) {
             throw new BlockedException("Application or event type is blocked");
         }
-        final EventTypeMetrics eventTypeMetrics = eventTypeMetricRegistry.metricsFor(eventTypeName);
+        final EventTypeMetrics eventTypeMetrics = eventTypeMetricRegistry.metricsFor(request.getEventTypeName());
         try {
-            final ResponseEntity response = postEventInternal(
-                    eventTypeName, eventsAsString, consumerTags, eventTypeMetrics, client, request, delete);
+            final ResponseEntity response = postEventInternal(request, eventTypeMetrics);
             eventTypeMetrics.incrementResponseCount(response.getStatusCode().value());
             return response;
         } catch (final NoSuchEventTypeException exception) {
@@ -245,32 +248,29 @@ public class EventPublishingController {
         }
     }
 
-    private ResponseEntity postEventInternal(final String eventTypeName,
-                                             final String eventsAsString,
-                                             final Map<HeaderTag, String> consumerTags,
-                                             final EventTypeMetrics eventTypeMetrics,
-                                             final Client client,
-                                             final HttpServletRequest request,
-                                             final boolean delete)
+    private ResponseEntity postEventInternal(final PublishRequest<String> request,
+                                             final EventTypeMetrics eventTypeMetrics)
             throws AccessDeniedException, ServiceTemporarilyUnavailableException, InternalNakadiException,
             EventTypeTimeoutException, NoSuchEventTypeException {
         final long startingNanos = System.nanoTime();
         try {
             final EventPublishResult result;
 
-            final int totalSizeBytes = eventsAsString.getBytes(Charsets.UTF_8).length;
+            final int totalSizeBytes = request.getEventsRaw().getBytes(Charsets.UTF_8).length;
             TracingService.setTag("slo_bucket", TracingService.getSLOBucketName(totalSizeBytes));
 
-            if (delete) {
-                result = publisher.delete(eventsAsString, eventTypeName);
+            if (request.isDeleteRequest()) {
+                result = publisher.delete(request.getEventsRaw(), request.getEventTypeName());
             } else {
-                result = publisher.publish(eventsAsString, eventTypeName, consumerTags);
+                result = publisher.publish(request.getEventsRaw(), request.getEventTypeName(),
+                        request.getConsumerTags(), request.getDesiredPublishingTimeout());
             }
             // FIXME: there should be a more direct way to get the input batch size
             final int eventCount = result.getResponses().size();
 
             reportMetrics(eventTypeMetrics, result, totalSizeBytes, eventCount);
-            reportSLOs(startingNanos, totalSizeBytes, eventCount, result, eventTypeName, client);
+            reportSLOs(startingNanos, totalSizeBytes, eventCount, result,
+                    request.getEventTypeName(), request.getClient());
 
             TracingService.setTag("number_of_events", eventCount);
 

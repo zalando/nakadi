@@ -19,6 +19,7 @@ import org.zalando.nakadi.exceptions.runtime.ForbiddenOperationException;
 import org.zalando.nakadi.exceptions.runtime.IllegalClientIdException;
 import org.zalando.nakadi.exceptions.runtime.InternalNakadiException;
 import org.zalando.nakadi.exceptions.runtime.InvalidLimitException;
+import org.zalando.nakadi.exceptions.runtime.InvalidPublishingParamException;
 import org.zalando.nakadi.exceptions.runtime.InvalidVersionNumberException;
 import org.zalando.nakadi.exceptions.runtime.NakadiBaseException;
 import org.zalando.nakadi.exceptions.runtime.NakadiRuntimeException;
@@ -120,7 +121,8 @@ public class NakadiProblemExceptionHandler implements ProblemHandling {
         return create(Problem.valueOf(INTERNAL_SERVER_ERROR, exception.getMessage()), request);
     }
 
-    @ExceptionHandler({InvalidLimitException.class, InvalidVersionNumberException.class})
+    @ExceptionHandler({InvalidLimitException.class, InvalidVersionNumberException.class,
+            InvalidPublishingParamException.class})
     public ResponseEntity<Problem> handleBadRequestResponses(final NakadiBaseException exception,
                                                              final NativeWebRequest request) {
         LOG.debug(exception.getMessage());
