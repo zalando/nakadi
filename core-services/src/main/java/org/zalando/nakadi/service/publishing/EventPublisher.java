@@ -102,7 +102,8 @@ public class EventPublisher {
 
     public EventPublishResult publish(final String events,
                                       final String eventTypeName,
-                                      final Map<HeaderTag, String> consumerTags)
+                                      final Map<HeaderTag, String> consumerTags,
+                                      final Optional<Integer> desiredTimeout)
             throws NoSuchEventTypeException,
             InternalNakadiException,
             EnrichmentException,
@@ -111,7 +112,7 @@ public class EventPublisher {
             PublishEventOwnershipException,
             ServiceTemporarilyUnavailableException,
             PartitioningException {
-        return processInternal(events, eventTypeName, consumerTags, true, false);
+        return processInternal(events, eventTypeName, consumerTags, desiredTimeout, true, false);
     }
 
     // no auth checks
@@ -126,7 +127,8 @@ public class EventPublisher {
             PublishEventOwnershipException,
             ServiceTemporarilyUnavailableException,
             PartitioningException {
-        return processInternal(events, eventTypeName, consumerTags, false, false);
+        return processInternal(events, eventTypeName, consumerTags, Optional.empty(),
+                false, false);
     }
 
     public EventPublishResult delete(final String events, final String eventTypeName)
@@ -138,12 +140,15 @@ public class EventPublisher {
             PublishEventOwnershipException,
             ServiceTemporarilyUnavailableException,
             PartitioningException {
-        return processInternal(events, eventTypeName, null, true, true);
+
+        return processInternal(events, eventTypeName, null, Optional.empty(),
+                true, true);
     }
 
     EventPublishResult processInternal(final String events,
                                        final String eventTypeName,
                                        final Map<HeaderTag, String> consumerTags,
+                                       final Optional<Integer> publishTimeout,
                                        final boolean useAuthz,
                                        final boolean delete)
             throws NoSuchEventTypeException, InternalNakadiException, EventTypeTimeoutException,
@@ -166,7 +171,7 @@ public class EventPublisher {
             if (!delete) {
                 enrich(batch, eventType);
             }
-            submit(batch, eventType, consumerTags, delete);
+            submit(batch, eventType, consumerTags, publishTimeout, delete);
 
             return ok(batch);
         } catch (final EventValidationException e) {
@@ -317,7 +322,8 @@ public class EventPublisher {
 
     private void submit(
             final List<BatchItem> batch, final EventType eventType,
-            final Map<HeaderTag, String> consumerTags, final boolean delete)
+            final Map<HeaderTag, String> consumerTags,
+            final Optional<Integer> publishTimeout, final boolean delete)
         throws EventPublishingException, InternalNakadiException {
         final Timeline activeTimeline = timelineService.getActiveTimeline(eventType);
         final String topic = activeTimeline.getTopic();
@@ -335,7 +341,7 @@ public class EventPublisher {
                 .withTag(Tags.MESSAGE_BUS_DESTINATION.getKey(), topic)
                 .start();
         try (Closeable ignored = TracingService.activateSpan(publishingSpan)) {
-            topicRepository.syncPostBatch(topic, batch, eventType.getName(), consumerTags, delete);
+            topicRepository.syncPostBatch(topic, batch, eventType.getName(), consumerTags, publishTimeout, delete);
         } catch (final EventPublishingException epe) {
             publishingSpan.log(epe.getMessage());
             throw epe;

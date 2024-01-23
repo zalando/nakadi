@@ -2,6 +2,7 @@ package org.zalando.nakadi.repository.kafka;
 
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.Lists;
+import org.apache.avro.specific.SpecificRecord;
 import org.apache.kafka.clients.consumer.Consumer;
 import org.apache.kafka.clients.producer.BufferExhaustedException;
 import org.apache.kafka.clients.producer.Callback;
@@ -17,6 +18,7 @@ import org.mockito.ArgumentCaptor;
 import org.mockito.Captor;
 import org.mockito.Mockito;
 import org.mockito.MockitoAnnotations;
+import org.springframework.core.io.DefaultResourceLoader;
 import org.zalando.nakadi.config.NakadiSettings;
 import org.zalando.nakadi.domain.BatchItem;
 import org.zalando.nakadi.domain.HeaderTag;
@@ -33,7 +35,10 @@ import org.zalando.nakadi.domain.Timeline;
 import org.zalando.nakadi.domain.TopicPartition;
 import org.zalando.nakadi.exceptions.runtime.EventPublishingException;
 import org.zalando.nakadi.exceptions.runtime.InvalidCursorException;
+import org.zalando.nakadi.kpi.event.NakadiAccessLog;
 import org.zalando.nakadi.mapper.NakadiRecordMapper;
+import org.zalando.nakadi.service.LocalSchemaRegistry;
+import org.zalando.nakadi.util.MDCUtils;
 import org.zalando.nakadi.utils.TestUtils;
 import org.zalando.nakadi.view.Cursor;
 
@@ -46,6 +51,7 @@ import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.Future;
@@ -57,6 +63,7 @@ import static java.util.stream.Collectors.toList;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.containsInAnyOrder;
 import static org.hamcrest.Matchers.equalTo;
+import static org.hamcrest.Matchers.greaterThanOrEqualTo;
 import static org.hamcrest.Matchers.is;
 import static org.junit.Assert.fail;
 import static org.mockito.ArgumentMatchers.any;
@@ -153,7 +160,8 @@ public class KafkaTopicRepositoryTest {
                 new PartitionInfo(myTopic, 1, NODE, null, null)));
 
         try {
-            kafkaTopicRepository.syncPostBatch(myTopic, batch, "random", null, false);
+            kafkaTopicRepository.syncPostBatch(myTopic, batch, "random", null,
+                    Optional.empty(),  false);
             fail();
         } catch (final EventPublishingException e) {
             final ProducerRecord<byte[], byte[]> recordSent = captureProducerRecordSent();
@@ -181,7 +189,8 @@ public class KafkaTopicRepositoryTest {
                 new PartitionInfo(myTopic, 1, NODE, null, null)));
 
         try {
-            kafkaTopicRepository.syncPostBatch(myTopic, batch, "random", consumerTags, false);
+            kafkaTopicRepository.syncPostBatch(myTopic, batch, "random", consumerTags,
+                    Optional.empty(), false);
             fail();
         } catch (final EventPublishingException e) {
             final ProducerRecord<byte[], byte[]> recordSent = captureProducerRecordSent();
@@ -309,6 +318,89 @@ public class KafkaTopicRepositoryTest {
     }
 
     @Test
+    public void whenPostEventWithCustomTimeOutThenUpdateItemStatusAvro() throws Exception {
+        final org.springframework.core.io.Resource eventTypeRes =
+                new DefaultResourceLoader().getResource("avro-schema/");
+        final LocalSchemaRegistry localSchemaRegistry = new LocalSchemaRegistry(eventTypeRes);
+       final Instant now = Instant.now();
+        final NakadiMetadata metadata = new NakadiMetadata();
+        metadata.setOccurredAt(now);
+        metadata.setEid("9702cf96-9bdb-48b7-9f4c-92643cb6d9fc");
+        metadata.setFlowId(MDCUtils.getFlowId());
+        metadata.setEventType("nakadi.access.log");
+        metadata.setPartition("0");
+        metadata.setReceivedAt(now);
+        metadata.setSchemaVersion("1.0.0");
+        metadata.setPublishedBy("adyachkov");
+
+        final SpecificRecord event = NakadiAccessLog.newBuilder()
+                .setMethod("POST")
+                .setPath("/event-types")
+                .setQuery("")
+                .setUserAgent("test-user-agent")
+                .setApp("nakadi")
+                .setAppHashed("hashed-app")
+                .setContentEncoding("--")
+                .setAcceptEncoding("-")
+                .setStatusCode(201)
+                .setResponseTimeMs(10)
+                .setRequestLength(123)
+                .setResponseLength(321)
+                .build();
+
+        final NakadiRecord nakadiRecord = new NakadiRecordMapper(localSchemaRegistry)
+                .fromAvroRecord(metadata, event);
+
+        when(nakadiSettings.getKafkaSendTimeoutMs()).thenReturn((long) 30000);
+        Mockito
+                .doReturn(mock(Future.class))
+                .when(kafkaProducer)
+                .send(any(), any());
+
+        final var currentTime = System.currentTimeMillis();
+        final long customTimeoutMs = 200;
+        final var result = kafkaTopicRepository.sendEvents(EXPECTED_PRODUCER_RECORD.topic(),
+                List.of(nakadiRecord), null,
+                Optional.of((int) customTimeoutMs));
+        final var elapsedTime = System.currentTimeMillis() - currentTime;
+        assertThat(elapsedTime, greaterThanOrEqualTo(customTimeoutMs));
+        assertThat(result.get(0).getStatus().toString(), equalTo("ABORTED"));
+        assertThat(result.get(0).getException().getMessage(),
+                equalTo("timeout waiting for events to be sent to kafka"));
+    }
+
+    @Test
+    public void whenPostEventWithCustomTimeOutThenUpdateItemStatus() {
+        final long customTimeOutMs = 200;
+        final BatchItem item = new BatchItem(
+                "{}",
+                BatchItem.EmptyInjectionConfiguration.build(1, true),
+                new BatchItem.InjectionConfiguration[BatchItem.Injection.values().length],
+                Collections.emptyList());
+        item.setPartition("1");
+        final List<BatchItem> batch = new ArrayList<>();
+        batch.add(item);
+
+        when(nakadiSettings.getKafkaSendTimeoutMs()).thenReturn((long) 30000);
+        Mockito
+                .doReturn(mock(Future.class))
+                .when(kafkaProducer)
+                .send(any(), any());
+
+
+        final var currentTime = System.currentTimeMillis();
+        try {
+            kafkaTopicRepository.syncPostBatch(EXPECTED_PRODUCER_RECORD.topic(), batch, "random", null,
+                    Optional.of((int) customTimeOutMs), false);
+        } catch (final EventPublishingException e) {
+            final var elapsedTime = System.currentTimeMillis() - currentTime;
+            assertThat(elapsedTime, greaterThanOrEqualTo(customTimeOutMs));
+            assertThat(item.getResponse().getPublishingStatus(), equalTo(EventPublishingStatus.FAILED));
+            assertThat(item.getResponse().getDetail(), equalTo("timed out"));
+        }
+    }
+
+    @Test
     public void whenPostEventTimesOutThenUpdateItemStatus() {
         final BatchItem item = new BatchItem(
                 "{}",
@@ -328,7 +420,8 @@ public class KafkaTopicRepositoryTest {
                 .send(any(), any());
 
         try {
-            kafkaTopicRepository.syncPostBatch(EXPECTED_PRODUCER_RECORD.topic(), batch, "random", null, false);
+            kafkaTopicRepository.syncPostBatch(EXPECTED_PRODUCER_RECORD.topic(), batch, "random", null,
+                    Optional.empty(), false);
             fail();
         } catch (final EventPublishingException e) {
             assertThat(item.getResponse().getPublishingStatus(), equalTo(EventPublishingStatus.FAILED));
@@ -355,7 +448,8 @@ public class KafkaTopicRepositoryTest {
                 .send(any(), any());
 
         try {
-            kafkaTopicRepository.syncPostBatch(EXPECTED_PRODUCER_RECORD.topic(), batch, "random", null, false);
+            kafkaTopicRepository.syncPostBatch(EXPECTED_PRODUCER_RECORD.topic(), batch, "random", null,
+                    Optional.empty(), false);
             fail();
         } catch (final EventPublishingException e) {
             assertThat(item.getResponse().getPublishingStatus(), equalTo(EventPublishingStatus.FAILED));
@@ -392,7 +486,8 @@ public class KafkaTopicRepositoryTest {
         });
 
         try {
-            kafkaTopicRepository.syncPostBatch(EXPECTED_PRODUCER_RECORD.topic(), batch, "random", null, false);
+            kafkaTopicRepository.syncPostBatch(EXPECTED_PRODUCER_RECORD.topic(), batch, "random", null,
+                    Optional.empty(), false);
             fail();
         } catch (final EventPublishingException e) {
             assertThat(firstItem.getResponse().getPublishingStatus(), equalTo(EventPublishingStatus.SUBMITTED));
@@ -447,7 +542,8 @@ public class KafkaTopicRepositoryTest {
             return null;
         });
 
-        final List<NakadiRecordResult> result = kafkaTopicRepository.sendEvents(topic, nakadiRecords, null);
+        final List<NakadiRecordResult> result = kafkaTopicRepository.sendEvents(topic, nakadiRecords,
+                null, Optional.empty());
         Assert.assertEquals(3, result.size());
         result.forEach(r -> Assert.assertEquals(NakadiRecordResult.Status.SUCCEEDED, r.getStatus()));
     }
@@ -475,7 +571,7 @@ public class KafkaTopicRepositoryTest {
         });
 
         final List<NakadiRecordResult> result =
-                kafkaTopicRepository.sendEvents(topic, nakadiRecords, null);
+                kafkaTopicRepository.sendEvents(topic, nakadiRecords, null, Optional.empty());
         Assert.assertEquals(4, result.size());
         Assert.assertEquals(exception, result.get(0).getException());
         Assert.assertEquals(NakadiRecordResult.Status.FAILED, result.get(0).getStatus());
@@ -509,7 +605,7 @@ public class KafkaTopicRepositoryTest {
         });
 
         final List<NakadiRecordResult> result =
-                kafkaTopicRepository.sendEvents(topic, nakadiRecords, null);
+                kafkaTopicRepository.sendEvents(topic, nakadiRecords, null, Optional.empty());
         Assert.assertEquals(4, result.size());
         Assert.assertEquals(null, result.get(0).getException());
         Assert.assertEquals(NakadiRecordResult.Status.SUCCEEDED, result.get(0).getStatus());

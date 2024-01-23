@@ -51,11 +51,12 @@ public interface TopicRepository {
     boolean topicExists(String topic) throws TopicRepositoryException;
 
     void syncPostBatch(String topicId, List<BatchItem> batch, String eventTypeName,
-                       Map<HeaderTag, String> consumerTags, boolean delete)
+                       Map<HeaderTag, String> consumerTags, Optional<Integer> publishTimeout, boolean delete)
             throws EventPublishingException;
 
     List<NakadiRecordResult> sendEvents(String topic, List<NakadiRecord> nakadiRecords,
-                                        Map<HeaderTag, String> consumerTags);
+                                        Map<HeaderTag, String> consumerTags,
+                                        Optional<Integer> publishTimeout);
 
     void repartition(String topic, int partitionsNumber) throws CannotAddPartitionToTopicException,
             TopicConfigException;

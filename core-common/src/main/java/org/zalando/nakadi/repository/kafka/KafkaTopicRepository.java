@@ -291,7 +291,9 @@ public class KafkaTopicRepository implements TopicRepository {
     @Override
     public void syncPostBatch(
             final String topicId, final List<BatchItem> batch, final String eventType,
-            final Map<HeaderTag, String> consumerTags, final boolean delete)
+            final Map<HeaderTag, String> consumerTags,
+            final Optional<Integer> publishTimeout,
+            final boolean delete)
             throws EventPublishingException {
         try {
             final Map<BatchItem, CompletableFuture<Exception>> sendFutures = new HashMap<>();
@@ -315,7 +317,7 @@ public class KafkaTopicRepository implements TopicRepository {
             final Tracer.SpanBuilder waitForBatchSentSpan = TracingService.buildNewSpan("wait_for_batch_sent")
                     .withTag(Tags.MESSAGE_BUS_DESTINATION.getKey(), topicId);
             try (Closeable ignore = TracingService.withActiveSpan(waitForBatchSentSpan)) {
-                multiFuture.get(createSendTimeout(), TimeUnit.MILLISECONDS);
+                multiFuture.get(createSendWaitTimeout(publishTimeout), TimeUnit.MILLISECONDS);
             } catch (final IOException io) {
                 throw new InternalNakadiException("Error closing active span scope", io);
             }
@@ -343,8 +345,10 @@ public class KafkaTopicRepository implements TopicRepository {
         return String.format("%s:%s", topicId, partition);
     }
 
-    private long createSendTimeout() {
-        return nakadiSettings.getKafkaSendTimeoutMs() + kafkaSettings.getRequestTimeoutMs();
+    private long createSendWaitTimeout(final Optional<Integer> customTimeout) {
+        final long timeOut = nakadiSettings.getKafkaSendTimeoutMs() + kafkaSettings.getRequestTimeoutMs();
+        return customTimeout.filter(t -> t <= timeOut).
+                map(Integer::longValue).orElse(timeOut);
     }
 
     private void failUnpublished(final String topicId, final String eventType, final List<BatchItem> batch,
@@ -405,7 +409,8 @@ public class KafkaTopicRepository implements TopicRepository {
      */
     public List<NakadiRecordResult> sendEvents(final String topic,
                                                final List<NakadiRecord> nakadiRecords,
-                                               final Map<HeaderTag, String> consumerTags) {
+                                               final Map<HeaderTag, String> consumerTags,
+                                               final Optional<Integer> publishTimeout) {
         final CountDownLatch latch = new CountDownLatch(nakadiRecords.size());
         final Map<NakadiRecord, NakadiRecordResult> responses = new ConcurrentHashMap<>();
         try {
@@ -417,7 +422,7 @@ public class KafkaTopicRepository implements TopicRepository {
                     nakadiRecord.getOwner().serialize(producerRecord);
                 }
 
-                if( null != consumerTags) {
+                if (null != consumerTags) {
                     KafkaHeaderTagSerde.serialize(consumerTags, producerRecord);
                 }
 
@@ -444,7 +449,9 @@ public class KafkaTopicRepository implements TopicRepository {
                     }
                 }));
             }
-            final boolean recordsPublished = latch.await(createSendTimeout(), TimeUnit.MILLISECONDS);
+
+            final boolean recordsPublished = latch.
+                    await(createSendWaitTimeout(publishTimeout), TimeUnit.MILLISECONDS);
             return prepareResponse(nakadiRecords, responses,
                     recordsPublished ? null : new TimeoutException("timeout waiting for events to be sent to kafka"));
         } catch (final InterruptException | InterruptedException e) {
@@ -458,6 +465,7 @@ public class KafkaTopicRepository implements TopicRepository {
             return prepareResponse(nakadiRecords, responses, ioe);
         }
     }
+
 
     private List<NakadiRecordResult> prepareResponse(
             final List<NakadiRecord> nakadiRecords,

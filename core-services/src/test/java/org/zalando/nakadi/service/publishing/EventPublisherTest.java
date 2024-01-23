@@ -122,10 +122,12 @@ public class EventPublisherTest {
 
         mockSuccessfulValidation(eventType);
 
-        final EventPublishResult result = publisher.publish(batch.toString(), eventType.getName(), null);
+        final EventPublishResult result = publisher.publish(batch.toString(), eventType.getName(), null,
+                Optional.empty());
 
         assertThat(result.getStatus(), equalTo(EventPublishingStatus.SUBMITTED));
-        verify(topicRepository, times(1)).syncPostBatch(any(), any(), any(), any(), eq(false));
+        verify(topicRepository, times(1)).syncPostBatch(any(), any(), any(), any(),
+                any(), eq(false));
     }
 
     @Test
@@ -135,7 +137,8 @@ public class EventPublisherTest {
         mockSuccessfulValidation(eventType);
 
         Mockito.when(eventOwnerExtractorFactory.createExtractor(eq(eventType))).thenReturn(null);
-        publisher.publish(batch.toString(), eventType.getName(), null);
+        publisher.publish(batch.toString(), eventType.getName(), null,
+                Optional.empty());
 
         // invoked once for a batch
         Mockito.verify(eventOwnerExtractorFactory, Mockito.times(1)).createExtractor(eq(eventType));
@@ -151,7 +154,8 @@ public class EventPublisherTest {
         Mockito.when(eventOwnerExtractorFactory.createExtractor(eq(eventType))).thenReturn(
                 EventOwnerExtractorFactory.createStaticExtractor("retailer", "nakadi"));
 
-        publisher.publish(batch.toString(), eventType.getName(), null);
+        publisher.publish(batch.toString(), eventType.getName(), null,
+                Optional.empty());
         Mockito.verify(authzValidator, Mockito.times(3)).authorizeEventWrite(any(BatchItem.class));
     }
 
@@ -165,7 +169,8 @@ public class EventPublisherTest {
                 .when(authzValidator)
                 .authorizeEventTypeWrite(Mockito.eq(et));
 
-        publisher.publish(buildDefaultBatch(1).toString(), et.getName(), null);
+        publisher.publish(buildDefaultBatch(1).toString(), et.getName(), null,
+                Optional.empty());
     }
 
     @Test
@@ -176,10 +181,12 @@ public class EventPublisherTest {
 
         mockSuccessfulValidation(eventType);
 
-        final EventPublishResult result = publisher.publish(batch.toString(), eventType.getName(), null);
+        final EventPublishResult result = publisher.publish(batch.toString(), eventType.getName(), null,
+                Optional.empty());
 
         assertThat(result.getResponses().get(0).getEid(), equalTo(event.getJSONObject("metadata").optString("eid")));
-        verify(topicRepository, times(1)).syncPostBatch(any(), any(), any(), any(), eq(false));
+        verify(topicRepository, times(1)).syncPostBatch(any(), any(), any(), any(),
+                any(), eq(false));
     }
 
     @Test
@@ -191,7 +198,8 @@ public class EventPublisherTest {
         final Closeable etCloser = mock(Closeable.class);
         Mockito.when(timelineSync.workWithEventType(any(String.class), anyLong())).thenReturn(etCloser);
 
-        publisher.publish(batch.toString(), eventType.getName(), null);
+        publisher.publish(batch.toString(), eventType.getName(), null,
+                Optional.empty());
 
         verify(timelineSync, times(1)).workWithEventType(eq(eventType.getName()), eq(TIMELINE_WAIT_TIMEOUT_MS));
         verify(etCloser, times(1)).close();
@@ -200,7 +208,8 @@ public class EventPublisherTest {
     @Test(expected = EventTypeTimeoutException.class)
     public void whenPublishAndTimelineLockTimedOutThenException() throws Exception {
         Mockito.when(timelineSync.workWithEventType(any(String.class), anyLong())).thenThrow(new TimeoutException());
-        publisher.publish(buildDefaultBatch(0).toString(), "blahET", null);
+        publisher.publish(buildDefaultBatch(0).toString(), "blahET", null,
+                Optional.empty());
     }
 
     @Test
@@ -211,12 +220,14 @@ public class EventPublisherTest {
 
         mockFaultValidation(eventType, "error");
 
-        final EventPublishResult result = publisher.publish(batch.toString(), eventType.getName(), null);
+        final EventPublishResult result = publisher.publish(batch.toString(), eventType.getName(), null,
+                Optional.empty());
 
         assertThat(result.getStatus(), equalTo(EventPublishingStatus.ABORTED));
         verify(enrichment, times(0)).enrich(any(), any());
         verify(partitionResolver, times(0)).resolvePartition(any(EventType.class), any(BatchItem.class), any());
-        verify(topicRepository, times(0)).syncPostBatch(any(), any(), any(), any(), anyBoolean());
+        verify(topicRepository, times(0)).syncPostBatch(any(), any(), any(), any(),
+                any(), anyBoolean());
     }
 
     @Test
@@ -227,7 +238,8 @@ public class EventPublisherTest {
 
         mockFaultValidation(eventType, "error");
 
-        EventPublishResult result = publisher.publish(batch.toString(), eventType.getName(), null);
+        EventPublishResult result = publisher.publish(batch.toString(), eventType.getName(), null,
+                Optional.empty());
 
         assertThat(result.getStatus(), equalTo(EventPublishingStatus.ABORTED));
 
@@ -245,7 +257,8 @@ public class EventPublisherTest {
 
         // test with event header being set
         mockSuccessfulOwnerExtraction(eventType);
-        result = publisher.publish(batch.toString(), eventType.getName(), null);
+        result = publisher.publish(batch.toString(), eventType.getName(), null,
+                Optional.empty());
 
         assertThat(result.getStatus(), equalTo(EventPublishingStatus.ABORTED));
         second = result.getResponses().get(1);
@@ -260,12 +273,14 @@ public class EventPublisherTest {
 
         mockSuccessfulValidation(eventType);
 
-        final EventPublishResult result = publisher.publish(batch.toString(), eventType.getName(), null);
+        final EventPublishResult result = publisher.publish(batch.toString(), eventType.getName(), null,
+                Optional.empty());
 
         assertThat(result.getStatus(), equalTo(EventPublishingStatus.ABORTED));
         verify(enrichment, times(0)).enrich(any(), any());
         verify(partitionResolver, times(0)).resolvePartition(any(EventType.class), any(BatchItem.class), any());
-        verify(topicRepository, times(0)).syncPostBatch(any(), any(), any(), any(), anyBoolean());
+        verify(topicRepository, times(0)).syncPostBatch(any(), any(), any(), any(),
+                any(), anyBoolean());
     }
 
     @Test
@@ -281,7 +296,8 @@ public class EventPublisherTest {
 
         mockSuccessfulValidation(eventType);
 
-        final EventPublishResult result = publisher.publish(batch.toString(), eventType.getName(), null);
+        final EventPublishResult result = publisher.publish(batch.toString(), eventType.getName(), null,
+                Optional.empty());
 
         assertThat(result.getStatus(), equalTo(EventPublishingStatus.ABORTED));
 
@@ -314,7 +330,8 @@ public class EventPublisherTest {
 
         mockSuccessfulValidation(eventType);
 
-        final EventPublishResult result = publisher.publish(batch.toString(), eventType.getName(), null);
+        final EventPublishResult result = publisher.publish(batch.toString(), eventType.getName(), null,
+                Optional.empty());
 
         assertThat(result.getStatus(), equalTo(EventPublishingStatus.ABORTED));
 
@@ -341,12 +358,14 @@ public class EventPublisherTest {
 
         mockSuccessfulValidation(eventType);
 
-        final EventPublishResult result = publisher.publish(batch.toString(), eventType.getName(), null);
+        final EventPublishResult result = publisher.publish(batch.toString(), eventType.getName(), null,
+                Optional.empty());
 
         assertThat(result.getStatus(), equalTo(EventPublishingStatus.SUBMITTED));
         verify(enrichment, times(1)).enrich(any(), any());
         verify(partitionResolver, times(1)).resolvePartition(any(EventType.class), any(BatchItem.class), any());
-        verify(topicRepository, times(1)).syncPostBatch(any(), any(), any(), any(), eq(false));
+        verify(topicRepository, times(1)).syncPostBatch(any(), any(), any(), any(),
+                any(), eq(false));
     }
 
     @Test
@@ -356,12 +375,14 @@ public class EventPublisherTest {
 
         mockSuccessfulValidation(eventType);
 
-        final EventPublishResult result = publisher.publish(batch.toString(), eventType.getName(), null);
+        final EventPublishResult result = publisher.publish(batch.toString(), eventType.getName(), null,
+                Optional.empty());
 
         assertThat(result.getStatus(), equalTo(EventPublishingStatus.ABORTED));
         verify(enrichment, times(0)).enrich(any(), any());
         verify(partitionResolver, times(0)).resolvePartition(any(EventType.class), any(BatchItem.class), any());
-        verify(topicRepository, times(0)).syncPostBatch(any(), any(), any(), any(), anyBoolean());
+        verify(topicRepository, times(0)).syncPostBatch(any(), any(), any(), any(),
+                any(), anyBoolean());
     }
 
     @Test
@@ -371,12 +392,14 @@ public class EventPublisherTest {
 
         mockSuccessfulValidation(eventType);
 
-        final EventPublishResult result = publisher.publish(batch.toString(), eventType.getName(), null);
+        final EventPublishResult result = publisher.publish(batch.toString(), eventType.getName(), null,
+                Optional.empty());
 
         assertThat(result.getStatus(), equalTo(EventPublishingStatus.ABORTED));
         verify(enrichment, times(0)).enrich(any(), any());
         verify(partitionResolver, times(0)).resolvePartition(any(EventType.class), any(BatchItem.class), any());
-        verify(topicRepository, times(0)).syncPostBatch(any(), any(), any(), any(), anyBoolean());
+        verify(topicRepository, times(0)).syncPostBatch(any(), any(), any(), any(),
+                any(), anyBoolean());
     }
 
     @Test
@@ -386,12 +409,14 @@ public class EventPublisherTest {
 
         mockSuccessfulValidation(eventType);
 
-        final EventPublishResult result = publisher.publish(batch.toString(), eventType.getName(), null);
+        final EventPublishResult result = publisher.publish(batch.toString(), eventType.getName(), null,
+                Optional.empty());
 
         assertThat(result.getStatus(), equalTo(EventPublishingStatus.SUBMITTED));
         verify(enrichment, times(1)).enrich(any(), any());
         verify(partitionResolver, times(1)).resolvePartition(any(EventType.class), any(BatchItem.class), any());
-        verify(topicRepository, times(1)).syncPostBatch(any(), any(), any(), any(), eq(false));
+        verify(topicRepository, times(1)).syncPostBatch(any(), any(), any(), any(),
+                any(), eq(false));
     }
 
     @Test
@@ -405,7 +430,7 @@ public class EventPublisherTest {
         mockFaultPartition();
 
         final EventPublishResult result = publisher.publish(createStringFromBatchItems(batch),
-                eventType.getName(), null);
+                eventType.getName(), null, Optional.empty());
 
         assertThat(result.getStatus(), equalTo(EventPublishingStatus.ABORTED));
     }
@@ -422,7 +447,7 @@ public class EventPublisherTest {
         mockFaultPartition();
 
         final EventPublishResult result = publisher.publish(createStringFromBatchItems(batch),
-                eventType.getName(), null);
+                eventType.getName(), null, Optional.empty());
 
         assertThat(result.getStatus(), equalTo(EventPublishingStatus.ABORTED));
 
@@ -448,10 +473,12 @@ public class EventPublisherTest {
         mockSuccessfulValidation(eventType);
         mockFailedPublishing();
 
-        final EventPublishResult result = publisher.publish(batch.toString(), eventType.getName(), null);
+        final EventPublishResult result = publisher.publish(batch.toString(), eventType.getName(), null,
+                Optional.empty());
 
         assertThat(result.getStatus(), equalTo(EventPublishingStatus.FAILED));
-        verify(topicRepository, times(1)).syncPostBatch(any(), any(), any(), any(), eq(false));
+        verify(topicRepository, times(1)).syncPostBatch(any(), any(), any(), any(),
+                any(), eq(false));
     }
 
     @Test
@@ -463,13 +490,15 @@ public class EventPublisherTest {
         mockSuccessfulValidation(eventType);
         mockFaultEnrichment();
 
-        final EventPublishResult result = publisher.publish(batch.toString(), eventType.getName(), null);
+        final EventPublishResult result = publisher.publish(batch.toString(), eventType.getName(), null,
+                Optional.empty());
 
         assertThat(result.getStatus(), equalTo(EventPublishingStatus.ABORTED));
         verify(cache, atLeastOnce()).getValidator(eventType.getName());
         verify(partitionResolver, times(1)).resolvePartition(any(EventType.class), any(BatchItem.class), any());
         verify(enrichment, times(1)).enrich(any(), any());
-        verify(topicRepository, times(0)).syncPostBatch(any(), any(), any(), any(), anyBoolean());
+        verify(topicRepository, times(0)).syncPostBatch(any(), any(), any(), any(),
+                any(), anyBoolean());
     }
 
     @Test
@@ -483,7 +512,8 @@ public class EventPublisherTest {
         final JSONObject event = new JSONObject("{\"my_field\": \"my_key\"}");
         final JSONArray batch = new JSONArray(List.of(event));
 
-        publisher.publish(batch.toString(), eventType.getName(), null);
+        publisher.publish(batch.toString(), eventType.getName(), null,
+                Optional.empty());
 
         final List<BatchItem> publishedBatch = capturePublishedBatch();
         final BatchItem publishedItem = publishedBatch.get(0);
@@ -502,7 +532,8 @@ public class EventPublisherTest {
         final JSONObject event = new JSONObject("{\"my_field\": \"my_key\", \"other_field\": \"other_value\"}");
         final JSONArray batch = new JSONArray(List.of(event));
 
-        publisher.publish(batch.toString(), eventType.getName(), null);
+        publisher.publish(batch.toString(), eventType.getName(), null,
+                Optional.empty());
 
         final List<BatchItem> publishedBatch = capturePublishedBatch();
         final BatchItem publishedItem = publishedBatch.get(0);
@@ -524,7 +555,8 @@ public class EventPublisherTest {
                         " \"my_field\": \"my_key\"}");
         final JSONArray batch = new JSONArray(List.of(event));
 
-        publisher.publish(batch.toString(), eventType.getName(), null);
+        publisher.publish(batch.toString(), eventType.getName(), null,
+                Optional.empty());
 
         final List<BatchItem> publishedBatch = capturePublishedBatch();
         final BatchItem publishedItem = publishedBatch.get(0);
@@ -543,7 +575,8 @@ public class EventPublisherTest {
 
         final JSONArray batch = buildDefaultBatch(1);
 
-        publisher.publish(batch.toString(), eventType.getName(), null);
+        publisher.publish(batch.toString(), eventType.getName(), null,
+                Optional.empty());
 
         final List<BatchItem> publishedBatch = capturePublishedBatch();
         final BatchItem publishedItem = publishedBatch.get(0);
@@ -554,7 +587,8 @@ public class EventPublisherTest {
     @SuppressWarnings("unchecked")
     private List<BatchItem> capturePublishedBatch() {
         final ArgumentCaptor<List> batchCaptor = ArgumentCaptor.forClass(List.class);
-        verify(topicRepository, atLeastOnce()).syncPostBatch(any(), batchCaptor.capture(), any(), any(), eq(false));
+        verify(topicRepository, atLeastOnce()).syncPostBatch(any(), batchCaptor.capture(), any(), any(),
+                any(), eq(false));
         return (List<BatchItem>) batchCaptor.getValue();
     }
 
@@ -566,7 +600,8 @@ public class EventPublisherTest {
         mockSuccessfulValidation(eventType);
         mockFaultEnrichment();
 
-        final EventPublishResult result = publisher.publish(batch.toString(), eventType.getName(), null);
+        final EventPublishResult result = publisher.publish(batch.toString(), eventType.getName(), null,
+                Optional.empty());
 
         assertThat(result.getStatus(), equalTo(EventPublishingStatus.ABORTED));
 
@@ -595,7 +630,8 @@ public class EventPublisherTest {
                 .when(authzValidator)
                 .authorizeEventWrite(any(BatchItem.class));
 
-        final EventPublishResult result = publisher.publish(batch.toString(), eventType.getName(), null);
+        final EventPublishResult result = publisher.publish(batch.toString(), eventType.getName(), null,
+                Optional.empty());
 
         assertThat(result.getStatus(), equalTo(EventPublishingStatus.ABORTED));
 
@@ -617,7 +653,8 @@ public class EventPublisherTest {
         final EventType eventType = EventTypeTestBuilder.builder().build();
         Mockito.when(cache.getEventType(eventType.getName())).thenReturn(eventType);
         mockSuccessfulValidation(eventType);
-        final EventPublishResult result = publisher.publish(buildDefaultBatch(0).toString(), eventType.getName(), null);
+        final EventPublishResult result = publisher.publish(buildDefaultBatch(0).toString(), eventType.getName(), null,
+                Optional.empty());
 
         Assert.assertEquals(result.getStatus(), EventPublishingStatus.SUBMITTED);
     }
@@ -670,8 +707,10 @@ public class EventPublisherTest {
                 .fromAvroRecord(metadata, event);
 
         final List<NakadiRecord> records = Collections.singletonList(nakadiRecord);
-        eventPublisher.publish(eventType, records, null);
-        Mockito.verify(topicRepository).sendEvents(ArgumentMatchers.eq(topic), ArgumentMatchers.eq(records), eq(null));
+        eventPublisher.publish(eventType, records,
+                null, Optional.empty());
+        Mockito.verify(topicRepository).sendEvents(ArgumentMatchers.eq(topic), ArgumentMatchers.eq(records),
+                eq(null), any());
     }
 
     @Test
@@ -685,7 +724,8 @@ public class EventPublisherTest {
 
         final Set<String> uniqueEventTypePartitions = publisher.getUniqueEventTypePartitions();
         uniqueEventTypePartitions.clear();
-        publisher.publish(batch.toString(), eventType.getName(), null);
+        publisher.publish(batch.toString(), eventType.getName(), null,
+                Optional.empty());
 
         Assert.assertEquals(1, uniqueEventTypePartitions.size());
         final String expectedEntry = String.format("%s:%s", eventType.getName(), 0);
@@ -696,7 +736,8 @@ public class EventPublisherTest {
         Mockito
                 .doThrow(EventPublishingException.class)
                 .when(topicRepository)
-                .syncPostBatch(any(), any(), any(), any(), anyBoolean());
+                .syncPostBatch(any(), any(), any(), any(),
+                        any(), anyBoolean());
     }
 
     private void mockFaultPartition() throws PartitioningException {
