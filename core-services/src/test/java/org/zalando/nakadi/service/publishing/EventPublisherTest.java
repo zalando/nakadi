@@ -67,6 +67,7 @@ import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Matchers.anyBoolean;
 import static org.mockito.Matchers.anyLong;
 import static org.mockito.Mockito.atLeastOnce;
+import static org.mockito.Mockito.doAnswer;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
@@ -126,6 +127,25 @@ public class EventPublisherTest {
 
         assertThat(result.getStatus(), equalTo(EventPublishingStatus.SUBMITTED));
         verify(topicRepository, times(1)).syncPostBatch(any(), any(), any(), any(), eq(false));
+    }
+
+    @Test
+    public void whenPartitionIsUnavailable207IsReported() throws Exception {
+        final EventType eventType = buildDefaultEventType();
+        final JSONArray batch = buildDefaultBatch(1);
+
+        mockSuccessfulValidation(eventType);
+        Mockito.when(partitionResolver.resolvePartition(any(EventType.class), any(BatchItem.class), any()))
+                .thenReturn("3");
+        mockFailedWriteToKafka();
+
+        final EventPublishResult result = publisher.publish(batch.toString(), eventType.getName(), null);
+        assertThat(result.getStatus(), equalTo(EventPublishingStatus.FAILED));
+        result.getResponses().stream()
+                .forEach(bi -> Assert.assertEquals(
+                        "Reported BatchItemResponse has a partition specified",
+                        Optional.of("3"),
+                        bi.getPartition()));
     }
 
     @Test
@@ -768,6 +788,24 @@ public class EventPublisherTest {
                 .doReturn(truthyValidator)
                 .when(cache)
                 .getValidator(eventType.getName());
+    }
+
+    private void mockFailedWriteToKafka() {
+        doAnswer((invocation) -> {
+            final Object[] args = invocation.getArguments();
+            final String topicId = (String) args[0];
+            final List<BatchItem> invocationBatch = (List<BatchItem>) args[1];
+            final String et = (String) args[2];
+
+            invocationBatch
+                .stream()
+                .forEach(item -> item.updateStatusAndDetail(EventPublishingStatus.FAILED, "timed out"));
+            throw new EventPublishingException(
+                    "Timeout publishing message to kafka",
+                    new TimeoutException(),
+                    topicId,
+                    et);
+        }).when(topicRepository).syncPostBatch(any(), any(), any(), any(), eq(false));
     }
 
     private void mockSuccessfulOwnerExtraction(final EventType eventType) {
