@@ -1,4 +1,4 @@
-FROM container-registry.zalando.net/library/eclipse-temurin-11-jdk:latest
+FROM registry.opensource.zalan.do/library/eclipse-temurin-11-jdk:latest
 
 MAINTAINER Team Aruha, team-aruha@zalando.de
 
