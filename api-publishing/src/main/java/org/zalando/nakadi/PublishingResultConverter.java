@@ -23,7 +23,7 @@ public class PublishingResultConverter {
                     .setStep(EventPublishingStep.PUBLISHING)
                     .setPublishingStatus(status)
                     .setEid(recordMetadata.getMetadata().getEid())
-                    .setPartition(Optional.of(recordMetadata.getMetadata().getPartition()))
+                    .setPartition(Optional.ofNullable(recordMetadata.getMetadata().getPartition()))
                     .setDetail((recordMetadata.getException() != null) ?
                             recordMetadata.getException().getMessage() : ""));
         }
