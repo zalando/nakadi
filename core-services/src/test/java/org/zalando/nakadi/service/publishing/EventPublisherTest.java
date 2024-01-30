@@ -13,7 +13,18 @@ import org.mockito.Mockito;
 import org.springframework.core.io.DefaultResourceLoader;
 import org.zalando.nakadi.cache.EventTypeCache;
 import org.zalando.nakadi.config.NakadiSettings;
-import org.zalando.nakadi.domain.*;
+import org.zalando.nakadi.domain.BatchItem;
+import org.zalando.nakadi.domain.BatchItemResponse;
+import org.zalando.nakadi.domain.CleanupPolicy;
+import org.zalando.nakadi.domain.EventPublishResult;
+import org.zalando.nakadi.domain.EventPublishingStatus;
+import org.zalando.nakadi.domain.EventPublishingStep;
+import org.zalando.nakadi.domain.EventType;
+import org.zalando.nakadi.domain.EventTypeBase;
+import org.zalando.nakadi.domain.NakadiMetadata;
+import org.zalando.nakadi.domain.NakadiRecord;
+import org.zalando.nakadi.domain.NakadiRecordResult;
+import org.zalando.nakadi.domain.Timeline;
 import org.zalando.nakadi.enrichment.Enrichment;
 import org.zalando.nakadi.exceptions.runtime.AccessDeniedException;
 import org.zalando.nakadi.exceptions.runtime.EnrichmentException;
@@ -40,7 +51,14 @@ import org.zalando.nakadi.validation.ValidationError;
 import java.io.Closeable;
 import java.io.IOException;
 import java.time.Instant;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Collections;
+import java.util.LinkedList;
+import java.util.List;
+import java.util.Optional;
+import java.util.Set;
+import java.util.UUID;
 import java.util.concurrent.TimeoutException;
 
 import static org.hamcrest.MatcherAssert.assertThat;
@@ -185,7 +203,7 @@ public class EventPublisherTest {
 
         mockFailedBinaryWriteToKafka();
 
-        NakadiRecord nakadiRecord = mkRecord();
+        final NakadiRecord nakadiRecord = mkRecord();
 
         final var partitionCheck = new PartitioningCheck(cache, partitionResolver);
         final BinaryEventPublisher eventPublisher = new BinaryEventPublisher(
@@ -193,7 +211,7 @@ public class EventPublisherTest {
                 List.of(partitionCheck), List.of(partitionCheck), List.of(partitionCheck));
 
         final List<NakadiRecord> records = Collections.singletonList(nakadiRecord);
-        List<NakadiRecordResult> publishResult = eventPublisher.publish(eventType, records, null);
+        final List<NakadiRecordResult> publishResult = eventPublisher.publish(eventType, records, null);
         Mockito.verify(topicRepository).sendEvents(ArgumentMatchers.eq(topic), ArgumentMatchers.eq(records), eq(null));
 
         Assert.assertNotEquals(NakadiRecordResult.Status.SUCCEEDED, publishResult.get(0).getStatus());
@@ -709,7 +727,7 @@ public class EventPublisherTest {
         Mockito.when(partitionResolver.resolvePartition(any(EventType.class), any(NakadiMetadata.class), any()))
                 .thenReturn("1");
 
-        NakadiRecord nakadiRecord = mkRecord();
+        final NakadiRecord nakadiRecord = mkRecord();
 
         final List<NakadiRecord> records = Collections.singletonList(nakadiRecord);
         eventPublisher.publish(eventType, records, null);
@@ -812,42 +830,6 @@ public class EventPublisherTest {
                 .getValidator(eventType.getName());
     }
 
-    private void mockFailedWriteToKafka() {
-        doAnswer((invocation) -> {
-            final Object[] args = invocation.getArguments();
-            final String topicId = (String) args[0];
-            final List<BatchItem> invocationBatch = (List<BatchItem>) args[1];
-            final String et = (String) args[2];
-
-            invocationBatch
-                .stream()
-                .forEach(item -> item.updateStatusAndDetail(EventPublishingStatus.FAILED, "timed out"));
-            throw new EventPublishingException(
-                    "Timeout publishing message to kafka",
-                    new TimeoutException(),
-                    topicId,
-                    et);
-        }).when(topicRepository).syncPostBatch(any(), any(), any(), any(), eq(false));
-    }
-
-    private void mockFailedBinaryWriteToKafka() {
-        doAnswer((invocation) -> {
-            final Object[] args = invocation.getArguments();
-            final String topicId = (String) args[0];
-            final List<NakadiRecord> nakadiRecords = (List<NakadiRecord>) args[1];
-
-            final List<NakadiRecordResult> resps = new LinkedList<>();
-            for (final NakadiRecord record : nakadiRecords) {
-                resps.add(new NakadiRecordResult(
-                        record.getMetadata(),
-                        NakadiRecordResult.Status.ABORTED,
-                        NakadiRecordResult.Step.PUBLISHING,
-                        new TimeoutException()));
-            }
-            return resps;
-        }).when(topicRepository).sendEvents(any(), any(), eq(null));
-    }
-
     private void mockSuccessfulOwnerExtraction(final EventType eventType) {
         Mockito
                 .doReturn(EventOwnerExtractorFactory.createStaticExtractor("nakadi", "retailer"))
@@ -913,4 +895,41 @@ public class EventPublisherTest {
         sb.setCharAt(sb.length() - 1, ']');
         return sb.toString();
     }
+
+    private void mockFailedWriteToKafka() {
+        doAnswer((invocation) -> {
+            final Object[] args = invocation.getArguments();
+            final String topicId = (String) args[0];
+            final List<BatchItem> invocationBatch = (List<BatchItem>) args[1];
+            final String et = (String) args[2];
+
+            invocationBatch
+                    .stream()
+                    .forEach(item -> item.updateStatusAndDetail(EventPublishingStatus.FAILED, "timed out"));
+            throw new EventPublishingException(
+                    "Timeout publishing message to kafka",
+                    new TimeoutException(),
+                    topicId,
+                    et);
+        }).when(topicRepository).syncPostBatch(any(), any(), any(), any(), eq(false));
+    }
+
+    private void mockFailedBinaryWriteToKafka() {
+        doAnswer((invocation) -> {
+            final Object[] args = invocation.getArguments();
+            final String topicId = (String) args[0];
+            final List<NakadiRecord> nakadiRecords = (List<NakadiRecord>) args[1];
+
+            final List<NakadiRecordResult> resps = new LinkedList<>();
+            for (final NakadiRecord record : nakadiRecords) {
+                resps.add(new NakadiRecordResult(
+                        record.getMetadata(),
+                        NakadiRecordResult.Status.ABORTED,
+                        NakadiRecordResult.Step.PUBLISHING,
+                        new TimeoutException()));
+            }
+            return resps;
+        }).when(topicRepository).sendEvents(any(), any(), eq(null));
+    }
+
 }
