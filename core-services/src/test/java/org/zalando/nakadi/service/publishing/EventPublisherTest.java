@@ -13,17 +13,7 @@ import org.mockito.Mockito;
 import org.springframework.core.io.DefaultResourceLoader;
 import org.zalando.nakadi.cache.EventTypeCache;
 import org.zalando.nakadi.config.NakadiSettings;
-import org.zalando.nakadi.domain.BatchItem;
-import org.zalando.nakadi.domain.BatchItemResponse;
-import org.zalando.nakadi.domain.CleanupPolicy;
-import org.zalando.nakadi.domain.EventPublishResult;
-import org.zalando.nakadi.domain.EventPublishingStatus;
-import org.zalando.nakadi.domain.EventPublishingStep;
-import org.zalando.nakadi.domain.EventType;
-import org.zalando.nakadi.domain.EventTypeBase;
-import org.zalando.nakadi.domain.NakadiMetadata;
-import org.zalando.nakadi.domain.NakadiRecord;
-import org.zalando.nakadi.domain.Timeline;
+import org.zalando.nakadi.domain.*;
 import org.zalando.nakadi.enrichment.Enrichment;
 import org.zalando.nakadi.exceptions.runtime.AccessDeniedException;
 import org.zalando.nakadi.exceptions.runtime.EnrichmentException;
@@ -39,6 +29,7 @@ import org.zalando.nakadi.repository.TopicRepository;
 import org.zalando.nakadi.service.AuthorizationValidator;
 import org.zalando.nakadi.service.LocalSchemaRegistry;
 import org.zalando.nakadi.service.publishing.check.Check;
+import org.zalando.nakadi.service.publishing.check.PartitioningCheck;
 import org.zalando.nakadi.service.timeline.TimelineService;
 import org.zalando.nakadi.service.timeline.TimelineSync;
 import org.zalando.nakadi.util.MDCUtils;
@@ -47,14 +38,9 @@ import org.zalando.nakadi.validation.JsonSchemaValidator;
 import org.zalando.nakadi.validation.ValidationError;
 
 import java.io.Closeable;
+import java.io.IOException;
 import java.time.Instant;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.Collections;
-import java.util.List;
-import java.util.Optional;
-import java.util.Set;
-import java.util.UUID;
+import java.util.*;
 import java.util.concurrent.TimeoutException;
 
 import static org.hamcrest.MatcherAssert.assertThat;
@@ -95,6 +81,7 @@ public class EventPublisherTest {
     protected final Enrichment enrichment = mock(Enrichment.class);
     protected final AuthorizationValidator authzValidator = mock(AuthorizationValidator.class);
     protected final TimelineService timelineService = Mockito.mock(TimelineService.class);
+
     protected final NakadiSettings nakadiSettings = new NakadiSettings(0, 0, 0, TOPIC_RETENTION_TIME_MS, 0, 60, 1, 2,
             NAKADI_POLL_TIMEOUT, NAKADI_SEND_TIMEOUT, TIMELINE_WAIT_TIMEOUT_MS, NAKADI_EVENT_MAX_BYTES,
             NAKADI_SUBSCRIPTION_MAX_PARTITIONS, "service", "org/zalando/nakadi", "", "",
@@ -146,6 +133,71 @@ public class EventPublisherTest {
                         "Reported BatchItemResponse has a partition specified",
                         Optional.of("3"),
                         bi.getPartition()));
+    }
+
+    private NakadiRecord mkRecord() throws IOException {
+        final org.springframework.core.io.Resource eventTypeRes =
+                new DefaultResourceLoader().getResource("avro-schema/");
+        final LocalSchemaRegistry localSchemaRegistry = new LocalSchemaRegistry(eventTypeRes);
+
+        final Instant now = Instant.now();
+        final NakadiMetadata metadata = new NakadiMetadata();
+        metadata.setOccurredAt(now);
+        metadata.setEid("9702cf96-9bdb-48b7-9f4c-92643cb6d9fc");
+        metadata.setFlowId(MDCUtils.getFlowId());
+        metadata.setEventType("nakadi.access.log");
+        metadata.setPartition("0");
+        metadata.setReceivedAt(now);
+        metadata.setSchemaVersion("1.0.0");
+        metadata.setPublishedBy("adyachkov");
+
+        final SpecificRecord event = NakadiAccessLog.newBuilder()
+                .setMethod("POST")
+                .setPath("/event-types")
+                .setQuery("")
+                .setUserAgent("test-user-agent")
+                .setApp("nakadi")
+                .setAppHashed("hashed-app")
+                .setContentEncoding("--")
+                .setAcceptEncoding("-")
+                .setStatusCode(201)
+                .setResponseTimeMs(10)
+                .setRequestLength(123)
+                .setResponseLength(321)
+                .build();
+
+        final NakadiRecord nakadiRecord = new NakadiRecordMapper(localSchemaRegistry)
+                .fromAvroRecord(metadata, event);
+
+        return nakadiRecord;
+    }
+
+    @Test
+    public void whenPartitionIsUnavailable207IsReportedBinary() throws Exception {
+        final EventType eventType = buildDefaultEventType();
+        final String topic = UUID.randomUUID().toString();
+        final String eventTypeName = eventType.getName();
+        Mockito.when(cache.getEventType(eventTypeName)).thenReturn(eventType);
+        Mockito.when(timelineService.getActiveTimeline(eventType))
+                .thenReturn(new Timeline(eventTypeName, 0, null, topic, null));
+        Mockito.when(partitionResolver.resolvePartition(any(EventType.class), any(NakadiMetadata.class), any()))
+                .thenReturn("1");
+
+        mockFailedBinaryWriteToKafka();
+
+        NakadiRecord nakadiRecord = mkRecord();
+
+        final var partitionCheck = new PartitioningCheck(cache, partitionResolver);
+        final BinaryEventPublisher eventPublisher = new BinaryEventPublisher(
+                timelineService, timelineSync, nakadiSettings,
+                List.of(partitionCheck), List.of(partitionCheck), List.of(partitionCheck));
+
+        final List<NakadiRecord> records = Collections.singletonList(nakadiRecord);
+        List<NakadiRecordResult> publishResult = eventPublisher.publish(eventType, records, null);
+        Mockito.verify(topicRepository).sendEvents(ArgumentMatchers.eq(topic), ArgumentMatchers.eq(records), eq(null));
+
+        Assert.assertNotEquals(NakadiRecordResult.Status.SUCCEEDED, publishResult.get(0).getStatus());
+        Assert.assertEquals("1", publishResult.get(0).getMetadata().getPartition());
     }
 
     @Test
@@ -644,9 +696,6 @@ public class EventPublisherTest {
 
     @Test
     public void testAvroEventWasSerialized() throws Exception {
-        final org.springframework.core.io.Resource eventTypeRes =
-                new DefaultResourceLoader().getResource("avro-schema/");
-        final LocalSchemaRegistry localSchemaRegistry = new LocalSchemaRegistry(eventTypeRes);
         final var dummyCheck = Mockito.mock(Check.class);
         final BinaryEventPublisher eventPublisher = new BinaryEventPublisher(
                 timelineService, timelineSync, nakadiSettings,
@@ -660,34 +709,7 @@ public class EventPublisherTest {
         Mockito.when(partitionResolver.resolvePartition(any(EventType.class), any(NakadiMetadata.class), any()))
                 .thenReturn("1");
 
-        final Instant now = Instant.now();
-        final NakadiMetadata metadata = new NakadiMetadata();
-        metadata.setOccurredAt(now);
-        metadata.setEid("9702cf96-9bdb-48b7-9f4c-92643cb6d9fc");
-        metadata.setFlowId(MDCUtils.getFlowId());
-        metadata.setEventType("nakadi.access.log");
-        metadata.setPartition("0");
-        metadata.setReceivedAt(now);
-        metadata.setSchemaVersion("1.0.0");
-        metadata.setPublishedBy("adyachkov");
-
-        final SpecificRecord event = NakadiAccessLog.newBuilder()
-                .setMethod("POST")
-                .setPath("/event-types")
-                .setQuery("")
-                .setUserAgent("test-user-agent")
-                .setApp("nakadi")
-                .setAppHashed("hashed-app")
-                .setContentEncoding("--")
-                .setAcceptEncoding("-")
-                .setStatusCode(201)
-                .setResponseTimeMs(10)
-                .setRequestLength(123)
-                .setResponseLength(321)
-                .build();
-
-        final NakadiRecord nakadiRecord = new NakadiRecordMapper(localSchemaRegistry)
-                .fromAvroRecord(metadata, event);
+        NakadiRecord nakadiRecord = mkRecord();
 
         final List<NakadiRecord> records = Collections.singletonList(nakadiRecord);
         eventPublisher.publish(eventType, records, null);
@@ -806,6 +828,24 @@ public class EventPublisherTest {
                     topicId,
                     et);
         }).when(topicRepository).syncPostBatch(any(), any(), any(), any(), eq(false));
+    }
+
+    private void mockFailedBinaryWriteToKafka() {
+        doAnswer((invocation) -> {
+            final Object[] args = invocation.getArguments();
+            final String topicId = (String) args[0];
+            final List<NakadiRecord> nakadiRecords = (List<NakadiRecord>) args[1];
+
+            final List<NakadiRecordResult> resps = new LinkedList<>();
+            for (final NakadiRecord record : nakadiRecords) {
+                resps.add(new NakadiRecordResult(
+                        record.getMetadata(),
+                        NakadiRecordResult.Status.ABORTED,
+                        NakadiRecordResult.Step.PUBLISHING,
+                        new TimeoutException()));
+            }
+            return resps;
+        }).when(topicRepository).sendEvents(any(), any(), eq(null));
     }
 
     private void mockSuccessfulOwnerExtraction(final EventType eventType) {
