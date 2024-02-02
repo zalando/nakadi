@@ -153,7 +153,7 @@ public class EventPublisherTest {
                         bi.getPartition()));
     }
 
-    private NakadiRecord mkRecord() throws IOException {
+    private NakadiRecord mockNakadiRecord() throws IOException {
         final org.springframework.core.io.Resource eventTypeRes =
                 new DefaultResourceLoader().getResource("avro-schema/");
         final LocalSchemaRegistry localSchemaRegistry = new LocalSchemaRegistry(eventTypeRes);
@@ -203,7 +203,7 @@ public class EventPublisherTest {
 
         mockFailedBinaryWriteToKafka();
 
-        final NakadiRecord nakadiRecord = mkRecord();
+        final NakadiRecord nakadiRecord = mockNakadiRecord();
 
         final var partitionCheck = new PartitioningCheck(cache, partitionResolver);
         final BinaryEventPublisher eventPublisher = new BinaryEventPublisher(
@@ -727,7 +727,7 @@ public class EventPublisherTest {
         Mockito.when(partitionResolver.resolvePartition(any(EventType.class), any(NakadiMetadata.class), any()))
                 .thenReturn("1");
 
-        final NakadiRecord nakadiRecord = mkRecord();
+        final NakadiRecord nakadiRecord = mockNakadiRecord();
 
         final List<NakadiRecord> records = Collections.singletonList(nakadiRecord);
         eventPublisher.publish(eventType, records, null);
