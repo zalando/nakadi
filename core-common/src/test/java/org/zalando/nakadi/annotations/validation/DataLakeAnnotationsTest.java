@@ -35,13 +35,28 @@ public class DataLakeAnnotationsTest {
     @Test
     public void whenMaterializationEventFormatIsWrongThenFail() {
         final var annotations = Map.of(
-                DataLakeAnnotationValidator.MATERIALISE_EVENTS_ANNOTATION, "1 day"
+                DataLakeAnnotationValidator.MATERIALIZE_EVENTS_ANNOTATION, "1 day"
         );
         final Set<ConstraintViolation<TestClass>> result = validator.validate(new TestClass(annotations));
         assertTrue("When the format of the Materialize Event annotation is wrong, the name of the annotation " +
                         "should be present",
                 result.stream().anyMatch(r -> r.getMessage().contains(
-                        DataLakeAnnotationValidator.MATERIALISE_EVENTS_ANNOTATION)));
+                        DataLakeAnnotationValidator.MATERIALIZE_EVENTS_ANNOTATION)));
+    }
+
+    @Test
+    public void whenMaterializationEventIsOnAndNoRetentionPeriodThenFail() {
+        final var materializeAnnotation = DataLakeAnnotationValidator.MATERIALIZE_EVENTS_ANNOTATION;
+        final var retentionAnnotation = DataLakeAnnotationValidator.RETENTION_PERIOD_ANNOTATION;
+
+        final var annotations = Map.of(
+                materializeAnnotation, "on"
+        );
+        final Set<ConstraintViolation<TestClass>> result = validator.validate(new TestClass(annotations));
+        assertTrue(String.format("If %s annotation is specified and %s is not, then error message should include" +
+                        " both annotations", materializeAnnotation, retentionAnnotation),
+                result.stream().anyMatch(r -> r.getMessage().contains(materializeAnnotation) &&
+                        r.getMessage().contains(retentionAnnotation)));
     }
 
     @Test
@@ -108,7 +123,7 @@ public class DataLakeAnnotationsTest {
         final String materialisationEventValue = "off";
 
         final var annotations = Map.of(
-                DataLakeAnnotationValidator.MATERIALISE_EVENTS_ANNOTATION, materialisationEventValue
+                DataLakeAnnotationValidator.MATERIALIZE_EVENTS_ANNOTATION, materialisationEventValue
         );
 
         final Set<ConstraintViolation<TestClass>> result = validator.validate(new TestClass(annotations));

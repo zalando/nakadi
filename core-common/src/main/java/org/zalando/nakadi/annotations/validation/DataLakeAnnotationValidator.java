@@ -12,21 +12,33 @@ public class DataLakeAnnotationValidator implements ConstraintValidator<DataLake
                     "(([1-9]|[1-9]\\d|[1][01]\\d|120)((\\smonths?)|(m)))|(([1-9]|(10))((\\syears?)|(y))))$");
     public static final String RETENTION_PERIOD_ANNOTATION = "datalake.zalando.org/retention-period";
     public static final String RETENTION_REASON_ANNOTATION = "datalake.zalando.org/retention-period-reason";
-    public static final String MATERIALISE_EVENTS_ANNOTATION = "datalake.zalando.org/materialize-events";
+    public static final String MATERIALIZE_EVENTS_ANNOTATION = "datalake.zalando.org/materialize-events";
 
     @Override
     public boolean isValid(final Map<String, String> annotations, final ConstraintValidatorContext context) {
         if (annotations == null || annotations.size() == 0) {
             return true;
         }
-        if (annotations.containsKey(MATERIALISE_EVENTS_ANNOTATION)) {
-            if (!annotations.get(MATERIALISE_EVENTS_ANNOTATION).equals("off") &&
-                    !annotations.get(MATERIALISE_EVENTS_ANNOTATION).equals("on")) {
+        final String materializeEventsAnnotation = annotations.get(MATERIALIZE_EVENTS_ANNOTATION);
+        if (annotations.containsKey(MATERIALIZE_EVENTS_ANNOTATION)) {
+            if (!materializeEventsAnnotation.equals("off") &&
+                    !materializeEventsAnnotation.equals("on")) {
                 context.disableDefaultConstraintViolation();
-                context.buildConstraintViolationWithTemplate("Annotation " + MATERIALISE_EVENTS_ANNOTATION
+                context.buildConstraintViolationWithTemplate("Annotation " + MATERIALIZE_EVENTS_ANNOTATION
                                 + " is not valid. Provided value: \""
-                                + annotations.get(MATERIALISE_EVENTS_ANNOTATION)
+                                + materializeEventsAnnotation
                                 + "\". Possible values are: \"on\" or \"off\".")
+                        .addConstraintViolation();
+                return false;
+            }
+
+            if (materializeEventsAnnotation.equals("on") && !annotations.containsKey(RETENTION_PERIOD_ANNOTATION)) {
+                context.disableDefaultConstraintViolation();
+                context.buildConstraintViolationWithTemplate("Annotation " + RETENTION_PERIOD_ANNOTATION
+                                + " is required, when "
+                                + MATERIALIZE_EVENTS_ANNOTATION + " with value: \""
+                                + materializeEventsAnnotation
+                                + "\" is specified.")
                         .addConstraintViolation();
                 return false;
             }
