@@ -119,6 +119,8 @@ public class EventTypeAnnotationsValidatorTest {
         for (final var materialisationEventValue : validMaterialisationEventsValues) {
             final var annotations = Map.of(
                     EventTypeAnnotationsValidator.MATERIALISE_EVENTS_ANNOTATION, materialisationEventValue
+                    EventTypeAnnotationsValidator.RETENTION_PERIOD_ANNOTATION, "1m",
+                    EventTypeAnnotationsValidator.RETENTION_REASON_ANNOTATION, "for testing"
             );
 
             validator.validateAnnotations(annotations);
@@ -138,11 +140,9 @@ public class EventTypeAnnotationsValidatorTest {
                     e.getMessage().contains(EventTypeAnnotationsValidator.MATERIALISE_EVENTS_ANNOTATION));
         }
     }
-    @Test
-    public void whenDataLakeAnnotationsEnforcedAndMaterializationIsOnThenRetentionPeriosIsRequired() {
-        when(featureToggleService.isFeatureEnabled(Feature.FORCE_DATA_LAKE_ANNOTATIONS)).thenReturn(true);
-        when(authorizationService.getSubject()).thenReturn(Optional.of(() -> A_TEST_APPLICATION));
 
+    @Test
+    public void whenMaterializationIsOnThenRetentionPeriodIsRequired() {
         try {
             validator.validateAnnotations(Collections.singletonMap(
                     EventTypeAnnotationsValidator.MATERIALISE_EVENTS_ANNOTATION, "on"));

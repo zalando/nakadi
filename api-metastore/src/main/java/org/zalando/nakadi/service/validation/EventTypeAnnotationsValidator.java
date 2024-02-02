@@ -47,6 +47,8 @@ public class EventTypeAnnotationsValidator {
 
     private void validateDataLakeAnnotations(@NotNull final Map<String, String> annotations) {
         final var materializeEvents = annotations.get(MATERIALISE_EVENTS_ANNOTATION);
+        final var retentionPeriod = annotations.get(RETENTION_PERIOD_ANNOTATION);
+
         if (materializeEvents != null) {
             if (!materializeEvents.equals("off") && !materializeEvents.equals("on")) {
                 throw new InvalidEventTypeException(
@@ -55,9 +57,14 @@ public class EventTypeAnnotationsValidator {
                         + materializeEvents
                         + "\". Possible values are: \"on\" or \"off\".");
             }
+            if (materializeEvents.equals("on")) {
+                if (retentionPeriod == null) {
+                    throw new InvalidEventTypeException("Annotation " + RETENTION_PERIOD_ANNOTATION
+                            + " is required, when " + MATERIALISE_EVENTS_ANNOTATION + " is \"on\".");
+                }
+            }
         }
 
-        final var retentionPeriod = annotations.get(RETENTION_PERIOD_ANNOTATION);
         if (retentionPeriod != null) {
             final var retentionReason = annotations.get(RETENTION_REASON_ANNOTATION);
             if (retentionReason == null || retentionReason.isEmpty()) {
@@ -78,12 +85,6 @@ public class EventTypeAnnotationsValidator {
         if (areDataLakeAnnotationsMandatory()) {
             if (materializeEvents == null) {
                 throw new InvalidEventTypeException("Annotation " + MATERIALISE_EVENTS_ANNOTATION + " is required");
-            }
-            if (materializeEvents.equals("on")) {
-                if (retentionPeriod == null) {
-                    throw new InvalidEventTypeException("Annotation " + RETENTION_PERIOD_ANNOTATION
-                            + " is required, when " + MATERIALISE_EVENTS_ANNOTATION + " is \"on\".");
-                }
             }
         }
     }
