@@ -34,7 +34,7 @@ public class EventTypeAnnotationsValidatorTest {
     @Test
     public void whenMaterializationEventFormatIsWrongThenFail() {
         final var annotations = Map.of(
-                EventTypeAnnotationsValidator.MATERIALISE_EVENTS_ANNOTATION, "1 day"
+                EventTypeAnnotationsValidator.MATERIALIZE_EVENTS_ANNOTATION, "1 day"
         );
         try {
             validator.validateAnnotations(annotations);
@@ -43,7 +43,7 @@ public class EventTypeAnnotationsValidatorTest {
             Assert.assertTrue(
                 "When the format of the Materialize Event annotation is wrong, the name of the annotation " +
                 "should be present",
-                e.getMessage().contains(EventTypeAnnotationsValidator.MATERIALISE_EVENTS_ANNOTATION));
+                e.getMessage().contains(EventTypeAnnotationsValidator.MATERIALIZE_EVENTS_ANNOTATION));
         }
     }
 
@@ -114,11 +114,11 @@ public class EventTypeAnnotationsValidatorTest {
 
     @Test
     public void whenMaterializationEventsThenOk() {
-        final String[] validMaterialisationEventsValues = {"off", "on"};
+        final String[] validMaterializationEventsValues = {"off", "on"};
 
-        for (final var materialisationEventValue : validMaterialisationEventsValues) {
+        for (final var materializationEventValue : validMaterializationEventsValues) {
             final var annotations = Map.of(
-                    EventTypeAnnotationsValidator.MATERIALISE_EVENTS_ANNOTATION, materialisationEventValue
+                    EventTypeAnnotationsValidator.MATERIALIZE_EVENTS_ANNOTATION, materializationEventValue,
                     EventTypeAnnotationsValidator.RETENTION_PERIOD_ANNOTATION, "1m",
                     EventTypeAnnotationsValidator.RETENTION_REASON_ANNOTATION, "for testing"
             );
@@ -137,7 +137,7 @@ public class EventTypeAnnotationsValidatorTest {
             Assert.fail("not reachable");
         } catch (InvalidEventTypeException e) {
             Assert.assertTrue(
-                    e.getMessage().contains(EventTypeAnnotationsValidator.MATERIALISE_EVENTS_ANNOTATION));
+                    e.getMessage().contains(EventTypeAnnotationsValidator.MATERIALIZE_EVENTS_ANNOTATION));
         }
     }
 
@@ -145,7 +145,7 @@ public class EventTypeAnnotationsValidatorTest {
     public void whenMaterializationIsOnThenRetentionPeriodIsRequired() {
         try {
             validator.validateAnnotations(Collections.singletonMap(
-                    EventTypeAnnotationsValidator.MATERIALISE_EVENTS_ANNOTATION, "on"));
+                    EventTypeAnnotationsValidator.MATERIALIZE_EVENTS_ANNOTATION, "on"));
             Assert.fail("not reachable");
         } catch (InvalidEventTypeException e) {
             Assert.assertTrue(

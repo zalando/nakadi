@@ -24,7 +24,7 @@ public class EventTypeAnnotationsValidator {
                     "(([1-9]|[1-9]\\d|[1][01]\\d|120)((\\smonths?)|(m)))|(([1-9]|(10))((\\syears?)|(y))))$");
     static final String RETENTION_PERIOD_ANNOTATION = "datalake.zalando.org/retention-period";
     static final String RETENTION_REASON_ANNOTATION = "datalake.zalando.org/retention-period-reason";
-    static final String MATERIALISE_EVENTS_ANNOTATION = "datalake.zalando.org/materialize-events";
+    static final String MATERIALIZE_EVENTS_ANNOTATION = "datalake.zalando.org/materialize-events";
 
     private final FeatureToggleService featureToggleService;
     private final AuthorizationService authorizationService;
@@ -46,13 +46,13 @@ public class EventTypeAnnotationsValidator {
     }
 
     private void validateDataLakeAnnotations(@NotNull final Map<String, String> annotations) {
-        final var materializeEvents = annotations.get(MATERIALISE_EVENTS_ANNOTATION);
+        final var materializeEvents = annotations.get(MATERIALIZE_EVENTS_ANNOTATION);
         final var retentionPeriod = annotations.get(RETENTION_PERIOD_ANNOTATION);
 
         if (materializeEvents != null) {
             if (!materializeEvents.equals("off") && !materializeEvents.equals("on")) {
                 throw new InvalidEventTypeException(
-                        "Annotation " + MATERIALISE_EVENTS_ANNOTATION
+                        "Annotation " + MATERIALIZE_EVENTS_ANNOTATION
                         + " is not valid. Provided value: \""
                         + materializeEvents
                         + "\". Possible values are: \"on\" or \"off\".");
@@ -60,7 +60,7 @@ public class EventTypeAnnotationsValidator {
             if (materializeEvents.equals("on")) {
                 if (retentionPeriod == null) {
                     throw new InvalidEventTypeException("Annotation " + RETENTION_PERIOD_ANNOTATION
-                            + " is required, when " + MATERIALISE_EVENTS_ANNOTATION + " is \"on\".");
+                            + " is required, when " + MATERIALIZE_EVENTS_ANNOTATION + " is \"on\".");
                 }
             }
         }
@@ -84,7 +84,7 @@ public class EventTypeAnnotationsValidator {
 
         if (areDataLakeAnnotationsMandatory()) {
             if (materializeEvents == null) {
-                throw new InvalidEventTypeException("Annotation " + MATERIALISE_EVENTS_ANNOTATION + " is required");
+                throw new InvalidEventTypeException("Annotation " + MATERIALIZE_EVENTS_ANNOTATION + " is required");
             }
         }
     }
