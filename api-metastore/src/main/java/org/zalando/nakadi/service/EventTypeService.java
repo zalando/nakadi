@@ -60,6 +60,7 @@ import org.zalando.nakadi.service.publishing.NakadiAuditLogPublisher;
 import org.zalando.nakadi.service.publishing.NakadiKpiPublisher;
 import org.zalando.nakadi.service.timeline.TimelineService;
 import org.zalando.nakadi.service.timeline.TimelineSync;
+import org.zalando.nakadi.service.validation.EventTypeAnnotationsValidator;
 import org.zalando.nakadi.service.validation.EventTypeOptionsValidator;
 import org.zalando.nakadi.view.EventOwnerSelector;
 
@@ -99,6 +100,7 @@ public class EventTypeService {
     private final NakadiKpiPublisher nakadiKpiPublisher;
     private final NakadiAuditLogPublisher nakadiAuditLogPublisher;
     private final EventTypeOptionsValidator eventTypeOptionsValidator;
+    private final EventTypeAnnotationsValidator eventTypeAnnotationsValidator;
     private final AdminService adminService;
     private final ApplicationService applicationService;
 
@@ -122,6 +124,7 @@ public class EventTypeService {
             final NakadiKpiPublisher nakadiKpiPublisher,
             final NakadiAuditLogPublisher nakadiAuditLogPublisher,
             final EventTypeOptionsValidator eventTypeOptionsValidator,
+            final EventTypeAnnotationsValidator eventTypeAnnotationsValidator,
             final EventTypeCache eventTypeCache,
             final SchemaService schemaService,
             final AdminService adminService,
@@ -141,6 +144,7 @@ public class EventTypeService {
         this.nakadiKpiPublisher = nakadiKpiPublisher;
         this.nakadiAuditLogPublisher = nakadiAuditLogPublisher;
         this.eventTypeOptionsValidator = eventTypeOptionsValidator;
+        this.eventTypeAnnotationsValidator = eventTypeAnnotationsValidator;
         this.adminService = adminService;
         this.eventTypeCache = eventTypeCache;
         this.schemaService = schemaService;
@@ -168,6 +172,7 @@ public class EventTypeService {
                     "are blocked by feature flag.");
         }
         eventTypeOptionsValidator.checkRetentionTime(eventType.getOptions());
+        eventTypeAnnotationsValidator.validateAnnotations(eventType.getAnnotations());
         setDefaultEventTypeOptions(eventType);
         try {
             schemaService.validateSchema(eventType);
@@ -454,6 +459,7 @@ public class EventTypeService {
             authorizationValidator.authorizeEventTypeView(original);
             if (!adminService.isAdmin(AuthorizationService.Operation.WRITE)) {
                 eventTypeOptionsValidator.checkRetentionTime(eventTypeBase.getOptions());
+                eventTypeAnnotationsValidator.validateAnnotations(eventTypeBase.getAnnotations());
                 authorizationValidator.authorizeEventTypeAdmin(original);
                 validateEventOwnerSelectorUnchanged(original, eventTypeBase);
             }

@@ -34,6 +34,7 @@ import org.zalando.nakadi.service.publishing.NakadiAuditLogPublisher;
 import org.zalando.nakadi.service.publishing.NakadiKpiPublisher;
 import org.zalando.nakadi.service.timeline.TimelineService;
 import org.zalando.nakadi.service.timeline.TimelineSync;
+import org.zalando.nakadi.service.validation.EventTypeAnnotationsValidator;
 import org.zalando.nakadi.service.validation.EventTypeOptionsValidator;
 import org.zalando.nakadi.utils.EventTypeTestBuilder;
 import org.zalando.nakadi.utils.TestUtils;
@@ -94,6 +95,8 @@ public class EventTypeServiceTest {
     @Mock
     private NakadiAuditLogPublisher nakadiAuditLogPublisher;
     @Mock
+    private EventTypeAnnotationsValidator eventTypeAnnotationsValidator;
+    @Mock
     private AdminService adminService;
     @Mock
     private SchemaService schemaService;
@@ -112,7 +115,7 @@ public class EventTypeServiceTest {
         eventTypeService = new EventTypeService(eventTypeRepository, timelineService, partitionResolver, enrichment,
                 subscriptionDbRepository, schemaEvolutionService, partitionsCalculator, featureToggleService,
                 authorizationValidator, timelineSync, transactionTemplate, nakadiSettings, nakadiKpiPublisher,
-                nakadiAuditLogPublisher, eventTypeOptionsValidator,
+                nakadiAuditLogPublisher, eventTypeOptionsValidator, eventTypeAnnotationsValidator,
                 eventTypeCache, schemaService, adminService, applicationService);
 
         when(transactionTemplate.execute(any())).thenAnswer(invocation -> {

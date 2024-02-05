@@ -21,12 +21,17 @@ public enum Feature {
     VALIDATE_SUBSCRIPTION_OWNING_APPLICATION("validate_subscription_owning_app"),
     VALIDATE_EVENT_TYPE_OWNING_APPLICATION("validate_event_type_owning_app"),
     SKIP_MISPLACED_EVENTS("skip_misplaced_events"),
-    DLQ_REDRIVE_EVENT_TYPE_ATTACHMENT_JOB("dlq_redrive_event_type_attachment_job");
+    DLQ_REDRIVE_EVENT_TYPE_ATTACHMENT_JOB("dlq_redrive_event_type_attachment_job"),
+    FORCE_DATA_LAKE_ANNOTATIONS;
 
     private final String id;
 
     Feature(final String id) {
         this.id = id;
+    }
+
+    Feature() {
+        this.id = name().toLowerCase();
     }
 
     public String getId() {
