@@ -3,7 +3,6 @@ package org.zalando.nakadi.controller;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.google.common.collect.Lists;
 import org.junit.Before;
-import org.mockito.Mockito;
 import org.springframework.http.converter.StringHttpMessageConverter;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.ResultActions;
@@ -40,6 +39,7 @@ import org.zalando.nakadi.service.publishing.NakadiAuditLogPublisher;
 import org.zalando.nakadi.service.publishing.NakadiKpiPublisher;
 import org.zalando.nakadi.service.timeline.TimelineService;
 import org.zalando.nakadi.service.timeline.TimelineSync;
+import org.zalando.nakadi.service.validation.EventTypeAnnotationsValidator;
 import org.zalando.nakadi.service.validation.EventTypeOptionsValidator;
 import org.zalando.nakadi.util.UUIDGenerator;
 import org.zalando.nakadi.utils.TestUtils;
@@ -92,8 +92,10 @@ public class EventTypeControllerTestCase {
     protected final AuthorizationValidator authorizationValidator = mock(AuthorizationValidator.class);
     protected final NakadiKpiPublisher nakadiKpiPublisher = mock(NakadiKpiPublisher.class);
     protected final NakadiAuditLogPublisher nakadiAuditLogPublisher = mock(NakadiAuditLogPublisher.class);
+    private final EventTypeAnnotationsValidator eventTypeAnnotationsValidator =
+            mock(EventTypeAnnotationsValidator.class);
     private final SchemaService schemaService = mock(SchemaService.class);
-    private final AvroSchemaCompatibility avroSchemaCompatibility = Mockito.mock(AvroSchemaCompatibility.class);
+    private final AvroSchemaCompatibility avroSchemaCompatibility = mock(AvroSchemaCompatibility.class);
     protected MockMvc mockMvc;
 
     public EventTypeControllerTestCase() {
@@ -128,7 +130,7 @@ public class EventTypeControllerTestCase {
                 partitionResolver, enrichment, subscriptionRepository, ses, partitionsCalculator,
                 featureToggleService, authorizationValidator, timelineSync, transactionTemplate, nakadiSettings,
                 nakadiKpiPublisher, nakadiAuditLogPublisher,
-                eventTypeOptionsValidator, eventTypeCache,
+                eventTypeOptionsValidator, eventTypeAnnotationsValidator, eventTypeCache,
                 schemaService, adminService, null);
 
         final EventTypeController controller = new EventTypeController(eventTypeService, featureToggleService,

@@ -9,6 +9,7 @@ import org.zalando.nakadi.domain.NakadiRecordResult;
 
 import java.util.LinkedList;
 import java.util.List;
+import java.util.Optional;
 import java.util.stream.Collectors;
 
 @Service
@@ -22,6 +23,7 @@ public class PublishingResultConverter {
                     .setStep(EventPublishingStep.PUBLISHING)
                     .setPublishingStatus(status)
                     .setEid(recordMetadata.getMetadata().getEid())
+                    .setPartition(Optional.ofNullable(recordMetadata.getMetadata().getPartition()))
                     .setDetail((recordMetadata.getException() != null) ?
                             recordMetadata.getException().getMessage() : ""));
         }
