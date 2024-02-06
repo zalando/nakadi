@@ -30,6 +30,7 @@ import java.io.Closeable;
 import java.io.IOException;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.concurrent.TimeoutException;
 
 @Service
@@ -74,14 +75,17 @@ public class BinaryEventPublisher {
     }
 
     public List<NakadiRecordResult> publish(final EventType eventType, final List<NakadiRecord> records,
-                                            final Map<HeaderTag, String> consumerTags) {
-        return processInternal(eventType, records, prePublishingChecks, consumerTags);
+                                            final Map<HeaderTag, String> consumerTags,
+                                            final Optional<Integer> publishTimeout) {
+        return processInternal(eventType, records, prePublishingChecks,
+                consumerTags, publishTimeout);
     }
 
     private List<NakadiRecordResult> processInternal(final EventType eventType,
                                                      final List<NakadiRecord> records,
                                                      final List<Check> checks,
-                                                     final Map<HeaderTag, String> consumerTags) {
+                                                     final Map<HeaderTag, String> consumerTags,
+                                                     final Optional<Integer> publishTimeout) {
         for (final Check check : checks) {
             final List<NakadiRecordResult> res = check.execute(eventType, records);
             if (res != null && !res.isEmpty()) {
@@ -108,7 +112,8 @@ public class BinaryEventPublisher {
                     .withTag("type", "binary")
                     .start();
             try (Closeable ignored = TracingService.activateSpan(publishingSpan)) {
-                return timelineService.getTopicRepository(eventType).sendEvents(topic, records, consumerTags);
+                return timelineService.getTopicRepository(eventType).
+                        sendEvents(topic, records, consumerTags, publishTimeout);
             } catch (final IOException ioe) {
                 throw new InternalNakadiException("Error closing active span scope", ioe);
             } finally {
@@ -141,10 +146,12 @@ public class BinaryEventPublisher {
             PartitioningException {
         LOG.debug("Deleting {} binary events from {}, with {} checks",
                 events.size(), eventType.getName(), preDeletingChecks.size());
-        return processInternal(eventType, events, preDeletingChecks, null);
+        return processInternal(eventType, events, preDeletingChecks,
+                null, Optional.empty());
     }
 
     public List<NakadiRecordResult> publishInternal(final EventType eventType, final List<NakadiRecord> events) {
-        return processInternal(eventType, events, internalPublishingChecks, null);
+        return processInternal(eventType, events, internalPublishingChecks,
+                null, Optional.empty());
     }
 }

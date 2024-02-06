@@ -242,7 +242,8 @@ public class KafkaRepositoryAT extends BaseAT {
             items.add(item);
         }
 
-        kafkaTopicRepository.syncPostBatch(topicId, items, null, null, false);
+        kafkaTopicRepository.syncPostBatch(topicId, items, null, null,
+                Optional.empty(), false);
 
         for (int i = 0; i < 10; i++) {
             assertThat(items.get(i).getResponse().getPublishingStatus(), equalTo(EventPublishingStatus.SUBMITTED));
@@ -261,7 +262,8 @@ public class KafkaRepositoryAT extends BaseAT {
             item.setOwner(new EventOwnerHeader("unit", "Nakadi"));
             items.add(item);
         }
-        kafkaTopicRepository.syncPostBatch(topicId, items, null, null, false);
+        kafkaTopicRepository.syncPostBatch(topicId, items, null, null,
+                Optional.empty(), false);
 
         for (int i = 0; i < 10; i++) {
             assertThat(items.get(i).getResponse().getPublishingStatus(), equalTo(EventPublishingStatus.SUBMITTED));

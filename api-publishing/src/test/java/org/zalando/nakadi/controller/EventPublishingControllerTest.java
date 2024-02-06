@@ -45,6 +45,7 @@ import org.zalando.problem.Status;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 import java.util.function.Supplier;
 
 import static org.hamcrest.MatcherAssert.assertThat;
@@ -69,6 +70,7 @@ public class EventPublishingControllerTest {
 
     public static final String TOPIC = "my-topic";
     private static final String EVENT_BATCH = "[{\"payload\": \"My Event Payload\"}]";
+    private static final String X_TIMEOUT = "X-TIMEOUT";
     private static final String X_CONSUMER_TAG = "X-CONSUMER-TAG";
 
     private MetricRegistry metricRegistry;
@@ -117,7 +119,7 @@ public class EventPublishingControllerTest {
         Mockito
                 .doReturn(result)
                 .when(publisher)
-                .publish(any(String.class), eq(TOPIC), any());
+                .publish(any(String.class), eq(TOPIC), any(), any());
 
         postBatch(TOPIC, EVENT_BATCH, null)
                 .andExpect(status().isOk())
@@ -125,18 +127,45 @@ public class EventPublishingControllerTest {
     }
 
     @Test
+    public void whenInvalidTimeoutHeaderThen400()
+            throws Exception {
+        final var response = Problem.builder().
+                withStatus(Status.BAD_REQUEST).
+                withTitle(Status.BAD_REQUEST.getReasonPhrase()).
+                withDetail("X-TIMEOUT cannot be less than 0 or greater than 30000 ms").build();
+
+        postBatch(TOPIC, EVENT_BATCH, Map.of(X_TIMEOUT, "-1"))
+                .andExpect(content().contentType("application/problem+json"))
+                .andExpect(status().isBadRequest())
+                .andExpect(content().string(TestUtils.JSON_TEST_HELPER.matchesObject(response)));
+
+        postBatch(TOPIC, EVENT_BATCH, Map.of(X_TIMEOUT, "30001"))
+                .andExpect(content().contentType("application/problem+json"))
+                .andExpect(status().isBadRequest())
+                .andExpect(content().string(TestUtils.JSON_TEST_HELPER.matchesObject(response)));
+    }
+
+    @Test
+    public void whenTimeoutHeaderNotIntThen400() throws Exception {
+        postBatch(TOPIC, EVENT_BATCH, Map.of(X_TIMEOUT, "1.5"))
+                .andExpect(content().contentType("application/problem+json"))
+                .andExpect(status().isBadRequest());
+    }
+
+        @Test
     public void whenInvalidPostBodyThen400() throws Exception {
 
         Mockito.doThrow(new JSONException("Error"))
                 .when(publisher)
-                .publish(any(String.class), eq(TOPIC), any());
+                .publish(any(String.class), eq(TOPIC), any(), any());
 
         postBatch(TOPIC, "invalid json array", null).andExpect(status().isBadRequest());
     }
 
     @Test
     public void whenEventPublishTimeoutThen503() throws Exception {
-        Mockito.when(publisher.publish(any(), any(), any())).thenThrow(new EventTypeTimeoutException(""));
+        Mockito.when(publisher.publish(any(), any(), any(), any())).
+                thenThrow(new EventTypeTimeoutException(""));
 
         postBatch(TOPIC, EVENT_BATCH, null)
                 .andExpect(content().contentType("application/problem+json"))
@@ -150,7 +179,7 @@ public class EventPublishingControllerTest {
         Mockito
                 .doReturn(result)
                 .when(publisher)
-                .publish(any(String.class), eq(TOPIC), any());
+                .publish(any(String.class), eq(TOPIC), any(), any());
 
         postBatch(TOPIC, EVENT_BATCH, null)
                 .andExpect(status().isUnprocessableEntity())
@@ -164,7 +193,7 @@ public class EventPublishingControllerTest {
         Mockito
                 .doReturn(result)
                 .when(publisher)
-                .publish(any(String.class), eq(TOPIC), any());
+                .publish(any(String.class), eq(TOPIC), any(), any());
 
         postBatch(TOPIC, EVENT_BATCH, null)
                 .andExpect(status().isMultiStatus())
@@ -176,7 +205,7 @@ public class EventPublishingControllerTest {
         Mockito
                 .doThrow(new NoSuchEventTypeException("topic not found"))
                 .when(publisher)
-                .publish(any(String.class), eq(TOPIC), any());
+                .publish(any(String.class), eq(TOPIC), any(), any());
 
         postBatch(TOPIC, EVENT_BATCH, null)
                 .andExpect(content().contentType("application/problem+json"))
@@ -190,8 +219,9 @@ public class EventPublishingControllerTest {
                 withTitle(Status.UNPROCESSABLE_ENTITY.getReasonPhrase()).
                 withDetail("duplicate header tag: CONSUMER_SUBSCRIPTION_ID").build();
 
-        postBatch(TOPIC, EVENT_BATCH, "consumer_subscription_id=16120729-4a57-4607-ad3a-d526a4590e75,  " +
-                "consumer_subscription_id = 16120729-4a57-4607-ad3a-d526a4590e76")
+        postBatch(TOPIC, EVENT_BATCH, Map.of(X_CONSUMER_TAG,
+                "consumer_subscription_id=16120729-4a57-4607-ad3a-d526a4590e75,  " +
+                "consumer_subscription_id = 16120729-4a57-4607-ad3a-d526a4590e76"))
                 .andExpect(content().contentType("application/problem+json"))
                 .andExpect(status().isUnprocessableEntity())
                 .andExpect(content().string(TestUtils.JSON_TEST_HELPER.matchesObject(response)));
@@ -204,7 +234,7 @@ public class EventPublishingControllerTest {
                 withTitle(Status.UNPROCESSABLE_ENTITY.getReasonPhrase()).
                 withDetail("X-CONSUMER-TAG: is empty!").build();
 
-        postBatch(TOPIC, EVENT_BATCH, "")
+        postBatch(TOPIC, EVENT_BATCH, Map.of(X_CONSUMER_TAG, ""))
                 .andExpect(content().contentType("application/problem+json"))
                 .andExpect(status().isUnprocessableEntity())
                 .andExpect(content().string(TestUtils.JSON_TEST_HELPER.matchesObject(response)));
@@ -217,7 +247,8 @@ public class EventPublishingControllerTest {
                 withTitle(Status.UNPROCESSABLE_ENTITY.getReasonPhrase()).
                 withDetail("header tag value: 123f is not an UUID").build();
 
-        postBatch(TOPIC, EVENT_BATCH, "consumer_subscription_id=123f")
+        postBatch(TOPIC, EVENT_BATCH,
+                Map.of(X_CONSUMER_TAG, "consumer_subscription_id=123f"))
                 .andExpect(content().contentType("application/problem+json"))
                 .andExpect(status().isUnprocessableEntity())
                 .andExpect(content().string(TestUtils.JSON_TEST_HELPER.matchesObject(response)));
@@ -230,7 +261,8 @@ public class EventPublishingControllerTest {
                 withTitle(Status.UNPROCESSABLE_ENTITY.getReasonPhrase()).
                 withDetail("header tag parameter is imbalanced, expected: 2 but provided 1").build();
 
-        postBatch(TOPIC, EVENT_BATCH, "consumer_subscription_id=,")
+        postBatch(TOPIC, EVENT_BATCH,
+                Map.of(X_CONSUMER_TAG, "consumer_subscription_id=,"))
                 .andExpect(content().contentType("application/problem+json"))
                 .andExpect(status().isUnprocessableEntity())
                 .andExpect(content().string(TestUtils.JSON_TEST_HELPER.matchesObject(response)));
@@ -244,7 +276,7 @@ public class EventPublishingControllerTest {
                 .doReturn(success)
                 .doThrow(InternalNakadiException.class)
                 .when(publisher)
-                .publish(any(), any(), any());
+                .publish(any(), any(), any(), any());
 
         postBatch(TOPIC, EVENT_BATCH, null);
         postBatch(TOPIC, EVENT_BATCH, null);
@@ -264,7 +296,7 @@ public class EventPublishingControllerTest {
                 .doReturn(success)
                 .doThrow(InternalNakadiException.class)
                 .when(publisher)
-                .publish(any(), any(), any());
+                .publish(any(), any(), any(), any());
 
         Mockito.when(kpiPublisher.hash(any())).thenReturn("hashed-application-name");
 
@@ -308,14 +340,14 @@ public class EventPublishingControllerTest {
     }
 
     private ResultActions postBatch(final String eventType, final String batch,
-                                    final String consumerTagHeader) throws Exception {
+                                    final Map<String, String> headers) throws Exception {
         final String url = "/event-types/" + eventType + "/events";
 
         final MockHttpServletRequestBuilder requestBuilder = post(url)
                 .contentType(APPLICATION_JSON)
                 .content(batch);
-        if(consumerTagHeader!= null){
-            requestBuilder.header(X_CONSUMER_TAG, consumerTagHeader);
+        if(headers!= null){
+            headers.forEach(requestBuilder::header);
         }
         return mockMvc.perform(requestBuilder);
     }
