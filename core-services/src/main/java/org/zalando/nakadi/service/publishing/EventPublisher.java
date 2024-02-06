@@ -63,6 +63,7 @@ import java.util.stream.Collectors;
 public class EventPublisher {
 
     private static final Logger LOG = LoggerFactory.getLogger(EventPublisher.class);
+    private static final String TAG_EVENT_TYPE = "event_type";
 
     private final NakadiSettings nakadiSettings;
 
@@ -285,7 +286,7 @@ public class EventPublisher {
             throws EventValidationException, InternalNakadiException, NoSuchEventTypeException {
 
         final Tracer.SpanBuilder validationSpan = TracingService.buildNewSpan("validation")
-                .withTag("event_type", eventType.getName());
+                .withTag(TAG_EVENT_TYPE, eventType.getName());
 
         try (Closeable ignored = TracingService.withActiveSpan(validationSpan)) {
 
@@ -333,6 +334,7 @@ public class EventPublisher {
 
         final Span publishingSpan = TracingService.buildNewSpan("publishing_to_kafka")
                 .withTag(Tags.MESSAGE_BUS_DESTINATION.getKey(), topic)
+                .withTag(TAG_EVENT_TYPE, eventType.getName())
                 .start();
         try (Closeable ignored = TracingService.activateSpan(publishingSpan)) {
             topicRepository.syncPostBatch(topic, batch, eventType.getName(), consumerTags, delete);
