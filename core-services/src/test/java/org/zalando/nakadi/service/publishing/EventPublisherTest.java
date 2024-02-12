@@ -212,7 +212,8 @@ public class EventPublisherTest {
 
         final List<NakadiRecord> records = Collections.singletonList(nakadiRecord);
         final List<NakadiRecordResult> publishResult = eventPublisher.publish(eventType, records, null);
-        Mockito.verify(topicRepository).sendEvents(ArgumentMatchers.eq(topic), ArgumentMatchers.eq(records), eq(null));
+
+        Mockito.verify(topicRepository).sendEvents(ArgumentMatchers.eq(topic), ArgumentMatchers.eq(records), any());
 
         Assert.assertNotEquals(NakadiRecordResult.Status.SUCCEEDED, publishResult.get(0).getStatus());
         Assert.assertEquals("1", publishResult.get(0).getMetadata().getPartition());
@@ -728,10 +729,10 @@ public class EventPublisherTest {
                 .thenReturn("1");
 
         final NakadiRecord nakadiRecord = mockNakadiRecord();
-
         final List<NakadiRecord> records = Collections.singletonList(nakadiRecord);
         eventPublisher.publish(eventType, records, null);
-        Mockito.verify(topicRepository).sendEvents(ArgumentMatchers.eq(topic), ArgumentMatchers.eq(records), eq(null));
+
+        Mockito.verify(topicRepository).sendEvents(ArgumentMatchers.eq(topic), ArgumentMatchers.eq(records), any());
     }
 
     @Test
@@ -929,7 +930,7 @@ public class EventPublisherTest {
                         new TimeoutException()));
             }
             return resps;
-        }).when(topicRepository).sendEvents(any(), any(), eq(null));
+         }).when(topicRepository).sendEvents(any(), any(), any());
     }
 
 }
