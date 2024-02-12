@@ -23,7 +23,9 @@ public class TracingService {
 
     private static final long BUCKET_5_KB = 5000L;
     private static final long BUCKET_50_KB = 50000L;
+
     public static final String ERROR_DESCRIPTION = "error.description";
+    public static final String TAG_EVENT_TYPE = "event_type";
 
     public static String getSLOBucketName(final long batchSize) {
         if (batchSize > BUCKET_50_KB) {

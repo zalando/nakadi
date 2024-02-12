@@ -28,6 +28,7 @@ import org.zalando.nakadi.service.timeline.TimelineSync;
 
 import java.io.Closeable;
 import java.io.IOException;
+import java.util.EnumMap;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.TimeoutException;
@@ -104,11 +105,18 @@ public class BinaryEventPublisher {
 
             final Span publishingSpan = TracingService.buildNewSpan("publishing_to_kafka")
                     .withTag(Tags.MESSAGE_BUS_DESTINATION.getKey(), topic)
-                    .withTag("event_type", eventType.getName())
+                    .withTag(TracingService.TAG_EVENT_TYPE, eventType.getName())
                     .withTag("type", "binary")
                     .start();
             try (Closeable ignored = TracingService.activateSpan(publishingSpan)) {
-                return timelineService.getTopicRepository(eventType).sendEvents(topic, records, consumerTags);
+                // DEBUG
+                final Map<HeaderTag, String> debugConsumerTags = new EnumMap<>(HeaderTag.class);
+                if (null != consumerTags) {
+                    debugConsumerTags.putAll(consumerTags);
+                }
+                debugConsumerTags.put(HeaderTag.DEBUG_PUBLISHER_TOPIC_ID, topic);
+                // DEBUG
+                return timelineService.getTopicRepository(eventType).sendEvents(topic, records, debugConsumerTags);
             } catch (final IOException ioe) {
                 throw new InternalNakadiException("Error closing active span scope", ioe);
             } finally {

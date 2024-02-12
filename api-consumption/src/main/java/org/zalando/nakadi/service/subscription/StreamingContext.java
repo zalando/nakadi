@@ -324,8 +324,9 @@ public class StreamingContext implements SubscriptionStreamer {
             try {
                 final String actualEventTypeName = kafkaRecordDeserializer.getEventTypeName(event.getEvent());
                 if (!expectedEventTypeName.equals(actualEventTypeName)) {
-                    LOG.warn("Consumed event for event type '{}', but expected '{}' (at position {})",
-                            actualEventTypeName, expectedEventTypeName, event.getPosition());
+                    LOG.warn("Consumed event for event type '{}', but expected '{}' (at position {}), topic id: {}",
+                            actualEventTypeName, expectedEventTypeName, event.getPosition(),
+                            event.getConsumerTags().get(HeaderTag.DEBUG_PUBLISHER_TOPIC_ID));
                     return true;
                 }
             } catch (final IOException e) {
@@ -339,10 +340,9 @@ public class StreamingContext implements SubscriptionStreamer {
     }
 
     private boolean checkConsumptionAllowedFromConsumerTags(final ConsumedEvent event) {
-        return event.getConsumerTags().
-                getOrDefault(HeaderTag.CONSUMER_SUBSCRIPTION_ID,
-                        subscription.getId()).
-                equals(subscription.getId());
+        return event.getConsumerTags()
+                .getOrDefault(HeaderTag.CONSUMER_SUBSCRIPTION_ID, subscription.getId())
+                .equals(subscription.getId());
     }
 
     public CursorTokenService getCursorTokenService() {

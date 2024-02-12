@@ -1,6 +1,5 @@
 package org.zalando.nakadi.repository.kafka;
 
-import com.google.common.base.Charsets;
 import com.google.common.base.Preconditions;
 import com.google.common.collect.ImmutableMap;
 import com.google.common.collect.Lists;
@@ -172,11 +171,9 @@ public class KafkaTopicRepository implements TopicRepository {
                 item.getOwner().serialize(kafkaRecord);
             }
 
-            if (consumerTags!= null && !consumerTags.isEmpty()) {
+            if (null != consumerTags && !consumerTags.isEmpty()) {
                 KafkaHeaderTagSerde.serialize(consumerTags, kafkaRecord);
             }
-
-            kafkaRecord.headers().add("X-Kafka-Topic", topicId.getBytes(Charsets.UTF_8));
 
             producer.send(kafkaRecord, ((metadata, exception) -> {
                 if (null != exception) {
@@ -420,11 +417,9 @@ public class KafkaTopicRepository implements TopicRepository {
                     nakadiRecord.getOwner().serialize(producerRecord);
                 }
 
-                if( null != consumerTags) {
+                if (null != consumerTags && !consumerTags.isEmpty()) {
                     KafkaHeaderTagSerde.serialize(consumerTags, producerRecord);
                 }
-
-                producerRecord.headers().add("X-Kafka-Topic", topic.getBytes(Charsets.UTF_8));
 
                 final Producer producer =
                         kafkaFactory.takeProducer(getProducerKey(topic, nakadiRecord.getMetadata().getPartition()));
