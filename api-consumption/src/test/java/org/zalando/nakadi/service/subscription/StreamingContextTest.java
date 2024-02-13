@@ -230,6 +230,7 @@ public class StreamingContextTest {
         final var incorrectEventTypeName = "incorrect_event_type";
         final var supportedEventTypeName = "correct_event_type";
         final var subscription = new Subscription();
+        subscription.setId(UUID.randomUUID().toString());
         subscription.setEventTypes(Set.of(supportedEventTypeName));
         final var et = new EventType();
         et.setCategory(EventCategory.BUSINESS);
