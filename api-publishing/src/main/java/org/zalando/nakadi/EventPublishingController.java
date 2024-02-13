@@ -42,9 +42,10 @@ import javax.servlet.http.HttpServletRequest;
 import java.io.IOException;
 import java.io.InputStream;
 import java.util.Collections;
-import java.util.HashMap;
+import java.util.EnumMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.UUID;
 import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
@@ -338,8 +339,8 @@ public class EventPublishingController {
             throw new InvalidConsumerTagException(X_CONSUMER_TAG + ": is empty!");
         }
 
-        final var arr = consumerString.split(",");
-        final Map<HeaderTag, String> result = new HashMap<>();
+        final Map<HeaderTag, String> result = new EnumMap<>(HeaderTag.class);
+        final String[] arr = consumerString.split(",");
         for (final String entry : arr) {
             final var tagAndValue = entry.replaceAll("\\s", "").split("=");
             if (tagAndValue.length != 2) {
@@ -347,22 +348,30 @@ public class EventPublishingController {
                         "expected: 2 but provided " + arr.length);
             }
 
-            final var optHeaderTag = HeaderTag.fromString(tagAndValue[0]);
+            final Optional<HeaderTag> optHeaderTag = HeaderTag.fromString(tagAndValue[0]);
             if (optHeaderTag.isEmpty()) {
                 throw new InvalidConsumerTagException("invalid header tag: " + tagAndValue[0]);
             }
-            if (result.containsKey(optHeaderTag.get())) {
-                throw new InvalidConsumerTagException("duplicate header tag: "
-                        + optHeaderTag.get());
+
+            final HeaderTag headerTag = optHeaderTag.get();
+            if (result.containsKey(headerTag)) {
+                throw new InvalidConsumerTagException("duplicate header tag: " + headerTag);
             }
-            if (optHeaderTag.get() == HeaderTag.CONSUMER_SUBSCRIPTION_ID) {
+
+            switch (headerTag) {
+            case CONSUMER_SUBSCRIPTION_ID:
                 try {
                     UUID.fromString(tagAndValue[1]);
                 } catch (IllegalArgumentException e) {
                     throw new InvalidConsumerTagException("header tag value: " + tagAndValue[1] + " is not an UUID");
                 }
+                break;
+
+            default:
+                throw new InvalidConsumerTagException("header tag unsupported: " + tagAndValue[0]);
             }
-            result.put(optHeaderTag.get(), tagAndValue[1]);
+
+            result.put(headerTag, tagAndValue[1]);
         }
         return result;
     }

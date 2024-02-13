@@ -6,6 +6,7 @@ import org.apache.kafka.common.KafkaException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.zalando.nakadi.domain.ConsumedEvent;
+import org.zalando.nakadi.domain.HeaderTag;
 import org.zalando.nakadi.domain.NakadiCursor;
 import org.zalando.nakadi.service.timeline.HighLevelConsumer;
 
@@ -84,7 +85,8 @@ public class EventStream {
                 if (consumedEvents.isEmpty()) {
                     final List<ConsumedEvent> eventsFromKafka = eventConsumer.readEvents();
                     for (final ConsumedEvent evt : eventsFromKafka) {
-                        if (eventStreamChecks.isConsumptionBlocked(evt) || !evt.getConsumerTags().isEmpty()) {
+                        if (evt.getConsumerTags().containsKey(HeaderTag.CONSUMER_SUBSCRIPTION_ID)
+                                || eventStreamChecks.isConsumptionBlocked(evt)) {
                             continue;
                         }
                         consumedEvents.add(evt);

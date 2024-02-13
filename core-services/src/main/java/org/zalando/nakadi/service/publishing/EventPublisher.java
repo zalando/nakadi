@@ -50,6 +50,7 @@ import org.zalando.nakadi.validation.ValidationError;
 
 import java.io.Closeable;
 import java.io.IOException;
+import java.util.EnumMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -63,7 +64,6 @@ import java.util.stream.Collectors;
 public class EventPublisher {
 
     private static final Logger LOG = LoggerFactory.getLogger(EventPublisher.class);
-    private static final String TAG_EVENT_TYPE = "event_type";
 
     private final NakadiSettings nakadiSettings;
 
@@ -286,7 +286,7 @@ public class EventPublisher {
             throws EventValidationException, InternalNakadiException, NoSuchEventTypeException {
 
         final Tracer.SpanBuilder validationSpan = TracingService.buildNewSpan("validation")
-                .withTag(TAG_EVENT_TYPE, eventType.getName());
+                .withTag(TracingService.TAG_EVENT_TYPE, eventType.getName());
 
         try (Closeable ignored = TracingService.withActiveSpan(validationSpan)) {
 
@@ -320,6 +320,7 @@ public class EventPublisher {
             final List<BatchItem> batch, final EventType eventType,
             final Map<HeaderTag, String> consumerTags, final boolean delete)
         throws EventPublishingException, InternalNakadiException {
+
         final Timeline activeTimeline = timelineService.getActiveTimeline(eventType);
         final String topic = activeTimeline.getTopic();
 
@@ -334,10 +335,17 @@ public class EventPublisher {
 
         final Span publishingSpan = TracingService.buildNewSpan("publishing_to_kafka")
                 .withTag(Tags.MESSAGE_BUS_DESTINATION.getKey(), topic)
-                .withTag(TAG_EVENT_TYPE, eventType.getName())
+                .withTag(TracingService.TAG_EVENT_TYPE, eventType.getName())
                 .start();
         try (Closeable ignored = TracingService.activateSpan(publishingSpan)) {
-            topicRepository.syncPostBatch(topic, batch, eventType.getName(), consumerTags, delete);
+            // DEBUG
+            final Map<HeaderTag, String> debugConsumerTags = new EnumMap<>(HeaderTag.class);
+            if (null != consumerTags) {
+                debugConsumerTags.putAll(consumerTags);
+            }
+            debugConsumerTags.put(HeaderTag.DEBUG_PUBLISHER_TOPIC_ID, topic);
+            // DEBUG
+            topicRepository.syncPostBatch(topic, batch, eventType.getName(), debugConsumerTags, delete);
         } catch (final EventPublishingException epe) {
             publishingSpan.log(epe.getMessage());
             throw epe;

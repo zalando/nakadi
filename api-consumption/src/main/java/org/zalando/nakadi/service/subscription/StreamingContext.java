@@ -311,10 +311,7 @@ public class StreamingContext implements SubscriptionStreamer {
                 return true;
             }
         }
-        if (event.getConsumerTags().isEmpty()) {
-            return eventStreamChecks.isConsumptionBlocked(event);
-        }
-        return !checkConsumptionAllowedFromConsumerTags(event)
+        return !isConsumptionAllowedFromConsumerTags(event)
                 || eventStreamChecks.isConsumptionBlocked(event);
     }
 
@@ -324,8 +321,9 @@ public class StreamingContext implements SubscriptionStreamer {
             try {
                 final String actualEventTypeName = kafkaRecordDeserializer.getEventTypeName(event.getEvent());
                 if (!expectedEventTypeName.equals(actualEventTypeName)) {
-                    LOG.warn("Consumed event for event type '{}', but expected '{}' (at position {})",
-                            actualEventTypeName, expectedEventTypeName, event.getPosition());
+                    LOG.warn("Consumed event for event type '{}', but expected '{}' (at position {}), topic id: {}",
+                            actualEventTypeName, expectedEventTypeName, event.getPosition(),
+                            event.getConsumerTags().get(HeaderTag.DEBUG_PUBLISHER_TOPIC_ID));
                     return true;
                 }
             } catch (final IOException e) {
@@ -338,11 +336,10 @@ public class StreamingContext implements SubscriptionStreamer {
         return false;
     }
 
-    private boolean checkConsumptionAllowedFromConsumerTags(final ConsumedEvent event) {
-        return event.getConsumerTags().
-                getOrDefault(HeaderTag.CONSUMER_SUBSCRIPTION_ID,
-                        subscription.getId()).
-                equals(subscription.getId());
+    private boolean isConsumptionAllowedFromConsumerTags(final ConsumedEvent event) {
+        return event.getConsumerTags()
+                .getOrDefault(HeaderTag.CONSUMER_SUBSCRIPTION_ID, subscription.getId())
+                .equals(subscription.getId());
     }
 
     public CursorTokenService getCursorTokenService() {
