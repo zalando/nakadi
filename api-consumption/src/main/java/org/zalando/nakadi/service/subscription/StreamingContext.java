@@ -311,10 +311,7 @@ public class StreamingContext implements SubscriptionStreamer {
                 return true;
             }
         }
-        if (event.getConsumerTags().isEmpty()) {
-            return eventStreamChecks.isConsumptionBlocked(event);
-        }
-        return !checkConsumptionAllowedFromConsumerTags(event)
+        return !isConsumptionAllowedFromConsumerTags(event)
                 || eventStreamChecks.isConsumptionBlocked(event);
     }
 
@@ -339,7 +336,7 @@ public class StreamingContext implements SubscriptionStreamer {
         return false;
     }
 
-    private boolean checkConsumptionAllowedFromConsumerTags(final ConsumedEvent event) {
+    private boolean isConsumptionAllowedFromConsumerTags(final ConsumedEvent event) {
         return event.getConsumerTags()
                 .getOrDefault(HeaderTag.CONSUMER_SUBSCRIPTION_ID, subscription.getId())
                 .equals(subscription.getId());
