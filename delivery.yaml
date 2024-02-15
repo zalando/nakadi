@@ -37,11 +37,10 @@ pipeline:
           # https://docs.gradle.org/current/userguide/dependency_resolution.html#sub:cache_copy
           rm -f ~/.gradle/caches/modules-2/{*.lock,gc.properties}
 
-          MULTI_ARCH_IMAGE="container-registry-test.zalando.net/aruha/nakadi-oss:${CDP_BUILD_VERSION}"
-          IMAGE="registry-write.opensource.zalan.do/aruha/nakadi-oss:${CDP_BUILD_VERSION}"
-          if [ "$CDP_PULL_REQUEST_NUMBER" ]; then
-            IMAGE="registry-write.opensource.zalan.do/aruha/nakadi-oss-pr:${CDP_BUILD_VERSION}"
-            MULTI_ARCH_IMAGE="container-registry-test.zalando.net/aruha/nakadi-oss-pr:${CDP_BUILD_VERSION}"
+          if [ -n "$CDP_PULL_REQUEST_NUMBER" ]; then
+            MULTI_ARCH_IMAGE="container-registry-test.zalando.net/aruha/nakadi-base-pr:${CDP_BUILD_VERSION}"
+          else
+            MULTI_ARCH_IMAGE="container-registry-test.zalando.net/aruha/nakadi-base:${CDP_BUILD_VERSION}"
           fi
 
           echo "Building multi-arch image"
@@ -57,9 +56,6 @@ pipeline:
             -t ${MULTI_ARCH_IMAGE} \
             --push .
           cdp-promote-image ${MULTI_ARCH_IMAGE}
-
-          docker build -t ${IMAGE} .
-          docker push ${IMAGE}
 
     cache:
       paths:
