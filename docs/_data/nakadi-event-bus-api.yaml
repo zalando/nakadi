@@ -91,9 +91,9 @@ securityDefinitions:
       nakadi.event_type.write: |
         Grants access for applications to define and update EventTypes.
       nakadi.event_stream.write: |
-        Grants access for applications to submit Events.
+        Grants access for applications to submit Events. Note: On Zalando's installation this scope is not needed anymore, instead the access depends on the per-event-type authorization.
       nakadi.event_stream.read: |
-        Grants access for consuming Event streams.
+        Grants access for consuming Event streams. Note: On Zalando's installation this scope is not needed anymore, instead the access depends on the per-event-type authorization.
 
 paths:
   /metrics:
