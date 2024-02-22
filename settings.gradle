@@ -13,3 +13,8 @@ include 'api-metastore'
 include 'api-misc'
 
 include 'acceptance-test'
+
+include 'authz'
+include 'lightstep'
+project(':authz').projectDir = new File('plugins/authz')
+project(':lightstep').projectDir = new File('plugins/lightstep')

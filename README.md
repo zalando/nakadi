@@ -254,6 +254,24 @@ This [email address](MAINTAINERS) serves as the main contact address for this pr
 Bug reports and feature requests are more likely to be addressed
 if posted as [issues](https://github.com/zalando/nakadi/issues) here on GitHub.
 
+## Manual Build
+
+Manual depends only on Nexus and ECR and is the last resort to rollout a patched version of Nakadi. You will need an opsgenie incident URL to perform such a rollout.
+
+Build Nakadi image by running: `./emergency-build.sh 20220824 https://zalando.app.opsgenie.com/incident/detail/c8d12ccb-0b8b-4d6a-9f24-0b4970660f3a`.
+
+Arguments list:
+- Version, which can be the date of the build
+- An incident URL (anomalies are not accepted)
+
+The script will give you the image tag that you can use on Nakadi deployments.
+
+**Note** that you need the latest version of Pierone CLI and Docker.
+
+### Manual Deployment
+
+To deploy the built image follow the instructions in [`nakadi-private-cdp`](https://github.bus.zalan.do/aruha/nakadi-private-cdp).
+
 ## License
 
 Please read the full [`LICENSE`](LICENSE)

@@ -32,7 +32,7 @@ pipeline:
 
       - desc: Build and push
         cmd: |
-          ./gradlew clean app:bootJar
+          ./nakadi.sh clean-build
 
           # https://docs.gradle.org/current/userguide/dependency_resolution.html#sub:cache_copy
           rm -f ~/.gradle/caches/modules-2/{*.lock,gc.properties}
@@ -43,18 +43,9 @@ pipeline:
             MULTI_ARCH_IMAGE="container-registry-test.zalando.net/aruha/nakadi-base:${CDP_BUILD_VERSION}"
           fi
 
-          echo "Building multi-arch image"
-          docker buildx create \
-                --config /etc/cdp-buildkitd.toml \
-                --driver-opt network=host \
-                --name cdpbuildx \
-                --bootstrap \
-                --use
+          ./nakadi.sh create-buildx /etc/cdp-buildkitd.toml
+          ./nakadi.sh build-buildx ${MULTI_ARCH_IMAGE}
 
-          docker buildx build \
-            --platform linux/amd64,linux/arm64 \
-            -t ${MULTI_ARCH_IMAGE} \
-            --push .
           cdp-promote-image ${MULTI_ARCH_IMAGE}
 
     cache:

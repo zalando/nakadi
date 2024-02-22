@@ -1,0 +1,88 @@
+{
+  "dn": "cn=50061346,ou=official,ou=ra-team,dc=zalando,dc=net",
+  "id": "aruha",
+  "id_name": "aruha",
+  "team_id": "50061346",
+  "type": "official",
+  "name": "Infrastructure / Event Streaming as a Service",
+  "mail": [
+    "team-aruha@zalando.de"
+  ],
+  "alias": [
+    "aruha",
+    "aruha-test"
+  ],
+  "member": [
+    "adyachkov",
+    "bshala",
+    "oshulgin",
+    "ssaha",
+    "dsorokin",
+    "tabraham"
+  ],
+  "infrastructure-accounts": [
+    {
+      "id": "257146137867",
+      "name": "aruha",
+      "provider": "aws",
+      "type": "aws",
+      "description": "",
+      "owner": "aruha",
+      "owner_dn": "cn=50061346,ou=official,ou=ra-team,dc=zalando,dc=net",
+      "disabled": false
+    },
+    {
+      "id": "195381967144",
+      "name": "nakadi",
+      "provider": "aws",
+      "type": "aws",
+      "description": "",
+      "owner": "aruha",
+      "owner_dn": "cn=50061346,ou=official,ou=ra-team,dc=zalando,dc=net",
+      "disabled": false
+    },
+    {
+      "id": "226514058965",
+      "name": "aruha-test",
+      "provider": "aws",
+      "type": "aws",
+      "description": "",
+      "owner": "aruha",
+      "owner_dn": "cn=50061346,ou=official,ou=ra-team,dc=zalando,dc=net",
+      "disabled": false
+    },
+    {
+      "id": "647460277622",
+      "name": "nakadi-test",
+      "provider": "aws",
+      "type": "aws",
+      "description": "",
+      "owner": "aruha",
+      "owner_dn": "cn=50061346,ou=official,ou=ra-team,dc=zalando,dc=net",
+      "disabled": false
+    },
+    {
+      "id": "710180679010",
+      "name": "data-services",
+      "provider": "aws",
+      "type": "aws",
+      "description": "",
+      "owner": "aruha",
+      "owner_dn": "cn=50061346,ou=official,ou=ra-team,dc=zalando,dc=net",
+      "disabled": false
+    },
+    {
+      "id": "851256841200",
+      "name": "data-services-test",
+      "provider": "aws",
+      "type": "aws",
+      "description": "",
+      "owner": "aruha",
+      "owner_dn": "cn=50061346,ou=official,ou=ra-team,dc=zalando,dc=net",
+      "disabled": false
+    }
+  ],
+  "cost_center": "0001104321",
+  "delivery_lead": "jmussler",
+  "parent_team_id": "50117784"
+}

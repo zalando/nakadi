@@ -1,0 +1,9 @@
+# allow using --network=host with docker buildx
+insecure-entitlements=["network.host"]
+
+# make CDP Proxy's certificate work with Buildkit (this will only work for the listed domains)
+[registry."container-registry.zalando.net"]
+  ca=["/tmp/cdp-proxy.crt"]
+
+[registry."container-registry-test.zalando.net"]
+  ca=["/tmp/cdp-proxy.crt"]

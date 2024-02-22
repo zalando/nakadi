@@ -1,0 +1,111 @@
+{
+  "dn": "cn=00000049,ou=virtual,ou=ra-team,dc=zalando,dc=net",
+  "id": "stups",
+  "id_name": "STUPS",
+  "team_id": "00000049",
+  "type": "virtual",
+  "name": "STUPS",
+  "mail": [
+    "tech-stups@zalando.de"
+  ],
+  "alias": [
+    "zalando",
+    "stups-test",
+    "stups-build",
+    "stups",
+    "platform",
+    "core",
+    "asa"
+  ],
+  "member": [
+    "tyang",
+    "lmineiro",
+    "tgruda",
+    "mabdelhameed",
+    "neremic",
+    "mawenzel",
+    "jmussler",
+    "apfeiffer",
+    "odekamper",
+    "mlinkhorst",
+    "sszuecs",
+    "femueller",
+    "hjacobs",
+    "clohmann"
+  ],
+  "description": "Platform Engineering / Paas",
+  "infrastructure-accounts": [
+    {
+      "id": "617751694391",
+      "name": "zalando",
+      "provider": "aws",
+      "type": "aws",
+      "description": "",
+      "owner": "stups",
+      "owner_dn": "cn=00000049,ou=virtual,ou=ra-team,dc=zalando,dc=net",
+      "disabled": false
+    },
+    {
+      "id": "407797183256",
+      "name": "playground",
+      "provider": "aws",
+      "type": "aws",
+      "description": "",
+      "owner": "stups",
+      "owner_dn": "cn=00000049,ou=virtual,ou=ra-team,dc=zalando,dc=net",
+      "disabled": false
+    },
+    {
+      "id": "085668006708",
+      "name": "stups-test",
+      "provider": "aws",
+      "type": "aws",
+      "description": "",
+      "owner": "stups",
+      "owner_dn": "cn=00000049,ou=virtual,ou=ra-team,dc=zalando,dc=net",
+      "disabled": false
+    },
+    {
+      "id": "861068367966",
+      "name": "stups-build",
+      "provider": "aws",
+      "type": "aws",
+      "description": "",
+      "owner": "stups",
+      "owner_dn": "cn=00000049,ou=virtual,ou=ra-team,dc=zalando,dc=net",
+      "disabled": false
+    },
+    {
+      "id": "092253427501",
+      "name": "core",
+      "provider": "aws",
+      "type": "aws",
+      "description": "",
+      "owner": "stups",
+      "owner_dn": "cn=00000049,ou=virtual,ou=ra-team,dc=zalando,dc=net",
+      "disabled": true
+    },
+    {
+      "id": "223745537043",
+      "name": "stups-example",
+      "provider": "aws",
+      "type": "aws",
+      "description": "",
+      "owner": "stups",
+      "owner_dn": "cn=00000049,ou=virtual,ou=ra-team,dc=zalando,dc=net",
+      "disabled": true
+    },
+    {
+      "id": "254709147076",
+      "name": "stups-example",
+      "provider": "aws",
+      "type": "aws",
+      "description": "",
+      "owner": "stups",
+      "owner_dn": "cn=00000049,ou=virtual,ou=ra-team,dc=zalando,dc=net",
+      "disabled": true
+    }
+  ],
+  "cost_center": "0001104321",
+  "delivery_lead": "mdienel"
+}

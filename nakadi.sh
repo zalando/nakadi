@@ -1,6 +1,7 @@
-#!/usr/bin/env bash
+#!/bin/bash -e
 
 function waitForNakadi() {
+  set +e
   echo "Waiting for Nakadi to start up"
   x=1
   while [[ x -lt 10 ]]; do
@@ -13,6 +14,7 @@ function waitForNakadi() {
     sleep 10
     x=$((x + 1))
   done
+  set -e
 }
 
 function startNakadi() {
@@ -45,26 +47,43 @@ function acceptanceTests() {
 }
 
 function buildNakadi() {
-  set -e
-  ./gradlew clean
-  ./gradlew :app:bootJar
-  set +e
+  ./gradlew clean app:bootJar authz:fatJar lightstep:fatJar
+}
+
+function createBuildx() {
+  docker buildx rm -f cdpbuildx || true
+  docker buildx create \
+    --config "$1" \
+    --driver-opt network=host \
+    --name cdpbuildx \
+    --bootstrap \
+    --use
+}
+
+function buildBuildx() {
+  docker buildx build --platform linux/amd64,linux/arm64 -t "$1" --push .
 }
 
 function help() {
   echo "Usage: ./nakadi.sh COMMAND"
   echo ""
   echo "Commands:"
+  echo "  clean-build        clean build of Nakadi"
   echo "  start-nakadi       build Nakadi and start docker-compose services: nakadi, postgresql, zookeeper and kafka"
   echo "  stop-nakadi        shutdown docker-compose services"
   echo "  start-storages     start docker-compose services: postgres, zookeeper and kafka (useful for development purposes)"
   echo "  stop-storages      shutdown docker-compose services"
   echo "  acceptance-tests   start Nakadi configured for acceptance tests and run acceptance tests"
+  echo "  create-buildx      create docker buildx container for building multi-architecture images"
+  echo "  build-buildx       build docker multi-architecture image (use create-buildx first)"
   exit 1
 }
 
 COMMAND="${1}"
 case $COMMAND in
+clean-build)
+  buildNakadi
+  ;;
 start-nakadi)
   buildNakadi
   startNakadi
@@ -81,6 +100,20 @@ stop-storages)
 acceptance-tests)
   buildNakadi
   acceptanceTests
+  ;;
+create-buildx)
+  if [ $# != 2 ]; then
+    echo "Usage: nakadi.sh create-buildx CONFIG_FILE"
+    exit 1
+  fi
+  createBuildx "$2"
+  ;;
+build-buildx)
+  if [ $# != 2 ]; then
+    echo "Usage: nakadi.sh build-buildx IMAGE"
+    exit 1
+  fi
+  buildBuildx "$2"
   ;;
 *)
   help

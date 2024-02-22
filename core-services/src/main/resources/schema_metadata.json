@@ -32,6 +32,13 @@
           "type": "string"
         }
       },
+      "retailer_id": {
+        "minLength": 1,
+        "type": "string"
+      },
+      "published_by": {
+        "type": "string"
+      },
       "flow_id": {
         "type": "string"
       }
@@ -74,10 +81,17 @@
           "type": "string"
         }
       },
+      "published_by": {
+        "type": "string"
+      },
       "flow_id": {
         "type": "string"
       },
       "partition_compaction_key": {
+        "minLength": 1,
+        "type": "string"
+      },
+      "retailer_id": {
         "minLength": 1,
         "type": "string"
       }
@@ -121,10 +135,17 @@
           "type": "string"
         }
       },
+      "published_by": {
+        "type": "string"
+      },
       "flow_id": {
         "type": "string"
       },
       "partition_compaction_key": {
+        "minLength": 1,
+        "type": "string"
+      },
+      "retailer_id": {
         "minLength": 1,
         "type": "string"
       }

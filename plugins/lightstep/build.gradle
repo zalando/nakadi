@@ -1,0 +1,36 @@
+buildscript {
+    dependencies {
+        classpath 'org.owasp:dependency-check-gradle:5.3.2.1'
+    }
+}
+
+plugins {
+    id 'org.springframework.boot' version '2.5.12' apply false
+}
+
+apply plugin: 'org.owasp.dependencycheck'
+
+dependencies {
+    ext {
+        lightstepVersion = "0.30.5"
+        lightstepTracerVersion = "0.30.3"
+        springBootVersion = "2.5.12"
+    }
+
+    compileOnly "org.springframework.boot:spring-boot-starter:${springBootVersion}"
+
+    compile "com.lightstep.tracer:tracer-grpc:${lightstepTracerVersion}"
+    compile "com.lightstep.tracer:lightstep-tracer-jre:${lightstepVersion}"
+    compile "io.grpc:grpc-netty:1.39.0"
+    compile "io.netty:netty-tcnative-boringssl-static:2.0.40.Final"
+    // To have same version as Nakadi
+    compile "org.slf4j:slf4j-api:1.7.30"
+    compile 'com.google.guava:guava:30.1-jre' // this is to upgrade lightstep deps
+}
+
+task fatJar(type: Jar) {
+    baseName = "nakadi-lightstep"
+    from { configurations.compile.collect { it.isDirectory() ? it : zipTree(it) } }
+    from sourceSets.main.allSource
+    with jar
+}
