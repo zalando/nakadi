@@ -1,6 +1,8 @@
 # Contributing to Nakadi
 
-**Thank you for your interest in Nakadi. Your contributions are highly welcome.**
+Nakadi is no longer developed in the open — please use Zalando's internal repository for contributing.
+
+## Archived
 
 There are multiple ways of getting involved:
 

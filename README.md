@@ -1,5 +1,9 @@
 ## [Nakadi Event Broker](https://zalando.github.io/nakadi/)
 
+**Nakadi is no longer developed in the open — please use Zalando's internal repository for contributing.**
+
+## ARCHIVED
+
 [![Build Status](https://travis-ci.org/zalando/nakadi.svg?branch=master)](https://travis-ci.org/zalando/nakadi)
 [![Codacy Badge](https://api.codacy.com/project/badge/Grade/785ccd4ab5e34867b760a8b07c3b62f1)](https://www.codacy.com/app/aruha/nakadi?utm_source=www.github.com&amp;utm_medium=referral&amp;utm_content=zalando/nakadi&amp;utm_campaign=Badge_Grade)
 
