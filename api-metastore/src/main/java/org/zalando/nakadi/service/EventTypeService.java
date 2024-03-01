@@ -172,7 +172,6 @@ public class EventTypeService {
                     "are blocked by feature flag.");
         }
         eventTypeOptionsValidator.checkRetentionTime(eventType.getOptions());
-        eventTypeAnnotationsValidator.validateAnnotations(eventType.getAnnotations());
         setDefaultEventTypeOptions(eventType);
         try {
             schemaService.validateSchema(eventType);
@@ -199,6 +198,7 @@ public class EventTypeService {
         if (eventType.getLabels() == null) {
             eventType.setLabels(new HashMap<>());
         }
+        eventTypeAnnotationsValidator.validateAnnotations(eventType);
 
         final AtomicReference<EventType> createdEventType = new AtomicReference<>(null);
         final AtomicReference<Timeline> createdTimeline = new AtomicReference<>(null);
@@ -459,11 +459,11 @@ public class EventTypeService {
             authorizationValidator.authorizeEventTypeView(original);
             if (!adminService.isAdmin(AuthorizationService.Operation.WRITE)) {
                 eventTypeOptionsValidator.checkRetentionTime(eventTypeBase.getOptions());
-                eventTypeAnnotationsValidator.validateAnnotations(eventTypeBase.getAnnotations());
                 authorizationValidator.authorizeEventTypeAdmin(original);
                 validateEventOwnerSelectorUnchanged(original, eventTypeBase);
             }
             validateEventOwnerSelector(eventTypeBase);
+            eventTypeAnnotationsValidator.validateAnnotations(eventTypeBase);
 
             authorizationValidator.validateAuthorization(original.asResource(), eventTypeBase.asBaseResource());
             validateName(eventTypeName, eventTypeBase);

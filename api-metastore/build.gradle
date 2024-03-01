@@ -29,10 +29,13 @@ dependencies {
     // validation
     compile("org.springframework.boot:spring-boot-starter-validation")
 
-    testCompile 'org.hamcrest:hamcrest-all:1.3'
-    testCompile('org.junit.jupiter:junit-jupiter-api:5.5.2') {
-        exclude module: "hamcrest-core"
-    }
+    testImplementation(platform('org.junit:junit-bom:5.7.2'))
+    testImplementation('org.junit.jupiter:junit-jupiter')
+    testRuntimeOnly('org.junit.platform:junit-platform-launcher')
+    // TODO: remove after migrating to JUnit 5.
+    testImplementation("junit:junit:4.13.2")
+    testRuntimeOnly("org.junit.vintage:junit-vintage-engine")
+
     testCompile "org.springframework:spring-test"
     testCompile 'org.springframework.boot:spring-boot-test'
     testCompile 'org.springframework.boot:spring-boot-starter-test'
@@ -45,4 +48,8 @@ bootJar {
 }
 jar {
     enabled = true
+}
+
+test {
+    useJUnitPlatform()
 }
