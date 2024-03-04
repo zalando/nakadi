@@ -43,14 +43,22 @@ public class EventTypeAnnotationsValidator {
         this.enforcedAuthSubjects = enforcedAuthSubjects;
     }
 
-    public void validateAnnotations(final EventTypeBase eventType) throws InvalidEventTypeException {
-        final var annotations = Optional.ofNullable(eventType.getAnnotations())
+    public void validateAnnotations(
+            final EventTypeBase oldEventType,
+            @NotNull final EventTypeBase newEventType)
+            throws InvalidEventTypeException {
+        final var oldAnnotations = Optional.ofNullable(oldEventType)
+                .map(EventTypeBase::getAnnotations)
+                .orElse(null);
+        final var newAnnotations = Optional.ofNullable(newEventType.getAnnotations())
                 .orElseGet(Collections::emptyMap);
-        validateDataLakeAnnotations(annotations);
+        validateDataLakeAnnotations(oldAnnotations, newAnnotations);
     }
 
     @VisibleForTesting
-    void validateDataLakeAnnotations(@NotNull final Map<String, String> annotations) {
+    void validateDataLakeAnnotations(
+            final Map<String, String> oldAnnotations,
+            @NotNull final Map<String, String> annotations) {
         final var materializeEvents = annotations.get(DATA_LAKE_MATERIALIZE_EVENTS_ANNOTATION);
         final var retentionPeriod = annotations.get(DATA_LAKE_RETENTION_PERIOD_ANNOTATION);
 
@@ -87,7 +95,9 @@ public class EventTypeAnnotationsValidator {
             }
         }
 
-        if (areDataLakeAnnotationsMandatory()) {
+        final var stricterCheck = (oldAnnotations == null
+                || oldAnnotations.containsKey(DATA_LAKE_MATERIALIZE_EVENTS_ANNOTATION));
+        if (stricterCheck && areDataLakeAnnotationsMandatory()) {
             if (materializeEvents == null) {
                 throw new InvalidEventTypeException(
                         "Annotation " + DATA_LAKE_MATERIALIZE_EVENTS_ANNOTATION + " is required");

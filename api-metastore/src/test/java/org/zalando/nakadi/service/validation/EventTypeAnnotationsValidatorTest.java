@@ -40,7 +40,7 @@ public class EventTypeAnnotationsValidatorTest {
     @ParameterizedTest
     @MethodSource("getValidDataLakeAnnotations")
     public void testValidDataLakeAnnotations(final Map<String, String> annotations) {
-        validator.validateDataLakeAnnotations(annotations);
+        validator.validateDataLakeAnnotations(null, annotations);
     }
 
     public static Stream<Map<String, String>> getValidDataLakeAnnotations() {
@@ -78,7 +78,7 @@ public class EventTypeAnnotationsValidatorTest {
     public void testInvalidDataLakeAnnotations(final Map<String, String> annotations, final String[] errorMessages) {
         final var exception = assertThrows(
                 InvalidEventTypeException.class,
-                () -> validator.validateDataLakeAnnotations(annotations));
+                () -> validator.validateDataLakeAnnotations(null, annotations));
         Assertions.assertThat(exception.getMessage()).contains(errorMessages);
     }
 
@@ -133,8 +133,16 @@ public class EventTypeAnnotationsValidatorTest {
 
         final var exception = assertThrows(
                 InvalidEventTypeException.class,
-                () -> validator.validateDataLakeAnnotations(Collections.emptyMap()));
+                () -> validator.validateDataLakeAnnotations(null, Collections.emptyMap()));
         Assertions.assertThat(exception.getMessage())
                 .contains(EventTypeAnnotationsValidator.DATA_LAKE_MATERIALIZE_EVENTS_ANNOTATION);
+    }
+
+    @Test
+    public void testUpdateOfOldVersionWithoutDataLakeAnnotations() {
+        when(featureToggleService.isFeatureEnabled(Feature.FORCE_DATA_LAKE_ANNOTATIONS)).thenReturn(true);
+        when(authorizationService.getSubject()).thenReturn(Optional.of(() -> A_TEST_APPLICATION));
+
+        validator.validateDataLakeAnnotations(Collections.emptyMap(), Collections.emptyMap());
     }
 }

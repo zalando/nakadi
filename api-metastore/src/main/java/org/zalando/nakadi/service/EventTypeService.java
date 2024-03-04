@@ -192,13 +192,8 @@ public class EventTypeService {
 
         validateEventOwnerSelector(eventType);
 
-        if (eventType.getAnnotations() == null) {
-            eventType.setAnnotations(new HashMap<>());
-        }
-        if (eventType.getLabels() == null) {
-            eventType.setLabels(new HashMap<>());
-        }
-        eventTypeAnnotationsValidator.validateAnnotations(eventType);
+        presetAnnotationsAndLabels(eventType);
+        eventTypeAnnotationsValidator.validateAnnotations(null, eventType);
 
         final AtomicReference<EventType> createdEventType = new AtomicReference<>(null);
         final AtomicReference<Timeline> createdTimeline = new AtomicReference<>(null);
@@ -463,7 +458,6 @@ public class EventTypeService {
                 validateEventOwnerSelectorUnchanged(original, eventTypeBase);
             }
             validateEventOwnerSelector(eventTypeBase);
-            eventTypeAnnotationsValidator.validateAnnotations(eventTypeBase);
 
             authorizationValidator.validateAuthorization(original.asResource(), eventTypeBase.asBaseResource());
             validateName(eventTypeName, eventTypeBase);
@@ -475,6 +469,7 @@ public class EventTypeService {
             eventType = schemaEvolutionService.evolve(original, eventTypeBase);
             validateStatisticsUpdate(original, eventType);
             updateAnnotationsAndLabels(original, eventType);
+            eventTypeAnnotationsValidator.validateAnnotations(original, eventTypeBase);
             updateRetentionTime(original, eventType);
             updateEventType(original, eventType);
         } catch (final InterruptedException e) {
@@ -524,15 +519,25 @@ public class EventTypeService {
         setDefaultEventTypeOptions(eventType);
     }
 
-    private void updateAnnotationsAndLabels(final EventType original, final EventType eventType)
-            throws InvalidEventTypeException {
+    private void presetAnnotationsAndLabels(final EventTypeBase eventType) {
+        if (eventType.getAnnotations() == null) {
+            eventType.setAnnotations(new HashMap<>());
+        }
+        if (eventType.getLabels() == null) {
+            eventType.setLabels(new HashMap<>());
+        }
+    }
 
+    // TODO: tech dept, we are patching the result event type on PUT request. Instead the service should rely on
+    //  the input from the request only (Nakadi clients have to migrate and support annotations and labels for update).
+    private void updateAnnotationsAndLabels(final EventType original, final EventType eventType) {
         if (eventType.getAnnotations() == null) {
             eventType.setAnnotations(original.getAnnotations());
         }
         if (eventType.getLabels() == null) {
             eventType.setLabels(original.getLabels());
         }
+        presetAnnotationsAndLabels(eventType);
     }
 
     private void updateEventType(final EventType original, final EventType eventType) {
