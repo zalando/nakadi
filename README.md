@@ -1,7 +1,4 @@
-## [Nakadi Event Broker](https://zalando.github.io/nakadi/)
-
-[![Build Status](https://travis-ci.org/zalando/nakadi.svg?branch=master)](https://travis-ci.org/zalando/nakadi)
-[![Codacy Badge](https://api.codacy.com/project/badge/Grade/785ccd4ab5e34867b760a8b07c3b62f1)](https://www.codacy.com/app/aruha/nakadi?utm_source=www.github.com&amp;utm_medium=referral&amp;utm_content=zalando/nakadi&amp;utm_campaign=Badge_Grade)
+## Nakadi Event Broker
 
 Nakadi is a distributed event bus broker that implements a RESTful API abstraction on top of Kafka-like queues, which can be used to send, receive, and analyze streaming data in real time, in a reliable and highly available manner.
 
@@ -9,11 +6,9 @@ One of the most prominent use cases of Nakadi is to decouple micro-services by b
 
 Main users of nakadi are developers and analysts. Nakadi provides features like REST based integration, multi consumer, ordered delivery, interactive UI, fully managed, security, ensuring data quality, abstraction of big data technology, and push model based consumption.
 
-Nakadi is in active developement and is currently in production inside Zalando as the backbone of our microservices sending millions of events daily with a throughput of more than hundreds gigabytes per second. In one line, Nakadi is a **high-scalability data-stream for enterprise engineering teams**.  
+Nakadi is in active developement and is currently in production inside Zalando as the backbone of our microservices sending millions of events daily with a throughput of more than hundreds gigabytes per second. In one line, Nakadi is a **high-scalability data-stream for enterprise engineering teams**.
 
-![Nakadi Deployment Diagram](docs/img/NakadiDeploymentDiagram.png)
-
-More detailed information can be found on our [website](http://zalando.github.io/nakadi/).
+More detailed information can be found on our [documentation website](https://nakadi-docs.zalando.net/nakadi-event-broker/introduction/).
 
 ### Project goal
 
