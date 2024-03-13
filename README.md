@@ -8,7 +8,7 @@ Main users of nakadi are developers and analysts. Nakadi provides features like 
 
 Nakadi is in active developement and is currently in production inside Zalando as the backbone of our microservices sending millions of events daily with a throughput of more than hundreds gigabytes per second. In one line, Nakadi is a **high-scalability data-stream for enterprise engineering teams**.
 
-More detailed information can be found on our [documentation website](https://nakadi-docs.zalando.net/nakadi-event-broker/introduction/).
+More detailed information can be found on our [documentation website](https://nakadi.docs.zalando.net/nakadi-event-broker/introduction/).
 
 ### Project goal
 
