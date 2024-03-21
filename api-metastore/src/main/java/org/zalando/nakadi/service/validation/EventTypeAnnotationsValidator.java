@@ -47,9 +47,9 @@ public class EventTypeAnnotationsValidator {
             final EventTypeBase oldEventType,
             @NotNull final EventTypeBase newEventType)
             throws InvalidEventTypeException {
-        final var oldAnnotations = Optional.ofNullable(oldEventType)
-                .map(EventTypeBase::getAnnotations)
-                .orElse(null);
+
+        final var oldAnnotations = oldEventType == null ?
+                null : Optional.ofNullable(oldEventType.getAnnotations()).orElseGet(Collections::emptyMap);
         final var newAnnotations = Optional.ofNullable(newEventType.getAnnotations())
                 .orElseGet(Collections::emptyMap);
         validateDataLakeAnnotations(oldAnnotations, newAnnotations);
