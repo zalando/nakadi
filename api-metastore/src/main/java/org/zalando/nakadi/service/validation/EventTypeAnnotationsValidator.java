@@ -57,6 +57,7 @@ public class EventTypeAnnotationsValidator {
 
     @VisibleForTesting
     void validateDataLakeAnnotations(
+            // null iff we're validating a new event type (i.e. there is no old event type)
             final Map<String, String> oldAnnotations,
             @NotNull final Map<String, String> annotations) {
         final var materializeEvents = annotations.get(DATA_LAKE_MATERIALIZE_EVENTS_ANNOTATION);
@@ -95,6 +96,8 @@ public class EventTypeAnnotationsValidator {
             }
         }
 
+        // Validation of @datalake.zalando.org/materialize-events is performed
+        // only on new event-types or on event-types that have already migrated to using this new annotation.
         final var stricterCheck = (oldAnnotations == null
                 || oldAnnotations.containsKey(DATA_LAKE_MATERIALIZE_EVENTS_ANNOTATION));
         if (stricterCheck && areDataLakeAnnotationsMandatory()) {
