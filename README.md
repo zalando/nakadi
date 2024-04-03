@@ -1,6 +1,7 @@
 ## [Nakadi Event Broker](https://zalando.github.io/nakadi/)
 
-**Nakadi is no longer developed in the open — please use Zalando's internal repository for contributing.**
+**Nakadi is no longer developed in the open as we've not seen usage outside of Zalando for many years. **
+If you are a Zalando employee, please use Zalando's internal repository for contributing.
 
 ## ARCHIVED
 
