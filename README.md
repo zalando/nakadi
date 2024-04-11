@@ -14,7 +14,7 @@ One of the most prominent use cases of Nakadi is to decouple micro-services by b
 
 Main users of nakadi are developers and analysts. Nakadi provides features like REST based integration, multi consumer, ordered delivery, interactive UI, fully managed, security, ensuring data quality, abstraction of big data technology, and push model based consumption.
 
-Nakadi is in active developement and is currently in production inside Zalando as the backbone of our microservices sending millions of events daily with a throughput of more than hundreds gigabytes per second. In one line, Nakadi is a **high-scalability data-stream for enterprise engineering teams**.  
+Nakadi is in active development and is currently in production inside Zalando as the backbone of our microservices sending millions of events daily with a throughput of more than hundreds of gigabytes per second. In one line, Nakadi is a **high-scalability data-stream for enterprise engineering teams**.  
 
 ![Nakadi Deployment Diagram](docs/img/NakadiDeploymentDiagram.png)
 
