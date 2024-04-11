@@ -58,7 +58,7 @@ dependencies {
     compile 'org.zalando:problem:0.22.0'
     compile 'org.json:json:20180130'
 
-    compile 'org.slf4j:slf4j-log4j12'
+    compile 'org.slf4j:slf4j-api'
 
     // open tracing
     compile "io.opentracing:opentracing-api:$opentracingVersion"
